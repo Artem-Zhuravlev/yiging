@@ -1,0 +1,19 @@
+{
+  "name": "yijing",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Digital I Ching study & practice platform.",
+  "type": "module",
+  "workspaces": [
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace apps/web",
+    "build": "npm run build --workspace apps/web",
+    "verify": "node scripts/verify.mjs",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}
