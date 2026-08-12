@@ -21,6 +21,8 @@ const steps = [
   { label: 'api: lint (php-cs-fixer)', cwd: 'apps/api', cmd: composerCmd, args: ['lint'] },
   { label: 'api: static analysis (phpstan)', cwd: 'apps/api', cmd: composerCmd, args: ['stan'] },
   { label: 'api: test (phpunit)', cwd: 'apps/api', cmd: composerCmd, args: ['test'] },
+  { label: 'yijing-core: lint (php-cs-fixer)', cwd: 'packages/yijing-core', cmd: composerCmd, args: ['lint'] },
+  { label: 'yijing-core: static analysis (phpstan)', cwd: 'packages/yijing-core', cmd: composerCmd, args: ['stan'] },
   { label: 'yijing-core: test (phpunit)', cwd: 'packages/yijing-core', cmd: composerCmd, args: ['test'] },
 ]
 

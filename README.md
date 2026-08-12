@@ -77,8 +77,13 @@ plain-VPS instructions, all Docker-free.
 | ID       | Feature               | Status     |
 | -------- | ----------------------- | ---------- |
 | SPEC-001 | Project Architecture   | `verified` |
-| SPEC-002 | I Ching Domain Model   | `draft`    |
+| SPEC-002 | I Ching Domain Model   | `in-progress` (structural pass done, classical text pending) |
 
-Next recommended step: review and approve [SPEC-002](specs/domain-model/spec.md) — in
-particular, resolve the open question on classical-text source/licensing — before any hexagram
-domain code is written.
+`packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence),
+`changeLine()`/`getResultingHexagram()`, and `YijingRelations` (nuclear/opposite/complement) —
+46 tests, 244 assertions. Judgment/image/line-statement text (Legge, 1899, public domain) is the
+remaining work — see [SPEC-002's tasks.md](specs/domain-model/tasks.md).
+
+Next recommended step: populate classical text for all 64 hexagrams (SPEC-002's remaining
+tasks), or start a new SPEC-003 (Hexagram Explorer) spec that consumes the structural model
+as-is, with `null` judgment/image/line-statement fields until that text lands.

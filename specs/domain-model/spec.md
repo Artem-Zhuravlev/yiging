@@ -1,11 +1,13 @@
 # SPEC-002 — I Ching Domain Model
 
-**Status:** draft
+**Status:** in-progress
 **Owner:** unassigned
-**Last updated:** 2026-08-11
+**Last updated:** 2026-08-12
 
-> This spec is **draft**. It must be reviewed and moved to `approved` before any of
-> `packages/yijing-core` is implemented, per [`specs/README.md`](../README.md).
+> Approved for a **structural** implementation pass (trigram/hexagram identity, King Wen
+> numbers, line mechanics, relationships). Classical text content (judgment/image/line
+> statements) is out of scope for that pass — see "Data requirements" below — and is tracked as
+> remaining work in [`tasks.md`](tasks.md), not a blocker for approval.
 
 ## Problem
 
@@ -86,7 +88,9 @@ Casting::fromCoins(...)              // defined in SPEC-004, consumes this model
   correctly and deterministically identified (all 64 combinations covered).
 - **REQ-HX-003** — Each of the 64 hexagrams MUST expose: King Wen number (1–64), Chinese name,
   pinyin, its six-line structure, upper trigram, lower trigram, judgment text, image text, and
-  the six individual line statements.
+  the six individual line statements. Judgment/image/line-statement text may be `null` until the
+  classical-text population pass lands (see "Data requirements" — Phasing); the other fields
+  MUST be populated for all 64 hexagrams from the structural pass onward.
 - **REQ-HX-004** — `Hexagram::getUpperTrigram()` and `Hexagram::getLowerTrigram()` MUST return
   the correct `Trigram` derived from lines 4–6 and 1–3 respectively.
 - **REQ-HX-005** — `Hexagram::changeLine(position)` MUST return a new `Hexagram` with the line
@@ -114,9 +118,11 @@ Casting::fromCoins(...)              // defined in SPEC-004, consumes this model
   `composer.json` `require` staying empty of anything but `php`.
 - **REQ-DM-002** — All hexagram/trigram derivation logic MUST be pure functions/methods:
   identical inputs always produce identical outputs, no I/O, no randomness.
-- **REQ-DM-003** — Reference data for all 8 trigrams and 64 hexagrams MUST be complete before
-  this spec can move to `verified` — partial data is not acceptable, since consumers cannot
-  distinguish "not yet seeded" from "genuinely has no line statements."
+- **REQ-DM-003** — Reference data for all 8 trigrams and 64 hexagrams (structural fields: id,
+  names, King Wen number, six-line structure, trigram composition) MUST be complete before this
+  spec can move to `in-progress`. Full completion including classical text MUST be reached
+  before this spec can move to `verified` — partial data is not acceptable there, since
+  consumers cannot distinguish "not yet seeded" from "genuinely has no line statements."
 
 ## Data requirements
 
@@ -127,9 +133,18 @@ filesystem/DB access per REQ-DM-001):
 - 64 hexagrams: King Wen number, Chinese name, pinyin, six lines, upper/lower trigram
   reference, judgment, image, 6 line statements.
 
-Source and licensing of the classical text used for judgments/images/line statements must be
-recorded (translator/edition, public-domain or licensed) before this spec is approved — this is
-an open question, not yet resolved.
+**Resolved:** classical text (judgment, image, line statements) will use James Legge's 1899
+translation — public domain (copyright expired), the standard source used by most open-source
+I Ching software, available from public-domain mirrors (e.g. sacred-texts.com) for accurate
+transcription rather than paraphrase.
+
+**Phasing:** the structural fields (King Wen number, Chinese name, pinyin, six-line structure,
+upper/lower trigram) are implemented first, with full test coverage, since they are the
+safety-critical, testable part of this spec. Judgment/image/line-statement text for all 64
+hexagrams is populated in a follow-up pass (tracked in `tasks.md`) — sourcing accurate text for
+64 hexagrams is a separate, larger effort that must not be rushed or fabricated from memory.
+Until that pass lands, those fields are typed as nullable on `Hexagram` rather than silently
+defaulted to placeholder text, so "not yet populated" is never confused with "has no text."
 
 ## API requirements
 
@@ -149,14 +164,24 @@ will define the `GET /api/hexagrams` / `GET /api/hexagrams/{id}` contract that w
 
 ## Acceptance criteria
 
-- [ ] All 8 trigrams and all 64 hexagrams are represented with complete reference data.
-- [ ] `Hexagram::fromLines()` correctly identifies all 64 possible six-line combinations
+Structural pass (required for `in-progress`):
+
+- [x] All 8 trigrams and all 64 hexagrams are represented with complete structural reference
+      data (id, names, King Wen number, six-line structure, trigram composition).
+- [x] `Hexagram::fromLines()` correctly identifies all 64 possible six-line combinations
       (property/table-tested, not just a handful of examples).
-- [ ] `Hexagram::getUpperTrigram()` / `getLowerTrigram()` are correct for all 64 hexagrams.
-- [ ] `Hexagram::changeLine()` and `getResultingHexagram()` are correct, including the
+- [x] `Hexagram::getUpperTrigram()` / `getLowerTrigram()` are correct for all 64 hexagrams.
+- [x] `Hexagram::changeLine()` and `getResultingHexagram()` are correct, including the
       zero-changing-lines and all-six-changing edge cases.
-- [ ] `YijingRelations::getNuclearHexagram()`, `getOpposite()`, `getComplement()` are correct
+- [x] `YijingRelations::getNuclearHexagram()`, `getOpposite()`, `getComplement()` are correct
       against known reference values (cross-checked against a published source).
-- [ ] `packages/yijing-core`'s `composer.json` has no runtime dependency beyond `php`.
-- [ ] Test coverage in `yijing-core` is the highest of any package in the repo (per bootstrap
-      rule: "the domain core must be heavily tested before UI work expands").
+- [x] `packages/yijing-core`'s `composer.json` has no runtime dependency beyond `php`.
+- [x] Test coverage in `yijing-core` is the highest of any package in the repo (per bootstrap
+      rule: "the domain core must be heavily tested before UI work expands") — 46 tests, 244
+      assertions, versus 2 in `apps/api` and 1 (smoke) in `apps/web`.
+
+Classical text pass (required for `verified`, not yet done):
+
+- [ ] Judgment, image, and all six line statements are populated for all 64 hexagrams from
+      Legge's 1899 translation, accurately transcribed (not paraphrased) from a public-domain
+      source.

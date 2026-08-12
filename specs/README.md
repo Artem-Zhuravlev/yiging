@@ -77,4 +77,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | ID       | Feature                                     | Status     |
 | -------- | -------------------------------------------- | ---------- |
 | SPEC-001 | [Project Architecture](project-architecture/spec.md) | `verified` |
-| SPEC-002 | [I Ching Domain Model](domain-model/spec.md) | `draft`    |
+| SPEC-002 | [I Ching Domain Model](domain-model/spec.md) | `in-progress` (structural pass done, classical text pending) |
