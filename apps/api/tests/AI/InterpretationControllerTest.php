@@ -114,6 +114,30 @@ final class InterpretationControllerTest extends TestCase
         self::assertSame(['error' => 'Internal Server Error'], $this->decode($response));
     }
 
+    public function testReturns429AfterExceedingTheRateLimit(): void
+    {
+        $config = new Config([
+            'app_env' => 'testing',
+            'database_path' => $this->databasePath,
+            'ai_rate_limit_max' => 1,
+            'ai_rate_limit_window_seconds' => 3600,
+        ]);
+        $apiRoot = dirname(__DIR__, 2);
+        $routeDefinitions = require $apiRoot . '/config/routes.php';
+        $kernel = new Kernel($config, $routeDefinitions);
+
+        $first = $kernel->handle(Request::create('/api/interpretations/does-not-exist', 'POST'));
+        $second = $kernel->handle(Request::create('/api/interpretations/does-not-exist', 'POST'));
+
+        self::assertSame(404, $first->getStatusCode(), 'the first request should reach the normal 404 path');
+        self::assertSame(429, $second->getStatusCode(), 'the second request must be rejected before reaching it');
+        self::assertSame('3600', $second->headers->get('Retry-After'));
+        self::assertSame(
+            ['error' => 'Too many interpretation requests. Please try again later.'],
+            $this->decode($second),
+        );
+    }
+
     /**
      * @return array<mixed>
      */

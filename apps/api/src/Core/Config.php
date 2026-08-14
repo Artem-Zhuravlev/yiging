@@ -42,6 +42,8 @@ final class Config
             'ai_provider' => $env['AI_PROVIDER'] ?? 'mock',
             'ai_api_key' => $env['AI_API_KEY'] ?? '',
             'ai_model' => $env['AI_MODEL'] ?? 'gemini-3.6-flash',
+            'ai_rate_limit_max' => (int) ($env['AI_RATE_LIMIT_MAX'] ?? 20),
+            'ai_rate_limit_window_seconds' => (int) ($env['AI_RATE_LIMIT_WINDOW_SECONDS'] ?? 3600),
         ]);
     }
 
@@ -60,5 +62,16 @@ final class Config
     public function string(string $key): string
     {
         return (string) $this->get($key);
+    }
+
+    /**
+     * $default applies only when $key is genuinely absent (never configured at all) - an
+     * explicitly-set value of 0 is honored, not treated as "unset."
+     */
+    public function int(string $key, int $default = 0): int
+    {
+        $value = $this->get($key);
+
+        return $value === null ? $default : (int) $value;
     }
 }

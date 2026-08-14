@@ -87,6 +87,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-008 | [AI Interpretation](specs/ai-interpretation/spec.md) | `verified` |
 | SPEC-010 | [Interpretation UI](specs/interpretation-ui/spec.md) | `verified` |
 | SPEC-011 | [Gemini Interpretation Provider](specs/gemini-interpretation-provider/spec.md) | `verified` (code); live call unverified |
+| SPEC-012 | [AI Endpoint Rate Limiting](specs/ai-rate-limiting/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -176,10 +177,18 @@ outside its control. See [SPEC-011](specs/gemini-interpretation-provider/spec.md
 note its one open item: this session had no API key to test against, so the exact request
 contract is verified by research (Google's current docs, cross-checked across 3 fetches), not
 by a real call. Set `AI_API_KEY` in `apps/api/.env` and try it to complete that verification.**
-Rate limiting on this now-real-cost endpoint is explicitly deferred (see the spec's "Out of
-scope") — an interim mitigation is a usage cap set directly in Google's own console.
+
+`POST /api/interpretations/{id}` is now rate-limited — `AI_RATE_LIMIT_MAX` (default 20)
+requests per `AI_RATE_LIMIT_WINDOW_SECONDS` (default 3600) per client IP, backed by a new
+`rate_limit_hits` SQLite table, no external cache needed. Applies identically regardless of
+which provider is configured; a rejected request never reaches the repository, context
+builder, or provider at all. Manually verified against the live dev server: 20 real requests
+all `200`, the 21st `429` with `Retry-After: 3600` — see
+[SPEC-012](specs/ai-rate-limiting/spec.md). Known limitation, stated plainly: behind a reverse
+proxy, this needs that deployment's trusted-proxy configuration to key on the real client IP
+rather than the proxy's own address (still caps *total* volume through the proxy either way).
 
 Next recommended steps: verify the live Gemini call (see above), or plan section 26+ territory
-(rate limiting, analytics, search/filter on history, journal notes editing UI, SPEC-003's
+(analytics, search/filter on history, journal notes editing UI, SPEC-003's
 `GET /api/texts/{hexagramId}`-style endpoints if canonical text ever needs its own browsing
 surface separate from a hexagram).

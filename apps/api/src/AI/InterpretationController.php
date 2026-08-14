@@ -17,12 +17,21 @@ final class InterpretationController
     private readonly ConsultationRepository $repository;
     private readonly InterpretationContextBuilder $contextBuilder;
     private readonly InterpretationProvider $provider;
+    private readonly RateLimiter $rateLimiter;
+    private readonly int $rateLimitWindowSeconds;
 
     public function __construct(Config $config)
     {
-        $this->repository = new SqliteConsultationRepository(Database::connect($config));
+        $pdo = Database::connect($config);
+        $this->repository = new SqliteConsultationRepository($pdo);
         $this->contextBuilder = new InterpretationContextBuilder();
         $this->provider = self::resolveProvider($config);
+        $this->rateLimitWindowSeconds = $config->int('ai_rate_limit_window_seconds', 3600);
+        $this->rateLimiter = new SqliteRateLimiter(
+            $pdo,
+            $config->int('ai_rate_limit_max', 20),
+            $this->rateLimitWindowSeconds,
+        );
     }
 
     /**
@@ -30,6 +39,20 @@ final class InterpretationController
      */
     public function create(Request $request, array $vars): Response
     {
+        // Rate limit check comes before any other work - a rejected request should never
+        // touch the repository, build a context, or call the provider.
+        $rateLimitKey = $request->getClientIp() ?? 'unknown';
+
+        if (!$this->rateLimiter->attempt($rateLimitKey)) {
+            $response = new JsonResponse(
+                ['error' => 'Too many interpretation requests. Please try again later.'],
+                Response::HTTP_TOO_MANY_REQUESTS,
+            );
+            $response->headers->set('Retry-After', (string) $this->rateLimitWindowSeconds);
+
+            return $response;
+        }
+
         $consultation = $this->repository->findById($vars['id']);
 
         if ($consultation === null) {
