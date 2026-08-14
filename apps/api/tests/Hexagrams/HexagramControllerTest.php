@@ -92,6 +92,54 @@ final class HexagramControllerTest extends TestCase
         self::assertSame(54, $tai['relationships']['nuclear']['kingWenNumber']);
     }
 
+    public function testFromLinesComputesTaiFromItsPattern(): void
+    {
+        $response = $this->kernel->handle(
+            Request::create('/api/hexagrams/from-lines?lines=yang,yang,yang,yin,yin,yin', 'GET'),
+        );
+
+        self::assertSame(200, $response->getStatusCode());
+        $body = $this->decode($response);
+        self::assertSame(11, $body['kingWenNumber']);
+        self::assertSame('泰', $body['chineseName']);
+        self::assertSame(54, $body['relationships']['nuclear']['kingWenNumber']);
+    }
+
+    public function testFromLinesMatchesShowForTheSamePattern(): void
+    {
+        $fromLines = $this->decode($this->kernel->handle(
+            Request::create('/api/hexagrams/from-lines?lines=yang,yang,yang,yin,yin,yin', 'GET'),
+        ));
+        $show = $this->decode($this->kernel->handle(Request::create('/api/hexagrams/11', 'GET')));
+
+        self::assertSame($show, $fromLines);
+    }
+
+    public function testFromLinesReturns422ForWrongCount(): void
+    {
+        $response = $this->kernel->handle(
+            Request::create('/api/hexagrams/from-lines?lines=yang,yang,yang', 'GET'),
+        );
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testFromLinesReturns422ForAnInvalidPolarity(): void
+    {
+        $response = $this->kernel->handle(
+            Request::create('/api/hexagrams/from-lines?lines=yang,yang,yang,yin,yin,maybe', 'GET'),
+        );
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testFromLinesReturns422WhenLinesIsMissing(): void
+    {
+        $response = $this->kernel->handle(Request::create('/api/hexagrams/from-lines', 'GET'));
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
     public function testShowReturnsAMiddleHexagram(): void
     {
         $response = $this->kernel->handle(Request::create('/api/hexagrams/32', 'GET'));

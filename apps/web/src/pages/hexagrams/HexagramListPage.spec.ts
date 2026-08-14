@@ -33,6 +33,14 @@ function sampleHexagram(kingWenNumber: number): Hexagram {
 }
 
 describe('HexagramListPage', () => {
+  it('links to the Visual Editor', () => {
+    vi.mocked(fetchHexagrams).mockReturnValue(new Promise(() => {}))
+
+    const wrapper = mount(HexagramListPage, { global: { stubs } })
+
+    expect(wrapper.findAll('a').some((a) => a.text() === 'Visual Editor')).toBe(true)
+  })
+
   it('shows a loading state before the fetch resolves', () => {
     vi.mocked(fetchHexagrams).mockReturnValue(new Promise(() => {}))
 
@@ -47,7 +55,7 @@ describe('HexagramListPage', () => {
     const wrapper = mount(HexagramListPage, { global: { stubs } })
     await flushPromises()
 
-    const links = wrapper.findAll('a')
+    const links = wrapper.findAll('ul a')
     expect(links).toHaveLength(2)
     expect(wrapper.text()).toContain('乾')
   })

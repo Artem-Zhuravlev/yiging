@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { fetchHexagrams, fetchHexagram } from './api'
+import { fetchHexagrams, fetchHexagram, computeHexagramFromLines } from './api'
 import type { Hexagram } from './model'
 
 const sample: Hexagram = {
@@ -51,5 +51,27 @@ describe('entities/hexagram api', () => {
     expect(result.relationships.reversed.kingWenNumber).toBe(12)
     expect(result.relationships.complement.kingWenNumber).toBe(12)
     expect(fetchMock).toHaveBeenCalledWith('/api/hexagrams/11')
+  })
+
+  it('computeHexagramFromLines gets /hexagrams/from-lines with a comma-separated query', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(sample),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await computeHexagramFromLines([
+      'yang',
+      'yang',
+      'yang',
+      'yin',
+      'yin',
+      'yin',
+    ])
+
+    expect(result).toEqual(sample)
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/hexagrams/from-lines?lines=yang,yang,yang,yin,yin,yin',
+    )
   })
 })

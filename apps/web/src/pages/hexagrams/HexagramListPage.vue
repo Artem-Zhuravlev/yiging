@@ -26,7 +26,12 @@ onMounted(async () => {
 
 <template>
   <main class="mx-auto max-w-5xl px-6 py-10">
-    <h1 class="mb-6 text-2xl font-semibold tracking-tight">Hexagram Explorer</h1>
+    <div class="mb-6 flex items-center justify-between">
+      <h1 class="text-2xl font-semibold tracking-tight">Hexagram Explorer</h1>
+      <router-link to="/hexagrams/editor" class="text-sm underline hover:no-underline">
+        Visual Editor
+      </router-link>
+    </div>
 
     <p v-if="state.status === 'loading'" class="text-neutral-500">Loading hexagrams…</p>
     <p v-else-if="state.status === 'error'" class="text-red-600">{{ state.message }}</p>

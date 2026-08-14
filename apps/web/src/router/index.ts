@@ -14,6 +14,11 @@ const router = createRouter({
       component: () => import('../pages/hexagrams/HexagramListPage.vue'),
     },
     {
+      path: '/hexagrams/editor',
+      name: 'hexagram-editor',
+      component: () => import('../pages/hexagrams/HexagramEditorPage.vue'),
+    },
+    {
       path: '/hexagrams/:number',
       name: 'hexagram-detail',
       component: () => import('../pages/hexagrams/HexagramDetailPage.vue'),

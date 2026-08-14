@@ -91,6 +91,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-013 | [Consultation Notes & Tags Editing](specs/consultation-editing/spec.md) | `verified` |
 | SPEC-014 | [Complete Hexagram Relationships](specs/hexagram-relationships/spec.md) | `verified` |
 | SPEC-015 | [Hexagram Relationship Navigation](specs/hexagram-relationship-nav/spec.md) | `verified` |
+| SPEC-016 | [Visual Hexagram Editor](specs/hexagram-editor/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -218,6 +219,14 @@ pages via a same-route param change (exactly what a relationship link does) sile
 showing the *previous* hexagram under the new URL. Fixed by watching the route param instead
 or `onMounted()`. See [SPEC-015](specs/hexagram-relationship-nav/spec.md).
 
-Next recommended steps: continue the plan's feature 21-40 batch in order (23: Visual Hexagram
-Editor → 24: Hexagram Comparison → 25: Deep Hexagram Page → ... → 40: AI Conversation Per
-Consultation), or verify the live Gemini call (see above) whenever an `AI_API_KEY` is available.
+`GET /api/hexagrams/from-lines?lines=yang,yin,...` is now live — a read-only endpoint computing a
+hexagram from six caller-supplied line polarities via the existing `Hexagram::fromLines()` (no
+persistence, no new domain logic), returning the exact same shape `GET /api/hexagrams/{id}`
+already does. `/hexagrams/editor` (linked from the Hexagram Explorer) drives it with six yin/yang
+toggles: flipping any line re-fetches and updates the number, name, trigrams, and relationships
+live — zero hexagram-computation logic in `apps/web`. See
+[SPEC-016](specs/hexagram-editor/spec.md).
+
+Next recommended steps: continue the plan's feature 21-40 batch in order (24: Hexagram Comparison
+→ 25: Deep Hexagram Page → ... → 40: AI Conversation Per Consultation), or verify the live Gemini
+call (see above) whenever an `AI_API_KEY` is available.
