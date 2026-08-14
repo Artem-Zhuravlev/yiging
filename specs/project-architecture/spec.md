@@ -2,7 +2,7 @@
 
 **Status:** verified
 **Owner:** bootstrap
-**Last updated:** 2026-08-11
+**Last updated:** 2026-08-14
 
 ## Problem
 
@@ -90,3 +90,20 @@ spec.
 - [x] Frontend lint, typecheck, test, and build all pass.
 - [x] Backend lint (php-cs-fixer), static analysis (PHPStan level 8), and tests all pass.
 - [x] No Docker, VM, Kubernetes, Redis, PostgreSQL, or Node runtime is required in production.
+
+**Re-verified 2026-08-14**, after SPEC-002 through SPEC-010 added 4 more modules
+(`Casting`/`Readings`/`AI`/`Hexagrams`/`Trigrams`), a second migration's worth of tables, and
+the full frontend — none of which existed when this spec was first verified. Dry-ran the full
+production path in an isolated copy (not the working tree): `composer install --no-dev
+--optimize-autoloader` in `apps/api` and `packages/yijing-core` installs only the 4 runtime
+dependencies (`nikic/fast-route`, `symfony/http-foundation` + 2 transitive) — zero dev tooling
+(`phpunit`/`phpstan`/`php-cs-fixer` absent from `vendor/bin`); `php scripts/migrate.php` +
+`php scripts/seed.php` bootstrap a brand-new SQLite file from nothing (including SPEC-005's
+`consultations` migration, added after this spec was first verified); the app boots and serves
+correctly with `APP_ENV=production` set explicitly *and* with no `.env` file at all (both
+fall back to the documented default). Exercised the full request path end to end against that
+production-mode instance: `GET /api/hexagrams` (real Legge text), `POST /api/consultations`,
+`POST /api/interpretations/{id}`, `GET /api/consultations`, `GET /api/trigrams` — all correct.
+`apps/web/dist/index.html` references root-relative asset paths, consistent with
+`docs/deployment.md`'s documented server configs. No code changes were needed — this was
+verification only.

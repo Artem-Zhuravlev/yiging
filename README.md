@@ -147,6 +147,13 @@ is now at 35 tests.
 and frontend loop from the original plan's MVP definition (ask → cast → see → interpret → find
 again) is complete and working end to end against the real running stack, not just unit-tested.
 
+The full production path (Phase 10 of the original plan) has been dry-run end to end in an
+isolated copy: `composer install --no-dev --optimize-autoloader` pulls in zero dev tooling,
+`php scripts/migrate.php`/`seed.php` bootstrap a brand-new SQLite database from nothing
+(including migrations added well after SPEC-001 was first verified), and the app serves the
+full request path correctly under `APP_ENV=production` and with no `.env` file at all — see
+[SPEC-001](specs/project-architecture/spec.md)'s 2026-08-14 re-verification note.
+
 Next recommended steps (independent of each other): a real `InterpretationProvider` (needs an
 API key + secret management + rate limiting, none of which exist yet — a deliberate gap, not an
 oversight, per SPEC-008's explicit "out of scope"), or plan section 26+ territory (analytics,
