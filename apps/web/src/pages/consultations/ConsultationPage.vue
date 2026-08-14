@@ -178,6 +178,13 @@ onMounted(async () => {
         </div>
       </div>
 
+      <router-link
+        :to="`/hexagrams/compare?a=${state.consultation.primaryHexagram.kingWenNumber}&b=${state.consultation.resultingHexagram.kingWenNumber}`"
+        class="self-start text-sm underline hover:no-underline"
+      >
+        Compare hexagrams
+      </router-link>
+
       <p v-if="state.consultation.changingLinePositions.length === 0" class="text-neutral-500">
         No changing lines.
       </p>

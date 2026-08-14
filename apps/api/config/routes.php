@@ -19,6 +19,7 @@ return static function (RouteCollector $r): void {
 
     $r->addRoute('GET', '/api/hexagrams', [HexagramController::class, 'index']);
     $r->addRoute('GET', '/api/hexagrams/from-lines', [HexagramController::class, 'fromLines']);
+    $r->addRoute('GET', '/api/hexagrams/compare', [HexagramController::class, 'compare']);
     $r->addRoute('GET', '/api/hexagrams/{id}', [HexagramController::class, 'show']);
 
     $r->addRoute('GET', '/api/trigrams', [TrigramController::class, 'index']);

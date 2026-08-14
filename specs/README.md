@@ -92,3 +92,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-014 | [Complete Hexagram Relationships](hexagram-relationships/spec.md) | `verified` |
 | SPEC-015 | [Hexagram Relationship Navigation](hexagram-relationship-nav/spec.md) | `verified` |
 | SPEC-016 | [Visual Hexagram Editor](hexagram-editor/spec.md) | `verified` |
+| SPEC-017 | [Hexagram Comparison](hexagram-comparison/spec.md) | `verified` |

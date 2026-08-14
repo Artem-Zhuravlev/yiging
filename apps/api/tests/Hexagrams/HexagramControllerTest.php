@@ -140,6 +140,68 @@ final class HexagramControllerTest extends TestCase
         self::assertSame(422, $response->getStatusCode());
     }
 
+    public function testCompareReturnsBothHexagramsWithLineComparisonsAndTrigramFlags(): void
+    {
+        $response = $this->kernel->handle(Request::create('/api/hexagrams/compare?a=11&b=44', 'GET'));
+
+        self::assertSame(200, $response->getStatusCode());
+        $body = $this->decode($response);
+
+        self::assertSame(11, $body['a']['kingWenNumber']);
+        self::assertSame(44, $body['b']['kingWenNumber']);
+        self::assertArrayHasKey('relationships', $body['a']);
+        self::assertArrayHasKey('judgment', $body['b']);
+
+        self::assertCount(6, $body['lineComparisons']);
+        self::assertSame(
+            [1, 2, 3, 4, 5, 6],
+            array_column($body['lineComparisons'], 'position'),
+        );
+        self::assertIsBool($body['upperTrigramDiffers']);
+        self::assertIsBool($body['lowerTrigramDiffers']);
+    }
+
+    public function testCompareOfAHexagramWithItselfReportsNoChangesAndNoTrigramDifferences(): void
+    {
+        $response = $this->kernel->handle(Request::create('/api/hexagrams/compare?a=11&b=11', 'GET'));
+        $body = $this->decode($response);
+
+        self::assertSame(200, $response->getStatusCode());
+        foreach ($body['lineComparisons'] as $lineComparison) {
+            self::assertFalse($lineComparison['changed']);
+        }
+        self::assertFalse($body['upperTrigramDiffers']);
+        self::assertFalse($body['lowerTrigramDiffers']);
+    }
+
+    public function testCompareReturns422ForNonNumericA(): void
+    {
+        $response = $this->kernel->handle(Request::create('/api/hexagrams/compare?a=abc&b=11', 'GET'));
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testCompareReturns422WhenBIsMissing(): void
+    {
+        $response = $this->kernel->handle(Request::create('/api/hexagrams/compare?a=11', 'GET'));
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testCompareReturns404ForAnOutOfRangeA(): void
+    {
+        $response = $this->kernel->handle(Request::create('/api/hexagrams/compare?a=0&b=11', 'GET'));
+
+        self::assertSame(404, $response->getStatusCode());
+    }
+
+    public function testCompareReturns404ForAnOutOfRangeB(): void
+    {
+        $response = $this->kernel->handle(Request::create('/api/hexagrams/compare?a=11&b=65', 'GET'));
+
+        self::assertSame(404, $response->getStatusCode());
+    }
+
     public function testShowReturnsAMiddleHexagram(): void
     {
         $response = $this->kernel->handle(Request::create('/api/hexagrams/32', 'GET'));

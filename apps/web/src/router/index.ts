@@ -19,6 +19,11 @@ const router = createRouter({
       component: () => import('../pages/hexagrams/HexagramEditorPage.vue'),
     },
     {
+      path: '/hexagrams/compare',
+      name: 'hexagram-compare',
+      component: () => import('../pages/hexagrams/HexagramComparePage.vue'),
+    },
+    {
       path: '/hexagrams/:number',
       name: 'hexagram-detail',
       component: () => import('../pages/hexagrams/HexagramDetailPage.vue'),

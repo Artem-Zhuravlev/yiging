@@ -96,6 +96,18 @@ describe('ConsultationPage', () => {
     expect(wrapper.find('[data-position="1"][data-changing="true"]').exists()).toBe(true)
   })
 
+  it('links to the hexagram comparison page for its primary/resulting pair', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    const compareLink = wrapper.findAll('a').find((a) => a.text() === 'Compare hexagrams')
+    expect(compareLink).toBeDefined()
+    expect(compareLink!.attributes('to')).toBe('/hexagrams/compare?a=1&b=44')
+  })
+
   it('shows "No changing lines" when there are none', async () => {
     vi.mocked(fetchConsultation).mockResolvedValue({
       ...sampleConsultation,

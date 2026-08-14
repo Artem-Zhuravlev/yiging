@@ -92,6 +92,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-014 | [Complete Hexagram Relationships](specs/hexagram-relationships/spec.md) | `verified` |
 | SPEC-015 | [Hexagram Relationship Navigation](specs/hexagram-relationship-nav/spec.md) | `verified` |
 | SPEC-016 | [Visual Hexagram Editor](specs/hexagram-editor/spec.md) | `verified` |
+| SPEC-017 | [Hexagram Comparison](specs/hexagram-comparison/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -227,6 +228,17 @@ toggles: flipping any line re-fetches and updates the number, name, trigrams, an
 live — zero hexagram-computation logic in `apps/web`. See
 [SPEC-016](specs/hexagram-editor/spec.md).
 
-Next recommended steps: continue the plan's feature 21-40 batch in order (24: Hexagram Comparison
-→ 25: Deep Hexagram Page → ... → 40: AI Conversation Per Consultation), or verify the live Gemini
-call (see above) whenever an `AI_API_KEY` is available.
+`GET /api/hexagrams/compare?a={n}&b={n}` is now live — returns both hexagrams' full detail plus a
+6-position line-by-line diff (`packages/yijing-core`'s new `HexagramComparator::compareLines()`,
+the one genuinely new calculation this feature needed) and upper/lower trigram-difference flags.
+"Structural relationships" and "relevant texts" needed no new API surface at all — both were
+already present in each hexagram's own `relationships`/`judgment`/`image` fields (SPEC-002/014),
+so `/hexagrams/compare` derives its "54 is 11's nuclear hexagram"-style note with a plain equality
+check, the same pattern `HexagramDetailPage` already established (SPEC-015). `ConsultationPage`
+links straight into it with its primary/resulting King Wen numbers, satisfying the "should also
+work for a consultation's pair" requirement via composition rather than a separate code path. See
+[SPEC-017](specs/hexagram-comparison/spec.md).
+
+Next recommended steps: continue the plan's feature 21-40 batch in order (25: Deep Hexagram Page
+→ 26: Translation Comparison → ... → 40: AI Conversation Per Consultation), or verify the live
+Gemini call (see above) whenever an `AI_API_KEY` is available.

@@ -9,7 +9,9 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Yijing\Core\Data\HexagramCatalog;
 use Yijing\Core\Hexagram;
+use Yijing\Core\HexagramComparator;
 use Yijing\Core\Line;
+use Yijing\Core\LineComparison;
 use Yijing\Core\LinePolarity;
 use Yijing\Core\Trigram;
 use Yijing\Core\YijingRelations;
@@ -53,6 +55,50 @@ final class HexagramController
         }
 
         return new JsonResponse($this->toJson(Hexagram::fromLines($lines)));
+    }
+
+    public function compare(Request $request): Response
+    {
+        try {
+            $aNumber = $this->parseKingWenNumberFromQuery($request->query->get('a'), 'a');
+            $bNumber = $this->parseKingWenNumberFromQuery($request->query->get('b'), 'b');
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        try {
+            $a = Hexagram::fromKingWenNumber($aNumber);
+            $b = Hexagram::fromKingWenNumber($bNumber);
+        } catch (\InvalidArgumentException) {
+            return new JsonResponse(['error' => 'Not Found'], Response::HTTP_NOT_FOUND);
+        }
+
+        return new JsonResponse([
+            'a' => $this->toJson($a),
+            'b' => $this->toJson($b),
+            'lineComparisons' => array_map(
+                static fn (LineComparison $c): array => [
+                    'position' => $c->position,
+                    'aPolarity' => $c->aPolarity === LinePolarity::Yang ? 'yang' : 'yin',
+                    'bPolarity' => $c->bPolarity === LinePolarity::Yang ? 'yang' : 'yin',
+                    'changed' => $c->changed,
+                ],
+                HexagramComparator::compareLines($a, $b),
+            ),
+            'upperTrigramDiffers' => $a->getUpperTrigram()->id !== $b->getUpperTrigram()->id,
+            'lowerTrigramDiffers' => $a->getLowerTrigram()->id !== $b->getLowerTrigram()->id,
+        ]);
+    }
+
+    private function parseKingWenNumberFromQuery(mixed $value, string $paramName): int
+    {
+        if (!is_string($value) || !ctype_digit($value)) {
+            throw new \InvalidArgumentException(
+                sprintf('"%s" must be a numeric King Wen number.', $paramName),
+            );
+        }
+
+        return (int) $value;
     }
 
     /**

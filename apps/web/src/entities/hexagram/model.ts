@@ -40,3 +40,18 @@ export interface Hexagram {
   lineStatements: string[] | null
   relationships: HexagramRelationships
 }
+
+export interface LineComparison {
+  position: number
+  aPolarity: LinePolarity
+  bPolarity: LinePolarity
+  changed: boolean
+}
+
+export interface HexagramComparison {
+  a: Hexagram
+  b: Hexagram
+  lineComparisons: LineComparison[]
+  upperTrigramDiffers: boolean
+  lowerTrigramDiffers: boolean
+}
