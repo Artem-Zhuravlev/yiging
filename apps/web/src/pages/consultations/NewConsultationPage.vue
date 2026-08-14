@@ -50,6 +50,7 @@ async function submit(): Promise<void> {
           v-model="question"
           rows="3"
           required
+          maxlength="2000"
           class="w-full rounded-md border border-neutral-300 p-2"
         />
       </div>

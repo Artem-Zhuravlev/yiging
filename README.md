@@ -154,6 +154,14 @@ isolated copy: `composer install --no-dev --optimize-autoloader` pulls in zero d
 full request path correctly under `APP_ENV=production` and with no `.env` file at all — see
 [SPEC-001](specs/project-architecture/spec.md)'s 2026-08-14 re-verification note.
 
+A pass against the plan's own security checklist (section 31) turned up one real gap — no
+maximum length on user-supplied text — since fixed: `Consultation`'s `question` is capped at
+2000 characters and `ConsultationNote.text` at 5000, both counted by character (not byte, so
+non-Latin text like Chinese or Cyrillic isn't penalized), enforced server-side with a matching
+client-side `maxlength` hint. Everything else on that checklist (prepared statements
+throughout, no `v-html` anywhere so Vue's default output-escaping holds, no secrets in the
+frontend) was already satisfied. See [SPEC-005](specs/readings/spec.md)'s 2026-08-14 addendum.
+
 Next recommended steps (independent of each other): a real `InterpretationProvider` (needs an
 API key + secret management + rate limiting, none of which exist yet — a deliberate gap, not an
 oversight, per SPEC-008's explicit "out of scope"), or plan section 26+ territory (analytics,

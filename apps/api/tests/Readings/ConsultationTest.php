@@ -47,6 +47,47 @@ final class ConsultationTest extends TestCase
         );
     }
 
+    public function testCreateAcceptsAQuestionAtExactlyTheLengthLimit(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            str_repeat('a', 2000),
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        );
+
+        self::assertSame(2000, mb_strlen($consultation->question));
+    }
+
+    public function testCreateRejectsAQuestionOverTheLengthLimit(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        Consultation::create(
+            'id-1',
+            str_repeat('a', 2001),
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        );
+    }
+
+    public function testCreateCountsQuestionLengthByCharacterNotByte(): void
+    {
+        // Each '乾' is 3 bytes in UTF-8; 2000 characters must be accepted, not rejected as
+        // if it were ~6000 bytes.
+        $consultation = Consultation::create(
+            'id-1',
+            str_repeat('乾', 2000),
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        );
+
+        self::assertSame(2000, mb_strlen($consultation->question));
+    }
+
     public function testWithAddedNoteReturnsANewInstanceAndAppends(): void
     {
         $consultation = Consultation::create(
@@ -108,5 +149,19 @@ final class ConsultationTest extends TestCase
         );
 
         self::assertSame([2, 5], $consultation->changingLinePositions());
+    }
+
+    public function testConsultationNoteAcceptsTextAtExactlyTheLengthLimit(): void
+    {
+        $note = new ConsultationNote(NoteLabel::Before, str_repeat('a', 5000), new \DateTimeImmutable());
+
+        self::assertSame(5000, mb_strlen($note->text));
+    }
+
+    public function testConsultationNoteRejectsTextOverTheLengthLimit(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        new ConsultationNote(NoteLabel::Before, str_repeat('a', 5001), new \DateTimeImmutable());
     }
 }

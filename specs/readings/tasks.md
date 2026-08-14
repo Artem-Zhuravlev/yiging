@@ -10,3 +10,4 @@ Each task references the requirement(s) it fulfills. Mark done only once the lin
 | TASK-READ-004 | Write migration for `consultations`/`consultation_notes`/`tags`/`consultation_tags` | REQ-READ data requirements, REQ-READ-011 | manual `php scripts/migrate.php` run | done |
 | TASK-READ-005 | Implement `ConsultationRepository` interface + `SqliteConsultationRepository` | REQ-READ-007..010, REQ-READ-014 | `SqliteConsultationRepositoryTest` | done |
 | TASK-READ-006 | Verify zero dependency on `App\Casting` in `Readings`                | REQ-READ-012                              | code review / PHPStan               | done |
+| TASK-READ-007 | Add max-length validation (question 2000, note text 5000 chars), matching the plan's "limit user input size" checklist item | REQ-READ-005, REQ-READ-006 | `ConsultationTest` | done |

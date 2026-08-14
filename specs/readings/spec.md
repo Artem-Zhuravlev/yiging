@@ -88,15 +88,22 @@ $repository->findById($consultation->id);
   cannot drift out of sync with the hexagram it describes.
 - **REQ-READ-004** — `withAddedTag()` MUST be idempotent — adding a tag that is already present
   MUST NOT create a duplicate entry.
-- **REQ-READ-005** — `question` MUST NOT be empty/whitespace-only; construction MUST throw
-  otherwise.
+- **REQ-READ-005** — `question` MUST NOT be empty/whitespace-only, and MUST NOT exceed 2000
+  characters; construction MUST throw otherwise. The upper bound exists per the plan's own
+  security checklist ("limit the size of user input," section 31) — an unbounded question would
+  let a client store arbitrarily large text in every consultation row and, once a real
+  `InterpretationProvider` (SPEC-008) exists, get sent whole into an LLM prompt at real cost.
+  2000 characters is generous for what is, in every realistic case, a sentence or a short
+  paragraph.
 
 ### ConsultationNote
 
-- **REQ-READ-006** — A `ConsultationNote` MUST record its text (non-empty), a `NoteLabel`
-  (`Before`, `After`, or `Later`), and a timestamp. Notes are ordered by insertion, not
-  re-sorted by timestamp (a `Later` note is still appended after earlier ones by construction
-  order, matching how the user actually wrote them).
+- **REQ-READ-006** — A `ConsultationNote` MUST record its text (non-empty, and no more than
+  5000 characters — same rationale as REQ-READ-005, sized larger since a reflective journal
+  note is reasonably longer than a question), a `NoteLabel` (`Before`, `After`, or `Later`), and
+  a timestamp. Notes are ordered by insertion, not re-sorted by timestamp (a `Later` note is
+  still appended after earlier ones by construction order, matching how the user actually wrote
+  them).
 
 ### Persistence
 
@@ -182,6 +189,8 @@ None — see "Out of scope."
   entirely for notes/tags (upsert replaces the note/tag rows, not merges them) — the aggregate
   passed to `save()` is always the full, current state.
 - Empty `question` → throws at `Consultation::create()`, never reaches persistence.
+- `question` at exactly 2000 characters → accepted (the limit is inclusive); 2001 characters →
+  throws. Same inclusive-boundary rule for `ConsultationNote.text` at 5000 characters.
 
 ## Acceptance criteria
 
@@ -202,6 +211,8 @@ None — see "Out of scope."
 - [x] Migration creates all 4 tables with foreign keys enforced (`PRAGMA foreign_keys = ON`,
       already set in `Database::connect()`) — applied and inspected against the dev database.
 - [x] `apps/api/src/Readings` has zero dependency on `App\Casting`.
+- [x] `question` over 2000 characters and `ConsultationNote.text` over 5000 characters are
+      rejected; exactly at the limit is accepted (inclusive boundary).
 
 `apps/api/src/Readings` implements `CastingMethodName`, `NoteLabel`, `ConsultationNote`,
 `Consultation`, `Clock`/`SystemClock`, `ConsultationIdGenerator`/`UuidV4ConsultationIdGenerator`,
@@ -213,3 +224,13 @@ no relation to insertion order) could return same-second consultations in the wr
 not caught here because this spec's own tests never created two consultations fast enough to
 land in the same `created_at` second. SPEC-006's HTTP-level test did. Fixed by tie-breaking on
 SQLite's implicit `rowid` instead. See [SPEC-006](../consultation-api/spec.md).
+
+**Addendum (2026-08-14, input-size hardening):** neither `Consultation::create()` nor
+`ConsultationNote` originally bounded the length of user-supplied text, missing the plan's own
+security checklist item (section 31, "limit the size of user input"). Added REQ-READ-005's
+2000-character cap on `question` and REQ-READ-006's 5000-character cap on note `text` —
+enforced the same way the existing empty-string check already was (throws
+`\InvalidArgumentException`, caught by `ConsultationController`'s existing `422` handling — no
+controller changes needed). `NewConsultationPage.vue`'s question field also gained a matching
+`maxlength` HTML attribute for immediate client-side feedback; the backend limit remains the
+actual enforcement (never trust client-side-only validation).

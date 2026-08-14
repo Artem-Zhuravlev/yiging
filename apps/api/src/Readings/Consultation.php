@@ -9,6 +9,8 @@ use Yijing\Core\Line;
 
 final readonly class Consultation
 {
+    private const MAX_QUESTION_LENGTH = 2000;
+
     /**
      * @param list<ConsultationNote> $notes
      * @param list<string> $tags
@@ -34,6 +36,12 @@ final readonly class Consultation
     ): self {
         if (trim($question) === '') {
             throw new \InvalidArgumentException('A consultation question must not be empty.');
+        }
+
+        if (mb_strlen($question) > self::MAX_QUESTION_LENGTH) {
+            throw new \InvalidArgumentException(
+                sprintf('A consultation question must not exceed %d characters.', self::MAX_QUESTION_LENGTH),
+            );
         }
 
         return new self(
