@@ -16,6 +16,18 @@ export interface TrigramSummary {
   symbol: string
 }
 
+export interface HexagramSummary {
+  kingWenNumber: number
+  chineseName: string
+  pinyin: string
+}
+
+export interface HexagramRelationships {
+  nuclear: HexagramSummary
+  reversed: HexagramSummary
+  complement: HexagramSummary
+}
+
 export interface Hexagram {
   kingWenNumber: number
   chineseName: string
@@ -26,4 +38,5 @@ export interface Hexagram {
   judgment: string | null
   image: string | null
   lineStatements: string[] | null
+  relationships: HexagramRelationships
 }

@@ -89,6 +89,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-011 | [Gemini Interpretation Provider](specs/gemini-interpretation-provider/spec.md) | `verified` (code); live call unverified |
 | SPEC-012 | [AI Endpoint Rate Limiting](specs/ai-rate-limiting/spec.md) | `verified` |
 | SPEC-013 | [Consultation Notes & Tags Editing](specs/consultation-editing/spec.md) | `verified` |
+| SPEC-014 | [Complete Hexagram Relationships](specs/hexagram-relationships/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -198,6 +199,14 @@ update the page in place on success without a full reload — see
 [SPEC-013](specs/consultation-editing/spec.md). This completes the plan's MVP loop end to end:
 ask → cast → see → interpret → **add a note** → find again.
 
-Next recommended steps: verify the live Gemini call (see above), or plan section 26+ territory
-(analytics, search/filter on history, SPEC-003's `GET /api/texts/{hexagramId}`-style endpoints if
-canonical text ever needs its own browsing surface separate from a hexagram).
+`GET /api/hexagrams/{id}` and `GET /api/hexagrams` now include a `relationships` object —
+`nuclear` (互卦), `reversed` (綜卦, line order flipped), and `complement` (錯卦, every line's
+polarity flipped) — each the existing `{kingWenNumber, chineseName, pinyin}` summary shape,
+computed entirely by `packages/yijing-core`'s already-tested `YijingRelations` (no new domain
+logic, no relationship math in the frontend). This is feature 21 of the plan's next batch
+(features 21-40); the Hexagram Explorer UI that navigates this relationship graph is feature 22,
+next. See [SPEC-014](specs/hexagram-relationships/spec.md).
+
+Next recommended steps: continue the plan's feature 21-40 batch in order (22: Hexagram Explorer
+UI navigating relationships → 23: Visual Hexagram Editor → ... → 40: AI Conversation Per
+Consultation), or verify the live Gemini call (see above) whenever an `AI_API_KEY` is available.

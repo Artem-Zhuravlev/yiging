@@ -58,6 +58,40 @@ final class HexagramControllerTest extends TestCase
         self::assertSame('乾', $body['chineseName']);
     }
 
+    public function testShowIncludesRelationships(): void
+    {
+        // Hexagram 11 (Tai): nuclear is 54 (Gui Mei), reversed and complement both land on 12
+        // (Pi) — a real coincidence for this specific pattern, independently verified in
+        // YijingRelationsTest.
+        $response = $this->kernel->handle(Request::create('/api/hexagrams/11', 'GET'));
+        $body = $this->decode($response);
+
+        self::assertSame(54, $body['relationships']['nuclear']['kingWenNumber']);
+        self::assertSame(12, $body['relationships']['reversed']['kingWenNumber']);
+        self::assertSame(12, $body['relationships']['complement']['kingWenNumber']);
+        self::assertArrayHasKey('chineseName', $body['relationships']['nuclear']);
+        self::assertArrayHasKey('pinyin', $body['relationships']['nuclear']);
+    }
+
+    public function testShowReportsSelfReferentialRelationshipsRatherThanOmittingThem(): void
+    {
+        // Hexagram 1 (Qian, all yang): its own nuclear hexagram is itself.
+        $response = $this->kernel->handle(Request::create('/api/hexagrams/1', 'GET'));
+        $body = $this->decode($response);
+
+        self::assertSame(1, $body['relationships']['nuclear']['kingWenNumber']);
+    }
+
+    public function testIndexIncludesRelationshipsPerEntry(): void
+    {
+        $response = $this->kernel->handle(Request::create('/api/hexagrams', 'GET'));
+        $body = $this->decode($response);
+
+        $tai = $body[10]; // king wen number 11, 0-indexed
+        self::assertSame(11, $tai['kingWenNumber']);
+        self::assertSame(54, $tai['relationships']['nuclear']['kingWenNumber']);
+    }
+
     public function testShowReturnsAMiddleHexagram(): void
     {
         $response = $this->kernel->handle(Request::create('/api/hexagrams/32', 'GET'));

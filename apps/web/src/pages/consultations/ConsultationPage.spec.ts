@@ -42,6 +42,11 @@ function sampleHexagram(kingWenNumber: number): Hexagram {
     judgment: null,
     image: null,
     lineStatements: null,
+    relationships: {
+      nuclear: { kingWenNumber, chineseName: '乾', pinyin: 'Qián' },
+      reversed: { kingWenNumber, chineseName: '乾', pinyin: 'Qián' },
+      complement: { kingWenNumber, chineseName: '乾', pinyin: 'Qián' },
+    },
   }
 }
 

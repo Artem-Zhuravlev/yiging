@@ -11,6 +11,7 @@ use Yijing\Core\Data\HexagramCatalog;
 use Yijing\Core\Hexagram;
 use Yijing\Core\Line;
 use Yijing\Core\Trigram;
+use Yijing\Core\YijingRelations;
 
 // No constructor: this controller has no database access to configure. Kernel::invoke()
 // constructs every controller as `new $class($config)`; PHP silently ignores the extra
@@ -63,6 +64,31 @@ final class HexagramController
             'judgment' => $hexagram->judgment,
             'image' => $hexagram->image,
             'lineStatements' => $hexagram->lineStatements,
+            'relationships' => $this->relationshipsToJson($hexagram),
+        ];
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function relationshipsToJson(Hexagram $hexagram): array
+    {
+        return [
+            'nuclear' => $this->hexagramSummaryToJson(YijingRelations::getNuclearHexagram($hexagram)),
+            'reversed' => $this->hexagramSummaryToJson(YijingRelations::getOpposite($hexagram)),
+            'complement' => $this->hexagramSummaryToJson(YijingRelations::getComplement($hexagram)),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function hexagramSummaryToJson(Hexagram $hexagram): array
+    {
+        return [
+            'kingWenNumber' => $hexagram->kingWenNumber,
+            'chineseName' => $hexagram->chineseName,
+            'pinyin' => $hexagram->pinyin,
         ];
     }
 

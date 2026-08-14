@@ -25,6 +25,11 @@ const sampleHexagram: Hexagram = {
   judgment: null,
   image: null,
   lineStatements: null,
+  relationships: {
+    nuclear: { kingWenNumber: 1, chineseName: '乾', pinyin: 'Qián' },
+    reversed: { kingWenNumber: 1, chineseName: '乾', pinyin: 'Qián' },
+    complement: { kingWenNumber: 2, chineseName: '坤', pinyin: 'Kūn' },
+  },
 }
 
 describe('HexagramDetailPage', () => {
