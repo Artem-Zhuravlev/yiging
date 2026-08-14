@@ -78,12 +78,18 @@ plain-VPS instructions, all Docker-free.
 | -------- | ----------------------- | ---------- |
 | SPEC-001 | Project Architecture   | `verified` |
 | SPEC-002 | I Ching Domain Model   | `in-progress` (structural pass done, classical text pending) |
+| SPEC-004 | [Casting Engine](specs/casting-engine/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence),
 `changeLine()`/`getResultingHexagram()`, and `YijingRelations` (nuclear/opposite/complement) —
 46 tests, 244 assertions. Judgment/image/line-statement text (Legge, 1899, public domain) is the
 remaining work — see [SPEC-002's tasks.md](specs/domain-model/tasks.md).
 
-Next recommended step: populate classical text for all 64 hexagrams (SPEC-002's remaining
-tasks), or start a new SPEC-003 (Hexagram Explorer) spec that consumes the structural model
-as-is, with `null` judgment/image/line-statement fields until that text lands.
+`apps/api/src/Casting` implements the casting engine — `DivinationMethod` interface with
+`ThreeCoinsMethod` (traditional 6/7/8/9 coin-sum rule), `ManualMethod`, and `RandomMethod`
+(dev/test only), all built on an injected `CoinTosser` so casting stays testable without true
+randomness — see [SPEC-004](specs/casting-engine/spec.md).
+
+Next recommended step: SPEC-005 (Readings) — the `Consultation` aggregate (question, timestamp,
+notes, tags, method used) that wraps a `Casting` result, plus its SQLite persistence — or
+populate classical text for all 64 hexagrams (SPEC-002's remaining tasks) in parallel.
