@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { createConsultation, fetchConsultations, fetchConsultation } from './api'
+import { createConsultation, fetchConsultations, fetchConsultation, updateConsultation } from './api'
 import type { Consultation } from './model'
 
 const sample: Consultation = {
@@ -60,5 +60,22 @@ describe('entities/consultation api', () => {
 
     expect(result).toEqual(sample)
     expect(fetchMock).toHaveBeenCalledWith('/api/consultations/abc-123')
+  })
+
+  it('updateConsultation patches /consultations/{id} and resolves the updated consultation', async () => {
+    const updated = { ...sample, tags: ['career'] }
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(updated),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await updateConsultation('abc-123', { tag: 'career' })
+
+    expect(result).toEqual(updated)
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/consultations/abc-123',
+      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ tag: 'career' }) }),
+    )
   })
 })

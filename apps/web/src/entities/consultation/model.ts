@@ -41,3 +41,8 @@ export interface Consultation {
 export type NewConsultationRequest =
   | { question: string; method: 'three_coins' }
   | { question: string; method: 'manual'; lines: ManualLine[] }
+
+export interface ConsultationPatch {
+  note?: { label: ConsultationNote['label']; text: string }
+  tag?: string
+}

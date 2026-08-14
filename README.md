@@ -88,6 +88,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-010 | [Interpretation UI](specs/interpretation-ui/spec.md) | `verified` |
 | SPEC-011 | [Gemini Interpretation Provider](specs/gemini-interpretation-provider/spec.md) | `verified` (code); live call unverified |
 | SPEC-012 | [AI Endpoint Rate Limiting](specs/ai-rate-limiting/spec.md) | `verified` |
+| SPEC-013 | [Consultation Notes & Tags Editing](specs/consultation-editing/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -188,7 +189,15 @@ all `200`, the 21st `429` with `Retry-After: 3600` — see
 proxy, this needs that deployment's trusted-proxy configuration to key on the real client IP
 rather than the proxy's own address (still caps *total* volume through the proxy either way).
 
+`PATCH /api/consultations/{id}` is now live — the plan's Definition of Done listed "add a note"
+as an explicit MVP step, and until now nothing between the domain layer
+(`Consultation::withAddedNote()`/`withAddedTag()`, present since SPEC-005) and the read-only
+display on `ConsultationPage` (since SPEC-009) actually let a person add one. `/consultations/:id`
+now has working "add a note" and "add a tag" forms, each with its own loading/error state, that
+update the page in place on success without a full reload — see
+[SPEC-013](specs/consultation-editing/spec.md). This completes the plan's MVP loop end to end:
+ask → cast → see → interpret → **add a note** → find again.
+
 Next recommended steps: verify the live Gemini call (see above), or plan section 26+ territory
-(analytics, search/filter on history, journal notes editing UI, SPEC-003's
-`GET /api/texts/{hexagramId}`-style endpoints if canonical text ever needs its own browsing
-surface separate from a hexagram).
+(analytics, search/filter on history, SPEC-003's `GET /api/texts/{hexagramId}`-style endpoints if
+canonical text ever needs its own browsing surface separate from a hexagram).

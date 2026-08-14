@@ -15,6 +15,7 @@ return static function (RouteCollector $r): void {
     $r->addRoute('POST', '/api/consultations', [ConsultationController::class, 'create']);
     $r->addRoute('GET', '/api/consultations', [ConsultationController::class, 'index']);
     $r->addRoute('GET', '/api/consultations/{id}', [ConsultationController::class, 'show']);
+    $r->addRoute('PATCH', '/api/consultations/{id}', [ConsultationController::class, 'update']);
 
     $r->addRoute('GET', '/api/hexagrams', [HexagramController::class, 'index']);
     $r->addRoute('GET', '/api/hexagrams/{id}', [HexagramController::class, 'show']);

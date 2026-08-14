@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { fetchConsultation } from '../../entities/consultation/api'
+import { fetchConsultation, updateConsultation } from '../../entities/consultation/api'
 import type { Consultation } from '../../entities/consultation/model'
 import { fetchHexagram } from '../../entities/hexagram/api'
 import type { HexagramLine } from '../../entities/hexagram/model'
@@ -29,10 +29,65 @@ type InterpretationState =
   | { status: 'error'; message: string }
   | { status: 'loaded'; interpretation: Interpretation }
 
+// Independent of `state`/`interpretationState`: a failed/retried note or tag submission must
+// never disturb the already-loaded consultation detail or the interpretation section.
+type FormState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string }
+
 const route = useRoute()
 const id = computed(() => String(route.params.id))
 const state = ref<State>({ status: 'loading' })
 const interpretationState = ref<InterpretationState>({ status: 'idle' })
+
+const noteLabel = ref<'before' | 'after' | 'later'>('after')
+const noteText = ref('')
+const noteFormState = ref<FormState>({ status: 'idle' })
+
+const tagText = ref('')
+const tagFormState = ref<FormState>({ status: 'idle' })
+
+async function addNote(): Promise<void> {
+  if (state.value.status !== 'loaded' || noteFormState.value.status === 'submitting') {
+    return
+  }
+
+  const loaded = state.value
+  noteFormState.value = { status: 'submitting' }
+
+  try {
+    const updated = await updateConsultation(loaded.consultation.id, {
+      note: { label: noteLabel.value, text: noteText.value },
+    })
+    state.value = { ...loaded, consultation: updated }
+    noteText.value = ''
+    noteFormState.value = { status: 'idle' }
+  } catch (error) {
+    noteFormState.value = {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to add note.',
+    }
+  }
+}
+
+async function addTag(): Promise<void> {
+  if (state.value.status !== 'loaded' || tagFormState.value.status === 'submitting') {
+    return
+  }
+
+  const loaded = state.value
+  tagFormState.value = { status: 'submitting' }
+
+  try {
+    const updated = await updateConsultation(loaded.consultation.id, { tag: tagText.value })
+    state.value = { ...loaded, consultation: updated }
+    tagText.value = ''
+    tagFormState.value = { status: 'idle' }
+  } catch (error) {
+    tagFormState.value = {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to add tag.',
+    }
+  }
+}
 
 async function getInterpretation(): Promise<void> {
   if (interpretationState.value.status === 'loading') {
@@ -130,24 +185,76 @@ onMounted(async () => {
         Changing lines: {{ state.consultation.changingLinePositions.join(', ') }}
       </p>
 
-      <div v-if="state.consultation.notes.length > 0">
+      <div>
         <h2 class="mb-2 text-sm font-medium text-neutral-500">Notes</h2>
-        <ul class="flex flex-col gap-2">
+        <ul v-if="state.consultation.notes.length > 0" class="mb-3 flex flex-col gap-2">
           <li v-for="(note, index) in state.consultation.notes" :key="index">
             <span class="text-xs tracking-wide text-neutral-400 uppercase">{{ note.label }}</span>
             <p>{{ note.text }}</p>
           </li>
         </ul>
+
+        <form class="flex flex-col gap-2" @submit.prevent="addNote">
+          <div class="flex gap-2">
+            <select v-model="noteLabel" class="rounded-md border border-neutral-300 p-2 text-sm">
+              <option value="before">Before</option>
+              <option value="after">After</option>
+              <option value="later">Later</option>
+            </select>
+            <textarea
+              v-model="noteText"
+              rows="2"
+              required
+              maxlength="5000"
+              placeholder="Add a note…"
+              class="flex-1 rounded-md border border-neutral-300 p-2 text-sm"
+            />
+          </div>
+          <p v-if="noteFormState.status === 'error'" class="text-sm text-red-600">
+            {{ noteFormState.message }}
+          </p>
+          <button
+            type="submit"
+            :disabled="noteFormState.status === 'submitting'"
+            class="self-start rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+          >
+            {{ noteFormState.status === 'submitting' ? 'Adding…' : 'Add Note' }}
+          </button>
+        </form>
       </div>
 
-      <div v-if="state.consultation.tags.length > 0" class="flex gap-2">
-        <span
-          v-for="tag in state.consultation.tags"
-          :key="tag"
-          class="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-600"
-        >
-          {{ tag }}
-        </span>
+      <div>
+        <div v-if="state.consultation.tags.length > 0" class="mb-3 flex gap-2">
+          <span
+            v-for="tag in state.consultation.tags"
+            :key="tag"
+            class="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-600"
+          >
+            {{ tag }}
+          </span>
+        </div>
+
+        <form class="flex flex-col gap-2" @submit.prevent="addTag">
+          <div class="flex gap-2">
+            <input
+              v-model="tagText"
+              type="text"
+              required
+              placeholder="Add a tag…"
+              class="flex-1 rounded-md border border-neutral-300 p-2 text-sm"
+            />
+            <button
+              type="submit"
+              :disabled="tagFormState.status === 'submitting'"
+              class="rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+            >
+              {{ tagFormState.status === 'submitting' ? 'Adding…' : 'Add Tag' }}
+            </button>
+          </div>
+          <p v-if="tagFormState.status === 'error'" class="text-sm text-red-600">
+            {{ tagFormState.message }}
+          </p>
+        </form>
       </div>
 
       <section class="rounded-lg border-2 border-dashed border-neutral-300 p-4">

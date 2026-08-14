@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { apiGet, apiPost, ApiError } from './http'
+import { apiGet, apiPost, apiPatch, ApiError } from './http'
 
 describe('apiGet', () => {
   afterEach(() => {
@@ -86,6 +86,48 @@ describe('apiPost', () => {
     )
 
     await expect(apiPost('/things', {})).rejects.toMatchObject({
+      status: 422,
+      message: 'Invalid input.',
+    })
+  })
+})
+
+describe('apiPatch', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('sends a JSON body via PATCH and resolves parsed JSON on a successful response', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: '1', tags: ['career'] }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await apiPatch<{ id: string }>('/things/1', { tag: 'career' })
+
+    expect(result).toEqual({ id: '1', tags: ['career'] })
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/things/1',
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag: 'career' }),
+      }),
+    )
+  })
+
+  it('throws an ApiError with the status and message on a non-2xx response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 422,
+        json: () => Promise.resolve({ error: 'Invalid input.' }),
+      }),
+    )
+
+    await expect(apiPatch('/things/1', {})).rejects.toMatchObject({
       status: 422,
       message: 'Invalid input.',
     })

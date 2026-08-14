@@ -92,6 +92,73 @@ final class ConsultationController
     }
 
     /**
+     * @param array<string, string> $vars
+     */
+    public function update(Request $request, array $vars): Response
+    {
+        $consultation = $this->repository->findById($vars['id']);
+
+        if ($consultation === null) {
+            return $this->errorResponse('Not Found', Response::HTTP_NOT_FOUND);
+        }
+
+        try {
+            $body = $this->decodeJsonBody($request);
+        } catch (\JsonException) {
+            return $this->errorResponse('Malformed JSON body.', Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $noteInput = $body['note'] ?? null;
+        $tagInput = $body['tag'] ?? null;
+
+        if ($noteInput === null && $tagInput === null) {
+            return $this->errorResponse('Provide "note" and/or "tag" to add.', Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        try {
+            if ($noteInput !== null) {
+                $consultation = $consultation->withAddedNote($this->parseNote($noteInput));
+            }
+
+            if ($tagInput !== null) {
+                $consultation = $consultation->withAddedTag($this->parseTag($tagInput));
+            }
+        } catch (\InvalidArgumentException $e) {
+            return $this->errorResponse($e->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $this->repository->save($consultation);
+
+        return new JsonResponse($this->toJson($consultation));
+    }
+
+    private function parseNote(mixed $noteInput): ConsultationNote
+    {
+        if (!is_array($noteInput)) {
+            throw new \InvalidArgumentException('"note" must be an object with "label" and "text".');
+        }
+
+        $label = NoteLabel::tryFrom(is_string($noteInput['label'] ?? null) ? $noteInput['label'] : '');
+
+        if ($label === null) {
+            throw new \InvalidArgumentException('"note.label" must be one of: before, after, later.');
+        }
+
+        $text = is_string($noteInput['text'] ?? null) ? $noteInput['text'] : '';
+
+        return new ConsultationNote($label, $text, $this->clock->now());
+    }
+
+    private function parseTag(mixed $tagInput): string
+    {
+        if (!is_string($tagInput) || trim($tagInput) === '') {
+            throw new \InvalidArgumentException('"tag" must be a non-empty string.');
+        }
+
+        return $tagInput;
+    }
+
+    /**
      * @param array<string, mixed> $body
      */
     private function resolveDivinationMethod(CastingMethodName $method, array $body): DivinationMethod

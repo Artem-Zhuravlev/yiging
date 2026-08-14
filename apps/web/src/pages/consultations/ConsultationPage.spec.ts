@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import ConsultationPage from './ConsultationPage.vue'
-import { fetchConsultation } from '../../entities/consultation/api'
+import { fetchConsultation, updateConsultation } from '../../entities/consultation/api'
 import { fetchHexagram } from '../../entities/hexagram/api'
 import { requestInterpretation } from '../../entities/interpretation/api'
 import { ApiError } from '../../shared/api/http'
@@ -11,6 +11,7 @@ import type { Interpretation } from '../../entities/interpretation/model'
 
 vi.mock('../../entities/consultation/api', () => ({
   fetchConsultation: vi.fn(),
+  updateConsultation: vi.fn(),
 }))
 
 vi.mock('../../entities/hexagram/api', () => ({
@@ -67,9 +68,14 @@ const sampleInterpretation: Interpretation = {
   sourceReferences: ['Hexagram 1 judgment (Legge, 1899)'],
 }
 
+function interpretationButton(wrapper: ReturnType<typeof mount>) {
+  return wrapper.findAll('button').find((b) => b.text().includes('Get Interpretation'))!
+}
+
 describe('ConsultationPage', () => {
   beforeEach(() => {
     vi.mocked(requestInterpretation).mockClear()
+    vi.mocked(updateConsultation).mockClear()
   })
 
   it('renders the consultation with both hexagram diagrams and marks changing lines', async () => {
@@ -134,7 +140,7 @@ describe('ConsultationPage', () => {
     const wrapper = mount(ConsultationPage, { global: { stubs } })
     await flushPromises()
 
-    await wrapper.find('button').trigger('click')
+    await interpretationButton(wrapper).trigger('click')
     await flushPromises()
 
     expect(requestInterpretation).toHaveBeenCalledWith('abc-123')
@@ -154,7 +160,7 @@ describe('ConsultationPage', () => {
 
     const wrapper = mount(ConsultationPage, { global: { stubs } })
     await flushPromises()
-    await wrapper.find('button').trigger('click')
+    await interpretationButton(wrapper).trigger('click')
     await flushPromises()
 
     expect(wrapper.text()).not.toContain('Changing line meaning')
@@ -168,10 +174,89 @@ describe('ConsultationPage', () => {
 
     const wrapper = mount(ConsultationPage, { global: { stubs } })
     await flushPromises()
-    await wrapper.find('button').trigger('click')
+    await interpretationButton(wrapper).trigger('click')
     await flushPromises()
 
     expect(wrapper.text()).toContain('interpretation failed')
+    expect(wrapper.text()).toContain('Should I take the offer?')
+  })
+
+  it('adds a note and clears the form on success', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    const updated = {
+      ...sampleConsultation,
+      notes: [
+        ...sampleConsultation.notes,
+        { label: 'after' as const, text: 'Went well.', createdAt: '2026-08-14T11:00:00+00:00' },
+      ],
+    }
+    vi.mocked(updateConsultation).mockResolvedValue(updated)
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    await wrapper.find('textarea').setValue('Went well.')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(updateConsultation).toHaveBeenCalledWith('abc-123', {
+      note: { label: 'after', text: 'Went well.' },
+    })
+    expect(wrapper.text()).toContain('Went well.')
+    expect((wrapper.find('textarea').element as HTMLTextAreaElement).value).toBe('')
+  })
+
+  it('shows an inline error when adding a note fails, without disturbing the rest of the page', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    vi.mocked(updateConsultation).mockRejectedValue(new Error('note rejected'))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    await wrapper.find('textarea').setValue('Bad note.')
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('note rejected')
+    expect(wrapper.text()).toContain('Should I take the offer?')
+  })
+
+  it('adds a tag and clears the form on success', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    const updated = { ...sampleConsultation, tags: [...sampleConsultation.tags, 'clarity'] }
+    vi.mocked(updateConsultation).mockResolvedValue(updated)
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    const tagInput = wrapper.find('input[type="text"]')
+    await tagInput.setValue('clarity')
+    const tagForm = wrapper.findAll('form')[1]
+    await tagForm.trigger('submit')
+    await flushPromises()
+
+    expect(updateConsultation).toHaveBeenCalledWith('abc-123', { tag: 'clarity' })
+    expect(wrapper.text()).toContain('clarity')
+    expect((tagInput.element as HTMLInputElement).value).toBe('')
+  })
+
+  it('shows an inline error when adding a tag fails, without disturbing the rest of the page', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    vi.mocked(updateConsultation).mockRejectedValue(new Error('tag rejected'))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    await wrapper.find('input[type="text"]').setValue('bad tag')
+    const tagForm = wrapper.findAll('form')[1]
+    await tagForm.trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('tag rejected')
     expect(wrapper.text()).toContain('Should I take the offer?')
   })
 })

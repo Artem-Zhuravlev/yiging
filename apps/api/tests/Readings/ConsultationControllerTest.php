@@ -188,12 +188,167 @@ final class ConsultationControllerTest extends TestCase
         self::assertSame(['error' => 'Not Found'], $this->decode($response));
     }
 
+    public function testUpdateAddsANote(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'note' => ['label' => 'after', 'text' => 'Took the offer.'],
+        ]);
+
+        self::assertSame(200, $response->getStatusCode());
+        $body = $this->decode($response);
+
+        self::assertCount(1, $body['notes']);
+        self::assertSame('after', $body['notes'][0]['label']);
+        self::assertSame('Took the offer.', $body['notes'][0]['text']);
+        self::assertSame([], $body['tags']);
+    }
+
+    public function testUpdateAddsATag(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], ['tag' => 'career']);
+
+        self::assertSame(200, $response->getStatusCode());
+        $body = $this->decode($response);
+
+        self::assertSame(['career'], $body['tags']);
+        self::assertSame([], $body['notes']);
+    }
+
+    public function testUpdateAppliesBothANoteAndATagInOneRequest(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'note' => ['label' => 'before', 'text' => 'Feeling uncertain.'],
+            'tag' => 'career',
+        ]);
+
+        self::assertSame(200, $response->getStatusCode());
+        $body = $this->decode($response);
+
+        self::assertCount(1, $body['notes']);
+        self::assertSame(['career'], $body['tags']);
+    }
+
+    public function testUpdatePersistsAcrossAFreshFetch(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $this->patchJson('/api/consultations/' . $created['id'], ['tag' => 'career']);
+
+        $refetched = $this->decode($this->kernel->handle(
+            Request::create('/api/consultations/' . $created['id'], 'GET'),
+        ));
+
+        self::assertSame(['career'], $refetched['tags']);
+    }
+
+    public function testUpdateAddingTheSameTagTwiceStaysDeduplicated(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $this->patchJson('/api/consultations/' . $created['id'], ['tag' => 'career']);
+        $response = $this->patchJson('/api/consultations/' . $created['id'], ['tag' => 'career']);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame(['career'], $this->decode($response)['tags']);
+    }
+
+    public function testUpdateWithNeitherNoteNorTagReturns422(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], []);
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testUpdateWithInvalidNoteLabelReturns422(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'note' => ['label' => 'sometime', 'text' => 'Hmm.'],
+        ]);
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testUpdateWithEmptyNoteTextReturns422(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'note' => ['label' => 'before', 'text' => '   '],
+        ]);
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testUpdateWithEmptyTagReturns422(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], ['tag' => '   ']);
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testUpdateReturns404ForAMissingConsultationBeforeValidatingTheBody(): void
+    {
+        $response = $this->patchJson('/api/consultations/does-not-exist', []);
+
+        self::assertSame(404, $response->getStatusCode());
+        self::assertSame(['error' => 'Not Found'], $this->decode($response));
+    }
+
     /**
      * @param array<string, mixed> $body
      */
     private function postJson(string $uri, array $body): Response
     {
         $request = Request::create($uri, 'POST', content: json_encode($body, JSON_THROW_ON_ERROR));
+
+        return $this->kernel->handle($request);
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     */
+    private function patchJson(string $uri, array $body): Response
+    {
+        $request = Request::create($uri, 'PATCH', content: json_encode($body, JSON_THROW_ON_ERROR));
 
         return $this->kernel->handle($request);
     }
