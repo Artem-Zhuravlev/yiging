@@ -94,6 +94,55 @@ final class ConsultationControllerTest extends TestCase
         self::assertSame([], $body['changingLinePositions']);
     }
 
+    public function testCreateWithAllFiveContextFieldsReturnsThemExactlyAsSubmitted(): void
+    {
+        $response = $this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+            'context' => 'Been considering this for weeks.',
+            'whatHappenedBefore' => 'Received the offer last Tuesday.',
+            'whatUserWantsToUnderstand' => 'Whether the timing is right.',
+            'backgroundInformation' => 'Currently employed elsewhere.',
+            'initialInterpretation' => 'Feels like a yes.',
+        ]);
+
+        self::assertSame(201, $response->getStatusCode());
+        $body = $this->decode($response);
+
+        self::assertSame('Been considering this for weeks.', $body['context']);
+        self::assertSame('Received the offer last Tuesday.', $body['whatHappenedBefore']);
+        self::assertSame('Whether the timing is right.', $body['whatUserWantsToUnderstand']);
+        self::assertSame('Currently employed elsewhere.', $body['backgroundInformation']);
+        self::assertSame('Feels like a yes.', $body['initialInterpretation']);
+    }
+
+    public function testCreateOmittingContextFieldsLeavesThemNull(): void
+    {
+        $response = $this->postJson('/api/consultations', [
+            'question' => 'Quick one.',
+            'method' => 'three_coins',
+        ]);
+
+        $body = $this->decode($response);
+
+        self::assertNull($body['context']);
+        self::assertNull($body['whatHappenedBefore']);
+        self::assertNull($body['whatUserWantsToUnderstand']);
+        self::assertNull($body['backgroundInformation']);
+        self::assertNull($body['initialInterpretation']);
+    }
+
+    public function testCreateWithAContextFieldOverTheLengthLimitReturns422(): void
+    {
+        $response = $this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+            'context' => str_repeat('a', 5001),
+        ]);
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
     public function testCreateWithEmptyQuestionReturns422(): void
     {
         $response = $this->postJson('/api/consultations', [
@@ -271,6 +320,85 @@ final class ConsultationControllerTest extends TestCase
 
         self::assertSame(200, $response->getStatusCode());
         self::assertSame(['career'], $this->decode($response)['tags']);
+    }
+
+    public function testUpdateSetsAContextField(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'context' => 'Some context.',
+        ]);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame('Some context.', $this->decode($response)['context']);
+    }
+
+    public function testUpdateClearsAContextFieldWithExplicitNullWithoutTouchingOthers(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+            'context' => 'Original context.',
+            'whatHappenedBefore' => 'Original before.',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'whatHappenedBefore' => null,
+        ]);
+
+        self::assertSame(200, $response->getStatusCode());
+        $body = $this->decode($response);
+        self::assertSame('Original context.', $body['context'], 'untouched field must be preserved');
+        self::assertNull($body['whatHappenedBefore']);
+    }
+
+    public function testUpdateWithOnlyAContextFieldDoesNotRequireNoteOrTag(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'initialInterpretation' => 'Leaning yes.',
+        ]);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame('Leaning yes.', $this->decode($response)['initialInterpretation']);
+        self::assertSame([], $this->decode($response)['notes']);
+    }
+
+    public function testUpdateWithANonStringNonNullContextFieldReturns422(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], ['context' => 42]);
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testUpdateAddingANoteDoesNotDisturbExistingContextFields(): void
+    {
+        // Regression: withAddedNote()/withAddedTag() must preserve context fields
+        // (Consultation::withAddedNote/withAddedTag, fixed as part of SPEC-019).
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+            'context' => 'Some context.',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'note' => ['label' => 'after', 'text' => 'Took the offer.'],
+        ]);
+
+        self::assertSame('Some context.', $this->decode($response)['context']);
     }
 
     public function testUpdateWithNeitherNoteNorTagReturns422(): void

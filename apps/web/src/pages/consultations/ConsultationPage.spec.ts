@@ -61,6 +61,11 @@ const sampleConsultation: Consultation = {
   createdAt: '2026-08-14T10:00:00+00:00',
   notes: [{ label: 'before', text: 'Nervous.', createdAt: '2026-08-14T09:00:00+00:00' }],
   tags: ['career'],
+  context: null,
+  whatHappenedBefore: null,
+  whatUserWantsToUnderstand: null,
+  backgroundInformation: null,
+  initialInterpretation: null,
 }
 
 const sampleInterpretation: Interpretation = {
@@ -107,6 +112,64 @@ describe('ConsultationPage', () => {
     const compareLink = wrapper.findAll('a').find((a) => a.text() === 'Compare hexagrams')
     expect(compareLink).toBeDefined()
     expect(compareLink!.attributes('to')).toBe('/hexagrams/compare?a=1&b=44')
+  })
+
+  it('pre-fills the context form from the loaded consultation', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue({
+      ...sampleConsultation,
+      context: 'Existing context.',
+    })
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    const textarea = wrapper.find('#edit-context').element as HTMLTextAreaElement
+    expect(textarea.value).toBe('Existing context.')
+  })
+
+  it('saves the context form and updates the page in place', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    vi.mocked(updateConsultation).mockResolvedValue({
+      ...sampleConsultation,
+      context: 'New context.',
+    })
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    await wrapper.find('#edit-context').setValue('New context.')
+    const contextForm = wrapper.findAll('form')[2]!
+    await contextForm.trigger('submit')
+    await flushPromises()
+
+    expect(updateConsultation).toHaveBeenCalledWith('abc-123', {
+      context: 'New context.',
+      whatHappenedBefore: null,
+      whatUserWantsToUnderstand: null,
+      backgroundInformation: null,
+      initialInterpretation: null,
+    })
+    const textarea = wrapper.find('#edit-context').element as HTMLTextAreaElement
+    expect(textarea.value).toBe('New context.')
+  })
+
+  it('shows an inline error when saving context fails, without disturbing the rest of the page', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    vi.mocked(updateConsultation).mockRejectedValue(new Error('context save failed'))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    await wrapper.find('#edit-context').setValue('New context.')
+    const contextForm = wrapper.findAll('form')[2]!
+    await contextForm.trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('context save failed')
+    expect(wrapper.text()).toContain('Should I take the offer?')
   })
 
   it('shows "No changing lines" when there are none', async () => {

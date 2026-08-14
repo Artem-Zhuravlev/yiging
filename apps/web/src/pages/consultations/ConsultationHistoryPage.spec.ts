@@ -21,6 +21,11 @@ function sample(id: string, question: string): Consultation {
     createdAt: '2026-08-14T10:00:00+00:00',
     notes: [],
     tags: [],
+    context: null,
+    whatHappenedBefore: null,
+    whatUserWantsToUnderstand: null,
+    backgroundInformation: null,
+    initialInterpretation: null,
   }
 }
 

@@ -94,6 +94,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-016 | [Visual Hexagram Editor](specs/hexagram-editor/spec.md) | `verified` |
 | SPEC-017 | [Hexagram Comparison](specs/hexagram-comparison/spec.md) | `verified` |
 | SPEC-018 | [Deep Hexagram Page](specs/deep-hexagram-page/spec.md) | `verified` |
+| SPEC-019 | [Rich Consultation Context](specs/consultation-context/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -255,8 +256,22 @@ LLM-generating a second "translation" would violate this project's own rule agai
 canonical data (plan feature 27 says so explicitly, and the practice has held throughout). This
 needs a real source identified before it can be built.
 
-Next recommended steps: provide a second public-domain I Ching translation source to unblock
-feature 26 (translation comparison) and 27 (Chinese original text with real pinyin), or continue
-further into the batch with 28+ (glossary, cross-references, consultation-history features 30-36,
-AI layering 37-40) where the next few are UI/domain work rather than new corpus sourcing — or
-verify the live Gemini call (see above) whenever an `AI_API_KEY` is available.
+Feature 30 of the plan's next batch is live: `Consultation` now carries five optional,
+independently-settable free-text fields (`context`, `whatHappenedBefore`,
+`whatUserWantsToUnderstand`, `backgroundInformation`, `initialInterpretation`), settable at
+creation time or edited afterward via the existing `PATCH /api/consultations/{id}` endpoint
+(SPEC-013), which now distinguishes "field absent" (leave unchanged) from "field explicitly
+`null`" (clear it) for these five keys — the first time this API needed that distinction.
+`NewConsultationPage` collapses the five optional inputs behind a "Add more context" disclosure
+so the core question-first flow stays uncluttered; `ConsultationPage` shows and edits them via a
+pre-filled form. Verified against a genuinely pre-migration consultation (created earlier in this
+same session, before this schema change existed) loading correctly with all five fields `null` —
+real backward-compatibility proof, not just a synthetic test. See
+[SPEC-019](specs/consultation-context/spec.md).
+
+Next recommended steps: continue the plan's batch with features 31-36 (consultation outcomes,
+follow-up links, timeline, repeated hexagrams/lines, personal statistics — domain/UI work on data
+already in hand) or 37-40 (AI interpretation layering, profiles, source-grounding, conversation —
+building on the existing `InterpretationContext`/`InterpretationProvider` abstraction), or provide
+a second public-domain I Ching translation source to unblock features 26/27, or verify the live
+Gemini call (see above) whenever an `AI_API_KEY` is available.

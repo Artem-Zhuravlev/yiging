@@ -25,6 +25,11 @@ const sample: Consultation = {
   createdAt: '2026-08-14T10:00:00+00:00',
   notes: [],
   tags: [],
+  context: null,
+  whatHappenedBefore: null,
+  whatUserWantsToUnderstand: null,
+  backgroundInformation: null,
+  initialInterpretation: null,
 }
 
 describe('NewConsultationPage', () => {
@@ -78,6 +83,22 @@ describe('NewConsultationPage', () => {
     if (request.method === 'manual') {
       expect(request.lines[0]).toEqual({ polarity: 'yin', changing: true })
     }
+  })
+
+  it('includes filled-in context fields in the request and omits blank ones', async () => {
+    vi.mocked(createConsultation).mockResolvedValue(sample)
+
+    const wrapper = mount(NewConsultationPage)
+    await wrapper.find('#question').setValue('Test?')
+    await wrapper.find('#context').setValue('Some context.')
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(createConsultation).toHaveBeenCalledWith({
+      question: 'Test?',
+      method: 'three_coins',
+      context: 'Some context.',
+    })
   })
 
   it('shows the API error message inline on a 422 without navigating', async () => {

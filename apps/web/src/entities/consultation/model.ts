@@ -26,7 +26,17 @@ export interface ConsultationNote {
   createdAt: string
 }
 
-export interface Consultation {
+/** The optional richer-context fields a consultation may carry beyond its one-line question
+ * (SPEC-019) — all independently settable, none required. */
+export interface ConsultationContext {
+  context: string | null
+  whatHappenedBefore: string | null
+  whatUserWantsToUnderstand: string | null
+  backgroundInformation: string | null
+  initialInterpretation: string | null
+}
+
+export interface Consultation extends ConsultationContext {
   id: string
   question: string
   method: CastingMethod
@@ -38,11 +48,13 @@ export interface Consultation {
   tags: string[]
 }
 
-export type NewConsultationRequest =
+export type NewConsultationRequest = (
   | { question: string; method: 'three_coins' }
   | { question: string; method: 'manual'; lines: ManualLine[] }
+) &
+  Partial<ConsultationContext>
 
-export interface ConsultationPatch {
+export interface ConsultationPatch extends Partial<ConsultationContext> {
   note?: { label: ConsultationNote['label']; text: string }
   tag?: string
 }

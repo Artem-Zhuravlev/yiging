@@ -57,6 +57,11 @@ final class ConsultationController
                 $methodName,
                 $hexagram,
                 $this->clock->now(),
+                context: $this->parseOptionalContextField($body, 'context'),
+                whatHappenedBefore: $this->parseOptionalContextField($body, 'whatHappenedBefore'),
+                whatUserWantsToUnderstand: $this->parseOptionalContextField($body, 'whatUserWantsToUnderstand'),
+                backgroundInformation: $this->parseOptionalContextField($body, 'backgroundInformation'),
+                initialInterpretation: $this->parseOptionalContextField($body, 'initialInterpretation'),
             );
         } catch (\InvalidArgumentException $e) {
             return $this->errorResponse($e->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -110,9 +115,23 @@ final class ConsultationController
 
         $noteInput = $body['note'] ?? null;
         $tagInput = $body['tag'] ?? null;
+        $contextKeys = [
+            'context',
+            'whatHappenedBefore',
+            'whatUserWantsToUnderstand',
+            'backgroundInformation',
+            'initialInterpretation',
+        ];
+        $touchesAnyContextField = array_filter(
+            $contextKeys,
+            static fn (string $key): bool => array_key_exists($key, $body),
+        ) !== [];
 
-        if ($noteInput === null && $tagInput === null) {
-            return $this->errorResponse('Provide "note" and/or "tag" to add.', Response::HTTP_UNPROCESSABLE_ENTITY);
+        if ($noteInput === null && $tagInput === null && !$touchesAnyContextField) {
+            return $this->errorResponse(
+                'Provide "note", "tag", and/or a context field to update.',
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
         }
 
         try {
@@ -122,6 +141,32 @@ final class ConsultationController
 
             if ($tagInput !== null) {
                 $consultation = $consultation->withAddedTag($this->parseTag($tagInput));
+            }
+
+            if ($touchesAnyContextField) {
+                $consultation = $consultation->withUpdatedContext(
+                    context: $this->resolveContextField($body, 'context', $consultation->context),
+                    whatHappenedBefore: $this->resolveContextField(
+                        $body,
+                        'whatHappenedBefore',
+                        $consultation->whatHappenedBefore,
+                    ),
+                    whatUserWantsToUnderstand: $this->resolveContextField(
+                        $body,
+                        'whatUserWantsToUnderstand',
+                        $consultation->whatUserWantsToUnderstand,
+                    ),
+                    backgroundInformation: $this->resolveContextField(
+                        $body,
+                        'backgroundInformation',
+                        $consultation->backgroundInformation,
+                    ),
+                    initialInterpretation: $this->resolveContextField(
+                        $body,
+                        'initialInterpretation',
+                        $consultation->initialInterpretation,
+                    ),
+                );
             }
         } catch (\InvalidArgumentException $e) {
             return $this->errorResponse($e->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -156,6 +201,48 @@ final class ConsultationController
         }
 
         return $tagInput;
+    }
+
+    /**
+     * For create(): a key absent from the body means "not provided," same as an explicit null.
+     *
+     * @param array<string, mixed> $body
+     */
+    private function parseOptionalContextField(array $body, string $key): ?string
+    {
+        if (!array_key_exists($key, $body)) {
+            return null;
+        }
+
+        return $this->validatedContextFieldValue($body[$key], $key);
+    }
+
+    /**
+     * For update(): a key absent from the body means "leave unchanged" (returns $currentValue);
+     * present distinguishes a new value (string) from an explicit clear (null).
+     *
+     * @param array<string, mixed> $body
+     */
+    private function resolveContextField(array $body, string $key, ?string $currentValue): ?string
+    {
+        if (!array_key_exists($key, $body)) {
+            return $currentValue;
+        }
+
+        return $this->validatedContextFieldValue($body[$key], $key);
+    }
+
+    private function validatedContextFieldValue(mixed $value, string $key): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (!is_string($value)) {
+            throw new \InvalidArgumentException(sprintf('"%s" must be a string or null.', $key));
+        }
+
+        return $value;
     }
 
     /**
@@ -249,6 +336,11 @@ final class ConsultationController
                 $consultation->notes,
             ),
             'tags' => $consultation->tags,
+            'context' => $consultation->context,
+            'whatHappenedBefore' => $consultation->whatHappenedBefore,
+            'whatUserWantsToUnderstand' => $consultation->whatUserWantsToUnderstand,
+            'backgroundInformation' => $consultation->backgroundInformation,
+            'initialInterpretation' => $consultation->initialInterpretation,
         ];
     }
 

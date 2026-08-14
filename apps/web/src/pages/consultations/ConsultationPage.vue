@@ -45,6 +45,19 @@ const noteFormState = ref<FormState>({ status: 'idle' })
 const tagText = ref('')
 const tagFormState = ref<FormState>({ status: 'idle' })
 
+const contextForm = ref(contextFormFrom(null))
+const contextFormState = ref<FormState>({ status: 'idle' })
+
+function contextFormFrom(consultation: Consultation | null) {
+  return {
+    context: consultation?.context ?? '',
+    whatHappenedBefore: consultation?.whatHappenedBefore ?? '',
+    whatUserWantsToUnderstand: consultation?.whatUserWantsToUnderstand ?? '',
+    backgroundInformation: consultation?.backgroundInformation ?? '',
+    initialInterpretation: consultation?.initialInterpretation ?? '',
+  }
+}
+
 async function addNote(): Promise<void> {
   if (state.value.status !== 'loaded' || noteFormState.value.status === 'submitting') {
     return
@@ -89,6 +102,42 @@ async function addTag(): Promise<void> {
   }
 }
 
+// Sends the full current form state on every save; a blank field means "clear this field"
+// (updateConsultation's explicit-null-clears semantics, SPEC-019), matching what the form
+// visibly shows — there's no separate "did the user touch this" tracking to keep in sync.
+async function saveContext(): Promise<void> {
+  if (state.value.status !== 'loaded' || contextFormState.value.status === 'submitting') {
+    return
+  }
+
+  const loaded = state.value
+  contextFormState.value = { status: 'submitting' }
+
+  try {
+    const updated = await updateConsultation(loaded.consultation.id, {
+      context: contextForm.value.context.trim() === '' ? null : contextForm.value.context,
+      whatHappenedBefore:
+        contextForm.value.whatHappenedBefore.trim() === '' ? null : contextForm.value.whatHappenedBefore,
+      whatUserWantsToUnderstand:
+        contextForm.value.whatUserWantsToUnderstand.trim() === ''
+          ? null
+          : contextForm.value.whatUserWantsToUnderstand,
+      backgroundInformation:
+        contextForm.value.backgroundInformation.trim() === '' ? null : contextForm.value.backgroundInformation,
+      initialInterpretation:
+        contextForm.value.initialInterpretation.trim() === '' ? null : contextForm.value.initialInterpretation,
+    })
+    state.value = { ...loaded, consultation: updated }
+    contextForm.value = contextFormFrom(updated)
+    contextFormState.value = { status: 'idle' }
+  } catch (error) {
+    contextFormState.value = {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to save context.',
+    }
+  }
+}
+
 async function getInterpretation(): Promise<void> {
   if (interpretationState.value.status === 'loading') {
     return
@@ -126,6 +175,7 @@ onMounted(async () => {
       primaryLines,
       resultingLines: resultingHexagram.lines,
     }
+    contextForm.value = contextFormFrom(consultation)
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
       state.value = { status: 'not-found' }
@@ -261,6 +311,80 @@ onMounted(async () => {
           <p v-if="tagFormState.status === 'error'" class="text-sm text-red-600">
             {{ tagFormState.message }}
           </p>
+        </form>
+      </div>
+
+      <div>
+        <h2 class="mb-2 text-sm font-medium text-neutral-500">Context</h2>
+        <form class="flex flex-col gap-3" @submit.prevent="saveContext">
+          <div>
+            <label for="edit-context" class="mb-1 block text-xs text-neutral-500">Context</label>
+            <textarea
+              id="edit-context"
+              v-model="contextForm.context"
+              rows="2"
+              maxlength="5000"
+              class="w-full rounded-md border border-neutral-300 p-2 text-sm"
+            />
+          </div>
+          <div>
+            <label for="edit-what-happened-before" class="mb-1 block text-xs text-neutral-500">
+              What happened before
+            </label>
+            <textarea
+              id="edit-what-happened-before"
+              v-model="contextForm.whatHappenedBefore"
+              rows="2"
+              maxlength="5000"
+              class="w-full rounded-md border border-neutral-300 p-2 text-sm"
+            />
+          </div>
+          <div>
+            <label for="edit-what-to-understand" class="mb-1 block text-xs text-neutral-500">
+              What you want to understand
+            </label>
+            <textarea
+              id="edit-what-to-understand"
+              v-model="contextForm.whatUserWantsToUnderstand"
+              rows="2"
+              maxlength="5000"
+              class="w-full rounded-md border border-neutral-300 p-2 text-sm"
+            />
+          </div>
+          <div>
+            <label for="edit-background" class="mb-1 block text-xs text-neutral-500">
+              Background information
+            </label>
+            <textarea
+              id="edit-background"
+              v-model="contextForm.backgroundInformation"
+              rows="2"
+              maxlength="5000"
+              class="w-full rounded-md border border-neutral-300 p-2 text-sm"
+            />
+          </div>
+          <div>
+            <label for="edit-initial-interpretation" class="mb-1 block text-xs text-neutral-500">
+              Your initial interpretation
+            </label>
+            <textarea
+              id="edit-initial-interpretation"
+              v-model="contextForm.initialInterpretation"
+              rows="2"
+              maxlength="5000"
+              class="w-full rounded-md border border-neutral-300 p-2 text-sm"
+            />
+          </div>
+          <p v-if="contextFormState.status === 'error'" class="text-sm text-red-600">
+            {{ contextFormState.message }}
+          </p>
+          <button
+            type="submit"
+            :disabled="contextFormState.status === 'submitting'"
+            class="self-start rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+          >
+            {{ contextFormState.status === 'submitting' ? 'Saving…' : 'Save Context' }}
+          </button>
         </form>
       </div>
 

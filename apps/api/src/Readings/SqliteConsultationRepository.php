@@ -64,17 +64,24 @@ final class SqliteConsultationRepository implements ConsultationRepository
         $statement = $this->pdo->prepare(
             'INSERT INTO consultations
                 (id, question, method, primary_king_wen_number, changing_line_positions,
-                 resulting_king_wen_number, created_at)
+                 resulting_king_wen_number, created_at, context, what_happened_before,
+                 what_user_wants_to_understand, background_information, initial_interpretation)
              VALUES
                 (:id, :question, :method, :primary_king_wen_number, :changing_line_positions,
-                 :resulting_king_wen_number, :created_at)
+                 :resulting_king_wen_number, :created_at, :context, :what_happened_before,
+                 :what_user_wants_to_understand, :background_information, :initial_interpretation)
              ON CONFLICT(id) DO UPDATE SET
                 question = excluded.question,
                 method = excluded.method,
                 primary_king_wen_number = excluded.primary_king_wen_number,
                 changing_line_positions = excluded.changing_line_positions,
                 resulting_king_wen_number = excluded.resulting_king_wen_number,
-                created_at = excluded.created_at',
+                created_at = excluded.created_at,
+                context = excluded.context,
+                what_happened_before = excluded.what_happened_before,
+                what_user_wants_to_understand = excluded.what_user_wants_to_understand,
+                background_information = excluded.background_information,
+                initial_interpretation = excluded.initial_interpretation',
         );
 
         $statement->execute([
@@ -85,6 +92,11 @@ final class SqliteConsultationRepository implements ConsultationRepository
             'changing_line_positions' => json_encode($consultation->changingLinePositions(), JSON_THROW_ON_ERROR),
             'resulting_king_wen_number' => $consultation->resultingHexagram->kingWenNumber,
             'created_at' => $consultation->createdAt->format(DATE_ATOM),
+            'context' => $consultation->context,
+            'what_happened_before' => $consultation->whatHappenedBefore,
+            'what_user_wants_to_understand' => $consultation->whatUserWantsToUnderstand,
+            'background_information' => $consultation->backgroundInformation,
+            'initial_interpretation' => $consultation->initialInterpretation,
         ]);
     }
 
@@ -162,6 +174,17 @@ final class SqliteConsultationRepository implements ConsultationRepository
             new \DateTimeImmutable((string) $row['created_at']),
             $this->loadNotes($id),
             $this->loadTags($id),
+            context: $row['context'] === null ? null : (string) $row['context'],
+            whatHappenedBefore: $row['what_happened_before'] === null ? null : (string) $row['what_happened_before'],
+            whatUserWantsToUnderstand: $row['what_user_wants_to_understand'] === null
+                ? null
+                : (string) $row['what_user_wants_to_understand'],
+            backgroundInformation: $row['background_information'] === null
+                ? null
+                : (string) $row['background_information'],
+            initialInterpretation: $row['initial_interpretation'] === null
+                ? null
+                : (string) $row['initial_interpretation'],
         );
     }
 

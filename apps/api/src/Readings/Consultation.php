@@ -10,6 +10,7 @@ use Yijing\Core\Line;
 final readonly class Consultation
 {
     private const MAX_QUESTION_LENGTH = 2000;
+    private const MAX_CONTEXT_FIELD_LENGTH = 5000;
 
     /**
      * @param list<ConsultationNote> $notes
@@ -24,6 +25,11 @@ final readonly class Consultation
         public \DateTimeImmutable $createdAt,
         public array $notes = [],
         public array $tags = [],
+        public ?string $context = null,
+        public ?string $whatHappenedBefore = null,
+        public ?string $whatUserWantsToUnderstand = null,
+        public ?string $backgroundInformation = null,
+        public ?string $initialInterpretation = null,
     ) {
     }
 
@@ -33,6 +39,11 @@ final readonly class Consultation
         CastingMethodName $method,
         Hexagram $primaryHexagram,
         \DateTimeImmutable $createdAt,
+        ?string $context = null,
+        ?string $whatHappenedBefore = null,
+        ?string $whatUserWantsToUnderstand = null,
+        ?string $backgroundInformation = null,
+        ?string $initialInterpretation = null,
     ): self {
         if (trim($question) === '') {
             throw new \InvalidArgumentException('A consultation question must not be empty.');
@@ -44,6 +55,12 @@ final readonly class Consultation
             );
         }
 
+        self::validateContextField($context, 'context');
+        self::validateContextField($whatHappenedBefore, 'whatHappenedBefore');
+        self::validateContextField($whatUserWantsToUnderstand, 'whatUserWantsToUnderstand');
+        self::validateContextField($backgroundInformation, 'backgroundInformation');
+        self::validateContextField($initialInterpretation, 'initialInterpretation');
+
         return new self(
             $id,
             $question,
@@ -51,6 +68,11 @@ final readonly class Consultation
             $primaryHexagram,
             $primaryHexagram->getResultingHexagram(),
             $createdAt,
+            context: $context,
+            whatHappenedBefore: $whatHappenedBefore,
+            whatUserWantsToUnderstand: $whatUserWantsToUnderstand,
+            backgroundInformation: $backgroundInformation,
+            initialInterpretation: $initialInterpretation,
         );
     }
 
@@ -71,8 +93,27 @@ final readonly class Consultation
         \DateTimeImmutable $createdAt,
         array $notes,
         array $tags,
+        ?string $context = null,
+        ?string $whatHappenedBefore = null,
+        ?string $whatUserWantsToUnderstand = null,
+        ?string $backgroundInformation = null,
+        ?string $initialInterpretation = null,
     ): self {
-        return new self($id, $question, $method, $primaryHexagram, $resultingHexagram, $createdAt, $notes, $tags);
+        return new self(
+            $id,
+            $question,
+            $method,
+            $primaryHexagram,
+            $resultingHexagram,
+            $createdAt,
+            $notes,
+            $tags,
+            $context,
+            $whatHappenedBefore,
+            $whatUserWantsToUnderstand,
+            $backgroundInformation,
+            $initialInterpretation,
+        );
     }
 
     public function withAddedNote(ConsultationNote $note): self
@@ -86,6 +127,11 @@ final readonly class Consultation
             $this->createdAt,
             [...$this->notes, $note],
             $this->tags,
+            $this->context,
+            $this->whatHappenedBefore,
+            $this->whatUserWantsToUnderstand,
+            $this->backgroundInformation,
+            $this->initialInterpretation,
         );
     }
 
@@ -104,6 +150,41 @@ final readonly class Consultation
             $this->createdAt,
             $this->notes,
             [...$this->tags, $tag],
+            $this->context,
+            $this->whatHappenedBefore,
+            $this->whatUserWantsToUnderstand,
+            $this->backgroundInformation,
+            $this->initialInterpretation,
+        );
+    }
+
+    public function withUpdatedContext(
+        ?string $context,
+        ?string $whatHappenedBefore,
+        ?string $whatUserWantsToUnderstand,
+        ?string $backgroundInformation,
+        ?string $initialInterpretation,
+    ): self {
+        self::validateContextField($context, 'context');
+        self::validateContextField($whatHappenedBefore, 'whatHappenedBefore');
+        self::validateContextField($whatUserWantsToUnderstand, 'whatUserWantsToUnderstand');
+        self::validateContextField($backgroundInformation, 'backgroundInformation');
+        self::validateContextField($initialInterpretation, 'initialInterpretation');
+
+        return new self(
+            $this->id,
+            $this->question,
+            $this->method,
+            $this->primaryHexagram,
+            $this->resultingHexagram,
+            $this->createdAt,
+            $this->notes,
+            $this->tags,
+            $context,
+            $whatHappenedBefore,
+            $whatUserWantsToUnderstand,
+            $backgroundInformation,
+            $initialInterpretation,
         );
     }
 
@@ -121,5 +202,14 @@ final readonly class Consultation
             static fn (Line $line): int => $line->position,
             $changing,
         ));
+    }
+
+    private static function validateContextField(?string $value, string $fieldName): void
+    {
+        if ($value !== null && mb_strlen($value) > self::MAX_CONTEXT_FIELD_LENGTH) {
+            throw new \InvalidArgumentException(
+                sprintf('"%s" must not exceed %d characters.', $fieldName, self::MAX_CONTEXT_FIELD_LENGTH),
+            );
+        }
     }
 }

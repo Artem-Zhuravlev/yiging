@@ -136,6 +136,141 @@ final class ConsultationTest extends TestCase
         self::assertSame(['career'], $again->tags);
     }
 
+    public function testCreateAcceptsAllFiveOptionalContextFields(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+            context: 'Been considering this for weeks.',
+            whatHappenedBefore: 'Received the offer last Tuesday.',
+            whatUserWantsToUnderstand: 'Whether the timing is right.',
+            backgroundInformation: 'Currently employed elsewhere.',
+            initialInterpretation: 'Feels like a yes.',
+        );
+
+        self::assertSame('Been considering this for weeks.', $consultation->context);
+        self::assertSame('Received the offer last Tuesday.', $consultation->whatHappenedBefore);
+        self::assertSame('Whether the timing is right.', $consultation->whatUserWantsToUnderstand);
+        self::assertSame('Currently employed elsewhere.', $consultation->backgroundInformation);
+        self::assertSame('Feels like a yes.', $consultation->initialInterpretation);
+    }
+
+    public function testCreateDefaultsAllFiveContextFieldsToNull(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        );
+
+        self::assertNull($consultation->context);
+        self::assertNull($consultation->whatHappenedBefore);
+        self::assertNull($consultation->whatUserWantsToUnderstand);
+        self::assertNull($consultation->backgroundInformation);
+        self::assertNull($consultation->initialInterpretation);
+    }
+
+    public function testCreateRejectsAContextFieldOverTheLengthLimit(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+            context: str_repeat('a', 5001),
+        );
+    }
+
+    public function testCreateAcceptsAContextFieldAtExactlyTheLengthLimit(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+            context: str_repeat('a', 5000),
+        );
+
+        self::assertSame(5000, mb_strlen((string) $consultation->context));
+    }
+
+    public function testWithUpdatedContextSetsAndClearsFieldsIndependently(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+            context: 'Original context.',
+            whatHappenedBefore: 'Original before.',
+        );
+
+        $updated = $consultation->withUpdatedContext(
+            context: 'Updated context.',
+            whatHappenedBefore: null,
+            whatUserWantsToUnderstand: $consultation->whatUserWantsToUnderstand,
+            backgroundInformation: $consultation->backgroundInformation,
+            initialInterpretation: $consultation->initialInterpretation,
+        );
+
+        self::assertSame('Updated context.', $updated->context);
+        self::assertNull($updated->whatHappenedBefore);
+        self::assertSame('Original context.', $consultation->context, 'original instance must not be mutated');
+    }
+
+    public function testWithUpdatedContextValidatesLength(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        );
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $consultation->withUpdatedContext(
+            context: str_repeat('a', 5001),
+            whatHappenedBefore: null,
+            whatUserWantsToUnderstand: null,
+            backgroundInformation: null,
+            initialInterpretation: null,
+        );
+    }
+
+    public function testWithAddedNotePreservesExistingContextFields(): void
+    {
+        // Regression: withAddedNote()/withAddedTag() rebuild via a positional constructor call
+        // that must explicitly carry the five context fields through, or they'd silently reset
+        // to null every time a note or tag was added.
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+            context: 'Some context.',
+        );
+
+        $note = new ConsultationNote(NoteLabel::After, 'Took the offer.', new \DateTimeImmutable());
+        $withNote = $consultation->withAddedNote($note);
+        $withTag = $consultation->withAddedTag('career');
+
+        self::assertSame('Some context.', $withNote->context);
+        self::assertSame('Some context.', $withTag->context);
+    }
+
     public function testChangingLinePositionsMatchesThePrimaryHexagramsChangingLines(): void
     {
         $primary = self::hexagramFromPattern('101010', changingPositions: [2, 5]);

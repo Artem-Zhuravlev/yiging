@@ -14,15 +14,34 @@ const lines = ref<ManualLine[]>(
 )
 const state = ref<FormState>({ status: 'idle' })
 
+const context = ref('')
+const whatHappenedBefore = ref('')
+const whatUserWantsToUnderstand = ref('')
+const backgroundInformation = ref('')
+const initialInterpretation = ref('')
+
 const router = useRouter()
+
+// Blank fields are omitted from the request entirely (undefined), rather than sent as empty
+// strings — an untouched optional field should look untouched to the API, not like the user
+// explicitly cleared something that was never there.
+function orUndefined(value: string): string | undefined {
+  return value.trim() === '' ? undefined : value
+}
 
 async function submit(): Promise<void> {
   state.value = { status: 'submitting' }
 
-  const request: NewConsultationRequest =
-    method.value === 'manual'
-      ? { question: question.value, method: 'manual', lines: lines.value }
-      : { question: question.value, method: 'three_coins' }
+  const request: NewConsultationRequest = {
+    ...(method.value === 'manual'
+      ? { question: question.value, method: 'manual' as const, lines: lines.value }
+      : { question: question.value, method: 'three_coins' as const }),
+    context: orUndefined(context.value),
+    whatHappenedBefore: orUndefined(whatHappenedBefore.value),
+    whatUserWantsToUnderstand: orUndefined(whatUserWantsToUnderstand.value),
+    backgroundInformation: orUndefined(backgroundInformation.value),
+    initialInterpretation: orUndefined(initialInterpretation.value),
+  }
 
   try {
     const consultation = await createConsultation(request)
@@ -100,6 +119,72 @@ async function submit(): Promise<void> {
           </label>
         </div>
       </fieldset>
+
+      <details class="rounded-md border border-neutral-200 p-3">
+        <summary class="cursor-pointer text-sm font-medium text-neutral-700">
+          Add more context (optional)
+        </summary>
+        <div class="mt-3 flex flex-col gap-3">
+          <div>
+            <label for="context" class="mb-1 block text-sm text-neutral-700">Context</label>
+            <textarea
+              id="context"
+              v-model="context"
+              rows="2"
+              maxlength="5000"
+              class="w-full rounded-md border border-neutral-300 p-2"
+            />
+          </div>
+          <div>
+            <label for="what-happened-before" class="mb-1 block text-sm text-neutral-700">
+              What happened before
+            </label>
+            <textarea
+              id="what-happened-before"
+              v-model="whatHappenedBefore"
+              rows="2"
+              maxlength="5000"
+              class="w-full rounded-md border border-neutral-300 p-2"
+            />
+          </div>
+          <div>
+            <label for="what-to-understand" class="mb-1 block text-sm text-neutral-700">
+              What you want to understand
+            </label>
+            <textarea
+              id="what-to-understand"
+              v-model="whatUserWantsToUnderstand"
+              rows="2"
+              maxlength="5000"
+              class="w-full rounded-md border border-neutral-300 p-2"
+            />
+          </div>
+          <div>
+            <label for="background" class="mb-1 block text-sm text-neutral-700">
+              Background information
+            </label>
+            <textarea
+              id="background"
+              v-model="backgroundInformation"
+              rows="2"
+              maxlength="5000"
+              class="w-full rounded-md border border-neutral-300 p-2"
+            />
+          </div>
+          <div>
+            <label for="initial-interpretation" class="mb-1 block text-sm text-neutral-700">
+              Your initial interpretation
+            </label>
+            <textarea
+              id="initial-interpretation"
+              v-model="initialInterpretation"
+              rows="2"
+              maxlength="5000"
+              class="w-full rounded-md border border-neutral-300 p-2"
+            />
+          </div>
+        </div>
+      </details>
 
       <p v-if="state.status === 'error'" class="text-red-600">{{ state.message }}</p>
 

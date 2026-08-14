@@ -89,6 +89,54 @@ final class SqliteConsultationRepositoryTest extends TestCase
         self::assertSame(['big-decision', 'career'], $found->tags);
     }
 
+    public function testSaveAndFindByIdRoundTripsAllFiveContextFields(): void
+    {
+        $consultation = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+            context: 'Some context.',
+            whatHappenedBefore: 'Received an offer.',
+            whatUserWantsToUnderstand: 'Timing.',
+            backgroundInformation: 'Background.',
+            initialInterpretation: 'Leaning yes.',
+        );
+
+        $this->repository->save($consultation);
+        $found = $this->repository->findById('consult-1');
+
+        self::assertNotNull($found);
+        self::assertSame('Some context.', $found->context);
+        self::assertSame('Received an offer.', $found->whatHappenedBefore);
+        self::assertSame('Timing.', $found->whatUserWantsToUnderstand);
+        self::assertSame('Background.', $found->backgroundInformation);
+        self::assertSame('Leaning yes.', $found->initialInterpretation);
+    }
+
+    public function testAConsultationWithNoContextFieldsRoundTripsAllFiveAsNull(): void
+    {
+        // Simulates a pre-SPEC-019 consultation: none of the five new columns were ever set.
+        $consultation = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        );
+
+        $this->repository->save($consultation);
+        $found = $this->repository->findById('consult-1');
+
+        self::assertNotNull($found);
+        self::assertNull($found->context);
+        self::assertNull($found->whatHappenedBefore);
+        self::assertNull($found->whatUserWantsToUnderstand);
+        self::assertNull($found->backgroundInformation);
+        self::assertNull($found->initialInterpretation);
+    }
+
     public function testFindByIdReturnsNullForAMissingConsultation(): void
     {
         self::assertNull($this->repository->findById('does-not-exist'));

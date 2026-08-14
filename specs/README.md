@@ -94,3 +94,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-016 | [Visual Hexagram Editor](hexagram-editor/spec.md) | `verified` |
 | SPEC-017 | [Hexagram Comparison](hexagram-comparison/spec.md) | `verified` |
 | SPEC-018 | [Deep Hexagram Page](deep-hexagram-page/spec.md) | `verified` |
+| SPEC-019 | [Rich Consultation Context](consultation-context/spec.md) | `verified` |
