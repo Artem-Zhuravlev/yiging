@@ -41,6 +41,11 @@ php ../../scripts/migrate.php
 php ../../scripts/seed.php
 ```
 
+AI interpretation (SPEC-008/011) defaults to the mock provider — no key needed, safe to leave
+as-is. To use real Gemini-backed interpretations, also set `AI_PROVIDER=gemini` and
+`AI_API_KEY` in `.env` (see `.env.example` for details and where to get a key). The key is
+backend-only — nothing in `apps/web` ever sees it, and it never appears in an API response.
+
 ## Directory layout on the server
 
 ```

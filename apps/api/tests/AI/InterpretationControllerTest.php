@@ -93,6 +93,27 @@ final class InterpretationControllerTest extends TestCase
         self::assertSame(['error' => 'Not Found'], $this->decode($response));
     }
 
+    public function testFailsCleanlyWhenGeminiIsSelectedWithNoApiKey(): void
+    {
+        // A misconfigured provider throws at controller-construction time (inside
+        // Kernel::invoke()), before this endpoint's own code runs at all - proving the
+        // Kernel-level catch-all (not just this controller) is what keeps it clean.
+        $config = new Config([
+            'app_env' => 'testing',
+            'database_path' => $this->databasePath,
+            'ai_provider' => 'gemini',
+            'ai_api_key' => '',
+        ]);
+        $apiRoot = dirname(__DIR__, 2);
+        $routeDefinitions = require $apiRoot . '/config/routes.php';
+        $kernel = new Kernel($config, $routeDefinitions);
+
+        $response = $kernel->handle(Request::create('/api/interpretations/does-not-exist', 'POST'));
+
+        self::assertSame(500, $response->getStatusCode());
+        self::assertSame(['error' => 'Internal Server Error'], $this->decode($response));
+    }
+
     /**
      * @return array<mixed>
      */

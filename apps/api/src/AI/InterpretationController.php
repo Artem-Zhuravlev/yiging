@@ -22,7 +22,7 @@ final class InterpretationController
     {
         $this->repository = new SqliteConsultationRepository(Database::connect($config));
         $this->contextBuilder = new InterpretationContextBuilder();
-        $this->provider = new MockInterpretationProvider();
+        $this->provider = self::resolveProvider($config);
     }
 
     /**
@@ -37,9 +37,48 @@ final class InterpretationController
         }
 
         $context = $this->contextBuilder->build($consultation);
-        $interpretation = $this->provider->interpret($context);
+
+        try {
+            $interpretation = $this->provider->interpret($context);
+        } catch (InterpretationProviderException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_BAD_GATEWAY);
+        }
 
         return new JsonResponse($this->toJson($interpretation));
+    }
+
+    /**
+     * Fails loudly (not a silent fallback to the mock provider) when "gemini" is selected but
+     * misconfigured - a deployment problem the operator needs to see, not one that quietly
+     * makes every interpretation a mock one.
+     */
+    private static function resolveProvider(Config $config): InterpretationProvider
+    {
+        $providerName = $config->string('ai_provider');
+
+        return match ($providerName) {
+            // '' covers a hand-built Config that never set ai_provider at all (e.g. most
+            // tests) - same as the documented "mock" default in Config::fromEnv(), not a
+            // distinct case to reject.
+            'mock', '' => new MockInterpretationProvider(),
+            'gemini' => self::resolveGeminiProvider($config),
+            default => throw new \RuntimeException(
+                "Unknown AI_PROVIDER '{$providerName}'. Expected 'mock' or 'gemini'.",
+            ),
+        };
+    }
+
+    private static function resolveGeminiProvider(Config $config): InterpretationProvider
+    {
+        $apiKey = $config->string('ai_api_key');
+
+        if ($apiKey === '') {
+            throw new \RuntimeException(
+                'AI_PROVIDER is set to "gemini" but AI_API_KEY is empty. Set it in apps/api/.env.',
+            );
+        }
+
+        return new GeminiInterpretationProvider(new HttpGeminiClient($apiKey, $config->string('ai_model')));
     }
 
     /**

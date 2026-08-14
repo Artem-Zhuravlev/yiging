@@ -86,6 +86,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-009 | [Consultation Flow UI](specs/consultation-flow-ui/spec.md) | `verified` |
 | SPEC-008 | [AI Interpretation](specs/ai-interpretation/spec.md) | `verified` |
 | SPEC-010 | [Interpretation UI](specs/interpretation-ui/spec.md) | `verified` |
+| SPEC-011 | [Gemini Interpretation Provider](specs/gemini-interpretation-provider/spec.md) | `verified` (code); live call unverified |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -162,8 +163,23 @@ client-side `maxlength` hint. Everything else on that checklist (prepared statem
 throughout, no `v-html` anywhere so Vue's default output-escaping holds, no secrets in the
 frontend) was already satisfied. See [SPEC-005](specs/readings/spec.md)'s 2026-08-14 addendum.
 
-Next recommended steps (independent of each other): a real `InterpretationProvider` (needs an
-API key + secret management + rate limiting, none of which exist yet — a deliberate gap, not an
-oversight, per SPEC-008's explicit "out of scope"), or plan section 26+ territory (analytics,
-search/filter on history, journal notes editing UI, SPEC-003's `GET /api/texts/{hexagramId}`-
-style endpoints if canonical text ever needs its own browsing surface separate from a hexagram).
+A real `InterpretationProvider` now exists: `GeminiInterpretationProvider`, backed by Google's
+Gemini API, selectable via `AI_PROVIDER=gemini` in `apps/api/.env` (default stays `mock` — no
+key needed, safe out of the box). `sourceReferences` is never LLM-generated for either
+provider — `InterpretationContext::defaultSourceReferences()` computes it once, shared, so a
+citation can never be hallucinated regardless of which provider answered. A misconfigured
+provider (`gemini` selected, empty key) fails loudly at startup rather than silently serving
+mock output; any Gemini API failure maps to a clean `502`, never a raw stack trace — and now
+neither does *any* uncaught exception anywhere in the app, since `Kernel::handle()` gained a
+catch-all specifically because this is the app's first dependency on something genuinely
+outside its control. See [SPEC-011](specs/gemini-interpretation-provider/spec.md) — **and
+note its one open item: this session had no API key to test against, so the exact request
+contract is verified by research (Google's current docs, cross-checked across 3 fetches), not
+by a real call. Set `AI_API_KEY` in `apps/api/.env` and try it to complete that verification.**
+Rate limiting on this now-real-cost endpoint is explicitly deferred (see the spec's "Out of
+scope") — an interim mitigation is a usage cap set directly in Google's own console.
+
+Next recommended steps: verify the live Gemini call (see above), or plan section 26+ territory
+(rate limiting, analytics, search/filter on history, journal notes editing UI, SPEC-003's
+`GET /api/texts/{hexagramId}`-style endpoints if canonical text ever needs its own browsing
+surface separate from a hexagram).

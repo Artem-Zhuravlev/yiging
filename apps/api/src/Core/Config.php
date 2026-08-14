@@ -39,6 +39,9 @@ final class Config
         return new self([
             'app_env' => $env['APP_ENV'] ?? 'production',
             'database_path' => self::resolvePath($databasePath, $rootDir),
+            'ai_provider' => $env['AI_PROVIDER'] ?? 'mock',
+            'ai_api_key' => $env['AI_API_KEY'] ?? '',
+            'ai_model' => $env['AI_MODEL'] ?? 'gemini-3.6-flash',
         ]);
     }
 

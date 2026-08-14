@@ -26,22 +26,35 @@ final class Kernel
 
     public function handle(Request $request): Response
     {
-        $dispatcher = simpleDispatcher($this->routeDefinitions);
+        try {
+            $dispatcher = simpleDispatcher($this->routeDefinitions);
 
-        $routeInfo = $dispatcher->dispatch(
-            $request->getMethod(),
-            rawurldecode($request->getPathInfo()),
-        );
+            $routeInfo = $dispatcher->dispatch(
+                $request->getMethod(),
+                rawurldecode($request->getPathInfo()),
+            );
 
-        return match ($routeInfo[0]) {
-            Dispatcher::NOT_FOUND => new JsonResponse(['error' => 'Not Found'], Response::HTTP_NOT_FOUND),
-            Dispatcher::METHOD_NOT_ALLOWED => new JsonResponse(
-                ['error' => 'Method Not Allowed'],
-                Response::HTTP_METHOD_NOT_ALLOWED,
-            ),
-            Dispatcher::FOUND => $this->invoke($routeInfo[1], $routeInfo[2], $request),
-            default => new JsonResponse(['error' => 'Internal Server Error'], Response::HTTP_INTERNAL_SERVER_ERROR),
-        };
+            return match ($routeInfo[0]) {
+                Dispatcher::NOT_FOUND => new JsonResponse(['error' => 'Not Found'], Response::HTTP_NOT_FOUND),
+                Dispatcher::METHOD_NOT_ALLOWED => new JsonResponse(
+                    ['error' => 'Method Not Allowed'],
+                    Response::HTTP_METHOD_NOT_ALLOWED,
+                ),
+                Dispatcher::FOUND => $this->invoke($routeInfo[1], $routeInfo[2], $request),
+                default => new JsonResponse(
+                    ['error' => 'Internal Server Error'],
+                    Response::HTTP_INTERNAL_SERVER_ERROR,
+                ),
+            };
+        } catch (\Throwable $e) {
+            // Never let a raw stack trace (which can include file paths, config values, etc.)
+            // reach the client - log the real detail server-side, return a clean generic
+            // response. Covers failures anywhere in routing, controller construction, or
+            // handling - not just this project's own code.
+            error_log((string) $e);
+
+            return new JsonResponse(['error' => 'Internal Server Error'], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**

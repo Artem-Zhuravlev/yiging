@@ -86,3 +86,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-009 | [Consultation Flow UI](consultation-flow-ui/spec.md) | `verified` |
 | SPEC-008 | [AI Interpretation](ai-interpretation/spec.md) | `verified` |
 | SPEC-010 | [Interpretation UI](interpretation-ui/spec.md) | `verified` |
+| SPEC-011 | [Gemini Interpretation Provider](gemini-interpretation-provider/spec.md) | `verified` (code); live call unverified |
