@@ -85,6 +85,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-007 | [Hexagram Explorer UI](specs/hexagram-explorer-ui/spec.md) | `verified` |
 | SPEC-009 | [Consultation Flow UI](specs/consultation-flow-ui/spec.md) | `verified` |
 | SPEC-008 | [AI Interpretation](specs/ai-interpretation/spec.md) | `verified` |
+| SPEC-010 | [Interpretation UI](specs/interpretation-ui/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -136,12 +137,18 @@ own canonical text, no API key or external call — every `sourceReferences` ent
 real Legge text, nothing invented — see [SPEC-008](specs/ai-interpretation/spec.md). `apps/api`
 is now at 60 tests, 413 assertions.
 
-Every spec is now `verified`, SPEC-001 through SPEC-009 — the entire backend, domain model, and
-core frontend loop (ask → cast → see → interpret → find again) from the original plan's MVP
-definition is complete.
+`/consultations/:id` now has a "Get Interpretation" button rendering all 8 `Interpretation`
+fields in a clearly separate, bordered section — never interleaved with the consultation's own
+canonical hexagram/text data, matching the plan's explicit requirement to keep AI output and
+canonical source visually distinct — see [SPEC-010](specs/interpretation-ui/spec.md). `apps/web`
+is now at 35 tests.
 
-Next recommended steps (independent of each other, per SPEC-008's explicit "out of scope"):
-a real `InterpretationProvider` (needs an API key + secret management + rate limiting, none of
-which exist yet — a deliberate gap, not an oversight), a frontend UI for triggering
-interpretation (`/consultations/:id`'s "get AI interpretation" step), or plan section 26+
-territory (analytics, search/filter on history, journal notes editing UI).
+**Every spec is now `verified`, SPEC-001 through SPEC-010.** The entire backend, domain model,
+and frontend loop from the original plan's MVP definition (ask → cast → see → interpret → find
+again) is complete and working end to end against the real running stack, not just unit-tested.
+
+Next recommended steps (independent of each other): a real `InterpretationProvider` (needs an
+API key + secret management + rate limiting, none of which exist yet — a deliberate gap, not an
+oversight, per SPEC-008's explicit "out of scope"), or plan section 26+ territory (analytics,
+search/filter on history, journal notes editing UI, SPEC-003's `GET /api/texts/{hexagramId}`-
+style endpoints if canonical text ever needs its own browsing surface separate from a hexagram).

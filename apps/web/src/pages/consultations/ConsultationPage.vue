@@ -6,6 +6,8 @@ import type { Consultation } from '../../entities/consultation/model'
 import { fetchHexagram } from '../../entities/hexagram/api'
 import type { HexagramLine } from '../../entities/hexagram/model'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
+import { requestInterpretation } from '../../entities/interpretation/api'
+import type { Interpretation } from '../../entities/interpretation/model'
 import { ApiError } from '../../shared/api/http'
 
 type State =
@@ -19,9 +21,36 @@ type State =
       resultingLines: HexagramLine[]
     }
 
+// Independent of `state` above: a failed/retried interpretation request must never disturb
+// the already-loaded consultation detail.
+type InterpretationState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'error'; message: string }
+  | { status: 'loaded'; interpretation: Interpretation }
+
 const route = useRoute()
 const id = computed(() => String(route.params.id))
 const state = ref<State>({ status: 'loading' })
+const interpretationState = ref<InterpretationState>({ status: 'idle' })
+
+async function getInterpretation(): Promise<void> {
+  if (interpretationState.value.status === 'loading') {
+    return
+  }
+
+  interpretationState.value = { status: 'loading' }
+
+  try {
+    const interpretation = await requestInterpretation(id.value)
+    interpretationState.value = { status: 'loaded', interpretation }
+  } catch (error) {
+    interpretationState.value = {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to get interpretation.',
+    }
+  }
+}
 
 onMounted(async () => {
   try {
@@ -120,6 +149,73 @@ onMounted(async () => {
           {{ tag }}
         </span>
       </div>
+
+      <section class="rounded-lg border-2 border-dashed border-neutral-300 p-4">
+        <h2 class="mb-3 text-sm font-medium text-neutral-500">AI Interpretation</h2>
+
+        <button
+          type="button"
+          :disabled="interpretationState.status === 'loading'"
+          class="rounded-md bg-neutral-800 px-4 py-2 text-sm text-white disabled:opacity-50"
+          @click="getInterpretation"
+        >
+          {{ interpretationState.status === 'loading' ? 'Interpreting…' : 'Get Interpretation' }}
+        </button>
+
+        <p v-if="interpretationState.status === 'error'" class="mt-3 text-red-600">
+          {{ interpretationState.message }}
+        </p>
+
+        <div v-else-if="interpretationState.status === 'loaded'" class="mt-4 flex flex-col gap-3">
+          <p>{{ interpretationState.interpretation.summary }}</p>
+
+          <div>
+            <h3 class="text-xs font-medium text-neutral-500 uppercase">Core theme</h3>
+            <p>{{ interpretationState.interpretation.coreTheme }}</p>
+          </div>
+
+          <div>
+            <h3 class="text-xs font-medium text-neutral-500 uppercase">Situation</h3>
+            <p>{{ interpretationState.interpretation.situation }}</p>
+          </div>
+
+          <div v-if="interpretationState.interpretation.changingLineMeaning">
+            <h3 class="text-xs font-medium text-neutral-500 uppercase">Changing line meaning</h3>
+            <p>{{ interpretationState.interpretation.changingLineMeaning }}</p>
+          </div>
+
+          <div v-if="interpretationState.interpretation.transition">
+            <h3 class="text-xs font-medium text-neutral-500 uppercase">Transition</h3>
+            <p>{{ interpretationState.interpretation.transition }}</p>
+          </div>
+
+          <div>
+            <h3 class="text-xs font-medium text-neutral-500 uppercase">Practical reflection</h3>
+            <p>{{ interpretationState.interpretation.practicalReflection }}</p>
+          </div>
+
+          <div v-if="interpretationState.interpretation.uncertainties.length > 0">
+            <h3 class="text-xs font-medium text-neutral-500 uppercase">Uncertainties</h3>
+            <ul class="list-inside list-disc">
+              <li v-for="(note, index) in interpretationState.interpretation.uncertainties" :key="index">
+                {{ note }}
+              </li>
+            </ul>
+          </div>
+
+          <div v-if="interpretationState.interpretation.sourceReferences.length > 0">
+            <h3 class="text-xs font-medium text-neutral-500 uppercase">Sources</h3>
+            <ul class="list-inside list-disc text-sm text-neutral-500">
+              <li
+                v-for="(sourceRef, index) in interpretationState.interpretation.sourceReferences"
+                :key="index"
+              >
+                {{ sourceRef }}
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
     </div>
   </main>
 </template>
