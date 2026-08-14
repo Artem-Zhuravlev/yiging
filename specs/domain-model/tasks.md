@@ -16,6 +16,7 @@ remain pending until picked up as a follow-up.
 | TASK-DM-008 | Verify zero runtime dependencies beyond `php`                    | REQ-DM-001                | `composer.json` review     | done |
 | TASK-DM-009 | Add PHPStan level 8 + php-cs-fixer (PSR-12) to `yijing-core`      | (coding-rules.md parity)  | `composer stan` / `lint`   | done |
 | TASK-DM-010 | Wire `yijing-core` lint/stan into `scripts/verify.mjs`            | REQ-ARCH-008               | `npm run verify`           | done |
+| TASK-DM-011 | Implement `Hexagram::fromKingWenNumber()` (added while building SPEC-003/006) | REQ-HX-008 | `HexagramTest` | done |
 
 ## Classical text pass (follow-up, not started)
 

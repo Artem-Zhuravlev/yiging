@@ -2,7 +2,7 @@
 
 **Status:** in-progress
 **Owner:** unassigned
-**Last updated:** 2026-08-12
+**Last updated:** 2026-08-14
 
 > Approved for a **structural** implementation pass (trigram/hexagram identity, King Wen
 > numbers, line mechanics, relationships). Classical text content (judgment/image/line
@@ -100,6 +100,13 @@ Casting::fromCoins(...)              // defined in SPEC-004, consumes this model
   lines at once.
 - **REQ-HX-007** — If there are no changing lines, the resulting hexagram MUST be identical to
   the primary hexagram (same King Wen number).
+- **REQ-HX-008** — `Hexagram::fromKingWenNumber(int $kingWenNumber)` MUST return the hexagram
+  for that number with all 6 lines non-changing (structural identity only — casting-specific
+  changing-line state is layered on separately by callers that need it, e.g. SPEC-005's
+  repository). MUST throw for a number outside 1–64. Added so consumers that only have a King
+  Wen number (a persisted `Consultation`, the Hexagram Explorer) don't each re-derive lines
+  from `HexagramCatalog`'s pattern themselves — before this, `apps/api`'s
+  `SqliteConsultationRepository` had a private copy of exactly this logic.
 
 ### Relationships
 
@@ -179,6 +186,9 @@ Structural pass (required for `in-progress`):
 - [x] Test coverage in `yijing-core` is the highest of any package in the repo (per bootstrap
       rule: "the domain core must be heavily tested before UI work expands") — 46 tests, 244
       assertions, versus 2 in `apps/api` and 1 (smoke) in `apps/web`.
+- [x] `Hexagram::fromKingWenNumber()` (REQ-HX-008, added post-hoc while building SPEC-003/006)
+      returns the correct structural hexagram for all 64 numbers and throws for out-of-range
+      input.
 
 Classical text pass (required for `verified`, not yet done):
 

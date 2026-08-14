@@ -42,6 +42,28 @@ final readonly class Hexagram
         return new self($lines, $kingWenNumber, $entry['chineseName'], $entry['pinyin']);
     }
 
+    /**
+     * The hexagram for a King Wen number alone, with all 6 lines non-changing — structural
+     * identity only. Casting-specific changing-line state is layered on separately by callers
+     * that need it (e.g. a persisted Consultation reapplying its stored changing positions).
+     */
+    public static function fromKingWenNumber(int $kingWenNumber): self
+    {
+        $entry = HexagramCatalog::entryFor($kingWenNumber);
+
+        $lines = array_map(
+            static fn (int $index, string $char): Line => new Line(
+                $index + 1,
+                $char === '1' ? LinePolarity::Yang : LinePolarity::Yin,
+                false,
+            ),
+            array_keys(str_split($entry['pattern'])),
+            str_split($entry['pattern']),
+        );
+
+        return self::fromLines($lines);
+    }
+
     public function getLowerTrigram(): Trigram
     {
         return Trigram::fromLines(self::renumbered(array_slice($this->lines, 0, 3)));

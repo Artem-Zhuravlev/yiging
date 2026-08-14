@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace App\Readings;
 
 use PDO;
-use Yijing\Core\Data\HexagramCatalog;
 use Yijing\Core\Hexagram;
 use Yijing\Core\Line;
-use Yijing\Core\LinePolarity;
 
 final class SqliteConsultationRepository implements ConsultationRepository
 {
@@ -216,17 +214,18 @@ final class SqliteConsultationRepository implements ConsultationRepository
      */
     private static function hexagramFromKingWenNumber(int $kingWenNumber, array $changingPositions): Hexagram
     {
-        $pattern = HexagramCatalog::entryFor($kingWenNumber)['pattern'];
+        $base = Hexagram::fromKingWenNumber($kingWenNumber);
 
-        $lines = [];
-        foreach (str_split($pattern) as $index => $char) {
-            $position = $index + 1;
-            $lines[] = new Line(
-                $position,
-                $char === '1' ? LinePolarity::Yang : LinePolarity::Yin,
-                in_array($position, $changingPositions, true),
-            );
+        if ($changingPositions === []) {
+            return $base;
         }
+
+        $lines = array_map(
+            static fn (Line $line): Line => in_array($line->position, $changingPositions, true)
+                ? new Line($line->position, $line->polarity, true)
+                : $line,
+            $base->lines,
+        );
 
         return Hexagram::fromLines($lines);
     }

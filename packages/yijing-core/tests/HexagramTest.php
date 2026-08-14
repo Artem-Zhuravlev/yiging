@@ -86,4 +86,25 @@ final class HexagramTest extends TestCase
 
         Hexagram::fromLines(self::linesFromPattern('11111'));
     }
+
+    public function testFromKingWenNumberBuildsTheCorrectStructuralHexagramForAllSixtyFour(): void
+    {
+        foreach (HexagramCatalog::all() as $number => $entry) {
+            $hexagram = Hexagram::fromKingWenNumber($number);
+
+            self::assertSame($number, $hexagram->kingWenNumber, "Hexagram {$number}");
+            self::assertSame($entry['chineseName'], $hexagram->chineseName, "Hexagram {$number}");
+
+            foreach ($hexagram->lines as $line) {
+                self::assertFalse($line->changing, "Hexagram {$number} line {$line->position}");
+            }
+        }
+    }
+
+    public function testFromKingWenNumberThrowsForAnOutOfRangeNumber(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        Hexagram::fromKingWenNumber(65);
+    }
 }
