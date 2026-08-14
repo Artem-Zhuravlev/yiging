@@ -79,6 +79,15 @@ final readonly class Hexagram
         return Trigram::fromLines(self::renumbered(array_slice($this->lines, 0, 3)));
     }
 
+    /**
+     * The hexagram's Unicode glyph (U+4DC0-U+4DFF, "Yijing Hexagram Symbols"), a block ordered
+     * exactly by King Wen sequence — U+4DC0 is hexagram 1, U+4DFF is hexagram 64.
+     */
+    public function symbol(): string
+    {
+        return mb_chr(0x4DC0 + $this->kingWenNumber - 1);
+    }
+
     public function getUpperTrigram(): Trigram
     {
         return Trigram::fromLines(self::renumbered(array_slice($this->lines, 3, 3)));

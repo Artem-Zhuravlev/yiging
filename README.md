@@ -93,6 +93,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-015 | [Hexagram Relationship Navigation](specs/hexagram-relationship-nav/spec.md) | `verified` |
 | SPEC-016 | [Visual Hexagram Editor](specs/hexagram-editor/spec.md) | `verified` |
 | SPEC-017 | [Hexagram Comparison](specs/hexagram-comparison/spec.md) | `verified` |
+| SPEC-018 | [Deep Hexagram Page](specs/deep-hexagram-page/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -239,6 +240,23 @@ links straight into it with its primary/resulting King Wen numbers, satisfying t
 work for a consultation's pair" requirement via composition rather than a separate code path. See
 [SPEC-017](specs/hexagram-comparison/spec.md).
 
-Next recommended steps: continue the plan's feature 21-40 batch in order (25: Deep Hexagram Page
-→ 26: Translation Comparison → ... → 40: AI Conversation Per Consultation), or verify the live
-Gemini call (see above) whenever an `AI_API_KEY` is available.
+`/hexagrams/{n}` is now the actually-deep page feature 25 asked for: it shows the hexagram's own
+Unicode glyph (`Hexagram::symbol()`, new in `packages/yijing-core` — `mb_chr(0x4DC0 +
+kingWenNumber - 1)`, verified against the Unicode standard's own King-Wen-ordered character names
+for hexagrams 1/11/44/54/64) and all six line texts (`lineStatements`, populated since SPEC-002
+but never rendered until now), plus a source-attribution line making the existing "James Legge,
+1899, public domain" fact visible in the UI itself, not just in this README. See
+[SPEC-018](specs/deep-hexagram-page/spec.md).
+
+**Feature 26 (Translation Comparison) is blocked, not skipped:** it needs a second real,
+independently-sourced, public-domain translation to compare against Legge's — the same kind of
+dedicated sourcing/parsing/cross-checking pass SPEC-002 did for Legge himself. Inventing or
+LLM-generating a second "translation" would violate this project's own rule against fabricated
+canonical data (plan feature 27 says so explicitly, and the practice has held throughout). This
+needs a real source identified before it can be built.
+
+Next recommended steps: provide a second public-domain I Ching translation source to unblock
+feature 26 (translation comparison) and 27 (Chinese original text with real pinyin), or continue
+further into the batch with 28+ (glossary, cross-references, consultation-history features 30-36,
+AI layering 37-40) where the next few are UI/domain work rather than new corpus sourcing — or
+verify the live Gemini call (see above) whenever an `AI_API_KEY` is available.

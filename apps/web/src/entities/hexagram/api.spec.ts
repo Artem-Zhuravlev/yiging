@@ -6,6 +6,7 @@ const sample: Hexagram = {
   kingWenNumber: 11,
   chineseName: '泰',
   pinyin: 'Tài',
+  symbol: '䷊',
   lines: Array.from({ length: 6 }, (_, i) => ({ position: i + 1, polarity: 'yang' as const })),
   upperTrigram: { id: 'Kun', name: 'Kun', chineseName: '坤', pinyin: 'Kūn', symbol: '☷' },
   lowerTrigram: { id: 'Qian', name: 'Qian', chineseName: '乾', pinyin: 'Qián', symbol: '☰' },

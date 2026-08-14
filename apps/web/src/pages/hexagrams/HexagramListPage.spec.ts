@@ -15,6 +15,7 @@ function sampleHexagram(kingWenNumber: number): Hexagram {
     kingWenNumber,
     chineseName: '乾',
     pinyin: 'Qián',
+    symbol: '䷀',
     lines: Array.from({ length: 6 }, (_, i) => ({
       position: i + 1,
       polarity: 'yang' as const,

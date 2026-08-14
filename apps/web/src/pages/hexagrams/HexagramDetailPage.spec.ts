@@ -22,6 +22,7 @@ const sampleHexagram: Hexagram = {
   kingWenNumber: 1,
   chineseName: '乾',
   pinyin: 'Qián',
+  symbol: '䷀',
   lines: Array.from({ length: 6 }, (_, i) => ({ position: i + 1, polarity: 'yang' as const })),
   upperTrigram: { id: 'Qian', name: 'Qian', chineseName: '乾', pinyin: 'Qián', symbol: '☰' },
   lowerTrigram: { id: 'Qian', name: 'Qian', chineseName: '乾', pinyin: 'Qián', symbol: '☰' },
@@ -59,6 +60,45 @@ describe('HexagramDetailPage', () => {
     expect(wrapper.text()).toContain('Not yet available.')
   })
 
+  it('renders the hexagram symbol and a source attribution line', async () => {
+    vi.mocked(fetchHexagram).mockResolvedValue(sampleHexagram)
+
+    wrapper = mount(HexagramDetailPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.find('h1').text()).toContain('䷀')
+    expect(wrapper.text()).toContain('James Legge')
+    expect(wrapper.text()).toContain('1899')
+  })
+
+  it('shows a placeholder when lineStatements is null', async () => {
+    vi.mocked(fetchHexagram).mockResolvedValue(sampleHexagram)
+
+    wrapper = mount(HexagramDetailPage, { global: { stubs } })
+    await flushPromises()
+
+    const lineTextsHeading = wrapper.findAll('h2').find((h) => h.text() === 'Line Texts')!
+    expect(lineTextsHeading.element.nextElementSibling?.textContent).toBe('Not yet available.')
+  })
+
+  it('renders all six line texts, position 6 first', async () => {
+    const withLineStatements: Hexagram = {
+      ...sampleHexagram,
+      lineStatements: ['first', 'second', 'third', 'fourth', 'fifth', 'sixth'],
+    }
+    vi.mocked(fetchHexagram).mockResolvedValue(withLineStatements)
+
+    wrapper = mount(HexagramDetailPage, { global: { stubs } })
+    await flushPromises()
+
+    const items = wrapper.findAll('ol li')
+    expect(items).toHaveLength(6)
+    expect(items[0]!.text()).toContain('Line 6')
+    expect(items[0]!.text()).toContain('sixth')
+    expect(items[5]!.text()).toContain('Line 1')
+    expect(items[5]!.text()).toContain('first')
+  })
+
   it('renders self-referential relationships as plain text, not links', async () => {
     vi.mocked(fetchHexagram).mockResolvedValue(sampleHexagram)
 
@@ -91,12 +131,13 @@ describe('HexagramDetailPage', () => {
       kingWenNumber: 54,
       chineseName: '歸妹',
       pinyin: 'Guī Mèi',
+      symbol: '䷻',
     }
     vi.mocked(fetchHexagram).mockResolvedValueOnce(sampleHexagram)
 
     wrapper = mount(HexagramDetailPage, { global: { stubs } })
     await flushPromises()
-    expect(wrapper.find('h1').text()).toBe('1. 乾')
+    expect(wrapper.find('h1').text()).toBe('䷀ 1. 乾')
 
     vi.mocked(fetchHexagram).mockResolvedValueOnce(otherHexagram)
     route.params.number = '54'
@@ -104,7 +145,7 @@ describe('HexagramDetailPage', () => {
     await flushPromises()
 
     expect(fetchHexagram).toHaveBeenCalledWith(54)
-    expect(wrapper.find('h1').text()).toBe('54. 歸妹')
+    expect(wrapper.find('h1').text()).toBe('䷻ 54. 歸妹')
   })
 
   it('shows a not-found state on a 404', async () => {

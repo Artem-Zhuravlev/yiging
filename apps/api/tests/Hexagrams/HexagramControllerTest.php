@@ -58,6 +58,13 @@ final class HexagramControllerTest extends TestCase
         self::assertSame('乾', $body['chineseName']);
     }
 
+    public function testShowIncludesTheUnicodeSymbol(): void
+    {
+        $response = $this->kernel->handle(Request::create('/api/hexagrams/11', 'GET'));
+
+        self::assertSame("\u{4DCA}", $this->decode($response)['symbol']);
+    }
+
     public function testShowIncludesRelationships(): void
     {
         // Hexagram 11 (Tai): nuclear is 54 (Gui Mei), reversed and complement both land on 12

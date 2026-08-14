@@ -14,6 +14,7 @@ const qian: Hexagram = {
   kingWenNumber: 1,
   chineseName: '乾',
   pinyin: 'Qián',
+  symbol: '䷀',
   lines: Array.from({ length: 6 }, (_, i) => ({ position: i + 1, polarity: 'yang' as const })),
   upperTrigram: { id: 'Qian', name: 'Qian', chineseName: '乾', pinyin: 'Qián', symbol: '☰' },
   lowerTrigram: { id: 'Qian', name: 'Qian', chineseName: '乾', pinyin: 'Qián', symbol: '☰' },
@@ -31,6 +32,7 @@ const tai: Hexagram = {
   kingWenNumber: 11,
   chineseName: '泰',
   pinyin: 'Tài',
+  symbol: '䷊',
   lines: [
     { position: 1, polarity: 'yang' },
     { position: 2, polarity: 'yang' },

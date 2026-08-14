@@ -23,6 +23,16 @@ final class HexagramTest extends TestCase
         self::assertSame(range(1, 64), $numbers);
     }
 
+    public function testSymbolMatchesTheUnicodeStandardsKingWenOrderedBlock(): void
+    {
+        // Cross-checked against the Unicode block's own character names: U+4DC0 "HEXAGRAM FOR
+        // THE CREATIVE HEAVEN" (hexagram 1) through U+4DFF "HEXAGRAM FOR BEFORE COMPLETION"
+        // (hexagram 64), ordered exactly by King Wen sequence.
+        self::assertSame("\u{4DC0}", Hexagram::fromKingWenNumber(1)->symbol());
+        self::assertSame("\u{4DCA}", Hexagram::fromKingWenNumber(11)->symbol());
+        self::assertSame("\u{4DFF}", Hexagram::fromKingWenNumber(64)->symbol());
+    }
+
     public function testAllSixtyFourPatternsAreDistinct(): void
     {
         $patterns = array_map(

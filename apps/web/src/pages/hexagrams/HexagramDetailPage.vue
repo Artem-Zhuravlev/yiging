@@ -76,6 +76,7 @@ watch(
         <HexagramLines :lines="state.hexagram.lines" />
         <div>
           <h1 class="text-2xl font-semibold tracking-tight">
+            <span class="mr-1 text-3xl" aria-hidden="true">{{ state.hexagram.symbol }}</span>
             {{ state.hexagram.kingWenNumber }}. {{ state.hexagram.chineseName }}
           </h1>
           <p class="text-neutral-500">{{ state.hexagram.pinyin }}</p>
@@ -123,6 +124,23 @@ watch(
         <h2 class="text-sm font-medium text-neutral-500">Image</h2>
         <p>{{ state.hexagram.image ?? NOT_AVAILABLE }}</p>
       </div>
+
+      <div>
+        <h2 class="mb-2 text-sm font-medium text-neutral-500">Line Texts</h2>
+        <p v-if="state.hexagram.lineStatements === null">{{ NOT_AVAILABLE }}</p>
+        <ol v-else class="flex flex-col gap-2">
+          <li v-for="(text, index) in [...state.hexagram.lineStatements].reverse()" :key="index">
+            <span class="text-xs tracking-wide text-neutral-400 uppercase">
+              Line {{ state.hexagram.lineStatements!.length - index }}
+            </span>
+            <p>{{ text }}</p>
+          </li>
+        </ol>
+      </div>
+
+      <p class="text-xs text-neutral-400">
+        Source: James Legge's <em>The I Ching</em> (1899), public domain.
+      </p>
     </div>
   </main>
 </template>

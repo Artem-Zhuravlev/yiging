@@ -32,6 +32,7 @@ export interface Hexagram {
   kingWenNumber: number
   chineseName: string
   pinyin: string
+  symbol: string
   lines: HexagramLine[]
   upperTrigram: TrigramSummary
   lowerTrigram: TrigramSummary

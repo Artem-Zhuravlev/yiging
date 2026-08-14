@@ -146,6 +146,7 @@ final class HexagramController
             'kingWenNumber' => $hexagram->kingWenNumber,
             'chineseName' => $hexagram->chineseName,
             'pinyin' => $hexagram->pinyin,
+            'symbol' => $hexagram->symbol(),
             'lines' => array_map(
                 static fn (Line $line): array => [
                     'position' => $line->position,
