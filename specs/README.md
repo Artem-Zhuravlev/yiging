@@ -79,3 +79,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-001 | [Project Architecture](project-architecture/spec.md) | `verified` |
 | SPEC-002 | [I Ching Domain Model](domain-model/spec.md) | `in-progress` (structural pass done, classical text pending) |
 | SPEC-004 | [Casting Engine](casting-engine/spec.md) | `verified` |
+| SPEC-005 | [Readings](readings/spec.md) | `verified` |

@@ -79,6 +79,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-001 | Project Architecture   | `verified` |
 | SPEC-002 | I Ching Domain Model   | `in-progress` (structural pass done, classical text pending) |
 | SPEC-004 | [Casting Engine](specs/casting-engine/spec.md) | `verified` |
+| SPEC-005 | [Readings](specs/readings/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence),
 `changeLine()`/`getResultingHexagram()`, and `YijingRelations` (nuclear/opposite/complement) —
@@ -90,6 +91,12 @@ remaining work — see [SPEC-002's tasks.md](specs/domain-model/tasks.md).
 (dev/test only), all built on an injected `CoinTosser` so casting stays testable without true
 randomness — see [SPEC-004](specs/casting-engine/spec.md).
 
-Next recommended step: SPEC-005 (Readings) — the `Consultation` aggregate (question, timestamp,
-notes, tags, method used) that wraps a `Casting` result, plus its SQLite persistence — or
-populate classical text for all 64 hexagrams (SPEC-002's remaining tasks) in parallel.
+`apps/api/src/Readings` implements the `Consultation` aggregate (question, method used,
+primary/resulting hexagram, notes with before/after/later labels, tags) and its SQLite
+persistence (`ConsultationRepository`/`SqliteConsultationRepository`, migration for
+`consultations`/`consultation_notes`/`tags`/`consultation_tags`) — see
+[SPEC-005](specs/readings/spec.md). `apps/api` is now at 30 tests, 169 assertions.
+
+Next recommended step: a first HTTP API spec (e.g. `POST /api/consultations`,
+`GET /api/consultations`) that wires `Casting` + `Readings` together behind actual endpoints —
+or populate classical text for all 64 hexagrams (SPEC-002's remaining tasks) in parallel.
