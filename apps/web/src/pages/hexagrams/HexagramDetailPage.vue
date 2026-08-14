@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { fetchHexagram } from '../../entities/hexagram/api'
 import { ApiError } from '../../shared/api/http'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
-import type { Hexagram } from '../../entities/hexagram/model'
+import type { Hexagram, HexagramSummary } from '../../entities/hexagram/model'
 
 const NOT_AVAILABLE = 'Not yet available.'
 
@@ -14,25 +14,49 @@ type State =
   | { status: 'error'; message: string }
   | { status: 'loaded'; hexagram: Hexagram }
 
+interface RelatedHexagram {
+  label: string
+  summary: HexagramSummary
+  isSelf: boolean
+}
+
 const route = useRoute()
 const state = ref<State>({ status: 'loading' })
 const kingWenNumber = computed(() => Number(route.params.number))
 
-onMounted(async () => {
-  try {
-    const hexagram = await fetchHexagram(kingWenNumber.value)
-    state.value = { status: 'loaded', hexagram }
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) {
-      state.value = { status: 'not-found' }
-      return
-    }
-    state.value = {
-      status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to load hexagram.',
-    }
+const relatedHexagrams = computed<RelatedHexagram[]>(() => {
+  if (state.value.status !== 'loaded') {
+    return []
   }
+  const { kingWenNumber: current, relationships } = state.value.hexagram
+
+  return [
+    { label: 'Nuclear', summary: relationships.nuclear },
+    { label: 'Reversed', summary: relationships.reversed },
+    { label: 'Complement', summary: relationships.complement },
+  ].map((entry) => ({ ...entry, isSelf: entry.summary.kingWenNumber === current }))
 })
+
+watch(
+  kingWenNumber,
+  async (number) => {
+    state.value = { status: 'loading' }
+    try {
+      const hexagram = await fetchHexagram(number)
+      state.value = { status: 'loaded', hexagram }
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        state.value = { status: 'not-found' }
+        return
+      }
+      state.value = {
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Failed to load hexagram.',
+      }
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -68,6 +92,27 @@ onMounted(async () => {
           <dd>{{ state.hexagram.lowerTrigram.symbol }} {{ state.hexagram.lowerTrigram.name }}</dd>
         </div>
       </dl>
+
+      <div>
+        <h2 class="mb-2 text-sm font-medium text-neutral-500">Related Hexagrams</h2>
+        <dl class="grid grid-cols-3 gap-4">
+          <div v-for="related in relatedHexagrams" :key="related.label">
+            <dt class="text-xs text-neutral-400 uppercase">{{ related.label }}</dt>
+            <dd>
+              <span v-if="related.isSelf">
+                {{ related.summary.kingWenNumber }}. {{ related.summary.chineseName }} (self)
+              </span>
+              <router-link
+                v-else
+                :to="`/hexagrams/${related.summary.kingWenNumber}`"
+                class="underline hover:no-underline"
+              >
+                {{ related.summary.kingWenNumber }}. {{ related.summary.chineseName }}
+              </router-link>
+            </dd>
+          </div>
+        </dl>
+      </div>
 
       <div>
         <h2 class="text-sm font-medium text-neutral-500">Judgment</h2>

@@ -90,6 +90,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-012 | [AI Endpoint Rate Limiting](specs/ai-rate-limiting/spec.md) | `verified` |
 | SPEC-013 | [Consultation Notes & Tags Editing](specs/consultation-editing/spec.md) | `verified` |
 | SPEC-014 | [Complete Hexagram Relationships](specs/hexagram-relationships/spec.md) | `verified` |
+| SPEC-015 | [Hexagram Relationship Navigation](specs/hexagram-relationship-nav/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -207,6 +208,16 @@ logic, no relationship math in the frontend). This is feature 21 of the plan's n
 (features 21-40); the Hexagram Explorer UI that navigates this relationship graph is feature 22,
 next. See [SPEC-014](specs/hexagram-relationships/spec.md).
 
-Next recommended steps: continue the plan's feature 21-40 batch in order (22: Hexagram Explorer
-UI navigating relationships → 23: Visual Hexagram Editor → ... → 40: AI Conversation Per
+`HexagramDetailPage` now has a "Related Hexagrams" section — nuclear/reversed/complement each
+rendered as a `router-link` (self-referential relationships, e.g. hexagram 1's own nuclear, render
+as plain text instead of a dead link to the current page), so the relationship graph SPEC-014
+exposed is now actually clickable end to end: this is feature 22 of the plan's next batch.
+Verifying this manually surfaced a real pre-existing bug from SPEC-007 — `HexagramDetailPage`
+fetched its hexagram in `onMounted()`, which only runs once, so navigating between two hexagram
+pages via a same-route param change (exactly what a relationship link does) silently kept
+showing the *previous* hexagram under the new URL. Fixed by watching the route param instead
+or `onMounted()`. See [SPEC-015](specs/hexagram-relationship-nav/spec.md).
+
+Next recommended steps: continue the plan's feature 21-40 batch in order (23: Visual Hexagram
+Editor → 24: Hexagram Comparison → 25: Deep Hexagram Page → ... → 40: AI Conversation Per
 Consultation), or verify the live Gemini call (see above) whenever an `AI_API_KEY` is available.

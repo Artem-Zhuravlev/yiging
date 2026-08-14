@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { reactive } from 'vue'
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import HexagramDetailPage from './HexagramDetailPage.vue'
 import { fetchHexagram } from '../../entities/hexagram/api'
 import { ApiError } from '../../shared/api/http'
@@ -9,8 +10,10 @@ vi.mock('../../entities/hexagram/api', () => ({
   fetchHexagram: vi.fn(),
 }))
 
+const route = reactive({ params: { number: '1' } })
+
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ params: { number: '1' } }),
+  useRoute: () => route,
 }))
 
 const stubs = { RouterLink: { template: '<a><slot /></a>' } }
@@ -33,20 +36,81 @@ const sampleHexagram: Hexagram = {
 }
 
 describe('HexagramDetailPage', () => {
+  let wrapper: VueWrapper | undefined
+
+  beforeEach(() => {
+    route.params.number = '1'
+  })
+
+  // Every mounted instance's watch() keeps listening on the shared `route` mock above until
+  // unmounted — without this, a later test's route-param change would also re-trigger earlier
+  // tests' still-live component instances, polluting the shared fetchHexagram mock's call queue.
+  afterEach(() => {
+    wrapper?.unmount()
+  })
+
   it('renders the fetched hexagram, with a placeholder for null classical text', async () => {
     vi.mocked(fetchHexagram).mockResolvedValue(sampleHexagram)
 
-    const wrapper = mount(HexagramDetailPage, { global: { stubs } })
+    wrapper = mount(HexagramDetailPage, { global: { stubs } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('乾')
     expect(wrapper.text()).toContain('Not yet available.')
   })
 
+  it('renders self-referential relationships as plain text, not links', async () => {
+    vi.mocked(fetchHexagram).mockResolvedValue(sampleHexagram)
+
+    wrapper = mount(HexagramDetailPage, { global: { stubs } })
+    await flushPromises()
+
+    // sampleHexagram is kingWenNumber 1, whose nuclear and reversed are both itself (1).
+    const selfEntries = wrapper.findAll('dd span')
+    expect(selfEntries).toHaveLength(2)
+    expect(selfEntries[0]!.text()).toContain('(self)')
+    expect(selfEntries[1]!.text()).toContain('(self)')
+  })
+
+  it('renders non-self relationships as navigable links', async () => {
+    vi.mocked(fetchHexagram).mockResolvedValue(sampleHexagram)
+
+    wrapper = mount(HexagramDetailPage, { global: { stubs } })
+    await flushPromises()
+
+    // complement is hexagram 2 (坤), distinct from the current hexagram 1 — must be a link.
+    const relationshipLinks = wrapper.findAll('dd a')
+    expect(relationshipLinks).toHaveLength(1)
+    expect(relationshipLinks[0]!.text()).toContain('坤')
+    expect(relationshipLinks[0]!.text()).not.toContain('(self)')
+  })
+
+  it('re-fetches and replaces the displayed hexagram when the route param changes', async () => {
+    const otherHexagram: Hexagram = {
+      ...sampleHexagram,
+      kingWenNumber: 54,
+      chineseName: '歸妹',
+      pinyin: 'Guī Mèi',
+    }
+    vi.mocked(fetchHexagram).mockResolvedValueOnce(sampleHexagram)
+
+    wrapper = mount(HexagramDetailPage, { global: { stubs } })
+    await flushPromises()
+    expect(wrapper.find('h1').text()).toBe('1. 乾')
+
+    vi.mocked(fetchHexagram).mockResolvedValueOnce(otherHexagram)
+    route.params.number = '54'
+    await flushPromises()
+    await flushPromises()
+
+    expect(fetchHexagram).toHaveBeenCalledWith(54)
+    expect(wrapper.find('h1').text()).toBe('54. 歸妹')
+  })
+
   it('shows a not-found state on a 404', async () => {
     vi.mocked(fetchHexagram).mockRejectedValue(new ApiError(404, 'Not Found'))
 
-    const wrapper = mount(HexagramDetailPage, { global: { stubs } })
+    wrapper = mount(HexagramDetailPage, { global: { stubs } })
     await flushPromises()
 
     expect(wrapper.text().toLowerCase()).toContain('not found')
@@ -55,7 +119,7 @@ describe('HexagramDetailPage', () => {
   it('shows a generic error state for a non-404 failure', async () => {
     vi.mocked(fetchHexagram).mockRejectedValue(new Error('network down'))
 
-    const wrapper = mount(HexagramDetailPage, { global: { stubs } })
+    wrapper = mount(HexagramDetailPage, { global: { stubs } })
     await flushPromises()
 
     expect(wrapper.text()).toContain('network down')

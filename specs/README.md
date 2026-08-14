@@ -90,3 +90,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-012 | [AI Endpoint Rate Limiting](ai-rate-limiting/spec.md) | `verified` |
 | SPEC-013 | [Consultation Notes & Tags Editing](consultation-editing/spec.md) | `verified` |
 | SPEC-014 | [Complete Hexagram Relationships](hexagram-relationships/spec.md) | `verified` |
+| SPEC-015 | [Hexagram Relationship Navigation](hexagram-relationship-nav/spec.md) | `verified` |
