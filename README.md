@@ -81,11 +81,13 @@ plain-VPS instructions, all Docker-free.
 | SPEC-004 | [Casting Engine](specs/casting-engine/spec.md) | `verified` |
 | SPEC-005 | [Readings](specs/readings/spec.md) | `verified` |
 | SPEC-006 | [Consultation API](specs/consultation-api/spec.md) | `verified` |
+| SPEC-003 | [Hexagram Explorer](specs/hexagram-explorer/spec.md) | `verified` |
 
-`packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence),
-`changeLine()`/`getResultingHexagram()`, and `YijingRelations` (nuclear/opposite/complement) —
-46 tests, 244 assertions. Judgment/image/line-statement text (Legge, 1899, public domain) is the
-remaining work — see [SPEC-002's tasks.md](specs/domain-model/tasks.md).
+`packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
+plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, and `YijingRelations`
+(nuclear/opposite/complement) — 48 tests, 757 assertions. Judgment/image/line-statement text
+(Legge, 1899, public domain) is the remaining work — see
+[SPEC-002's tasks.md](specs/domain-model/tasks.md).
 
 `apps/api/src/Casting` implements the casting engine — `DivinationMethod` interface with
 `ThreeCoinsMethod` (traditional 6/7/8/9 coin-sum rule), `ManualMethod`, and `RandomMethod`
@@ -101,9 +103,12 @@ persistence (`ConsultationRepository`/`SqliteConsultationRepository`, migration 
 `POST /api/consultations`, `GET /api/consultations`, and `GET /api/consultations/{id}` are now
 live — `ConsultationController` wires a chosen `Casting` method into a persisted `Consultation`
 and returns it as JSON, with `422`/`404` handled explicitly (no uncaught exceptions reaching
-the client) — see [SPEC-006](specs/consultation-api/spec.md). `apps/api` is now at 41 tests,
-208 assertions.
+the client) — see [SPEC-006](specs/consultation-api/spec.md).
 
-Next recommended step: SPEC-003 (Hexagram Explorer — `GET /api/hexagrams`, `/api/trigrams`) so
-the frontend has something to browse before wiring up the consultation flow, or populate
-classical text for all 64 hexagrams (SPEC-002's remaining tasks) in parallel.
+`GET /api/hexagrams`, `GET /api/hexagrams/{number}`, and `GET /api/trigrams` are now live —
+read-only browsing over `yijing-core`'s static reference data, no database involved — see
+[SPEC-003](specs/hexagram-explorer/spec.md). `apps/api` is now at 52 tests, 380 assertions.
+
+Next recommended step: frontend work (Vue routing, hexagram explorer page, consultation flow)
+now has a full API surface to consume, or populate classical text for all 64 hexagrams
+(SPEC-002's remaining tasks) so judgment/image/line-statement fields stop being `null`.

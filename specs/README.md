@@ -81,3 +81,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-004 | [Casting Engine](casting-engine/spec.md) | `verified` |
 | SPEC-005 | [Readings](readings/spec.md) | `verified` |
 | SPEC-006 | [Consultation API](consultation-api/spec.md) | `verified` |
+| SPEC-003 | [Hexagram Explorer](hexagram-explorer/spec.md) | `verified` |
