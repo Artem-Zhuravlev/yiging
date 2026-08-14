@@ -207,3 +207,9 @@ None — see "Out of scope."
 `Consultation`, `Clock`/`SystemClock`, `ConsultationIdGenerator`/`UuidV4ConsultationIdGenerator`,
 `ConsultationRepository`/`SqliteConsultationRepository` — 12 tests added (30 total in
 `apps/api`, 169 assertions). `npm run verify` passes end to end (web + api + yijing-core).
+
+**Addendum (found during SPEC-006):** `findAll()`'s original tiebreak (`id DESC`, a UUID with
+no relation to insertion order) could return same-second consultations in the wrong order —
+not caught here because this spec's own tests never created two consultations fast enough to
+land in the same `created_at` second. SPEC-006's HTTP-level test did. Fixed by tie-breaking on
+SQLite's implicit `rowid` instead. See [SPEC-006](../consultation-api/spec.md).

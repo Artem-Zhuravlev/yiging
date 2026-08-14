@@ -80,6 +80,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-002 | I Ching Domain Model   | `in-progress` (structural pass done, classical text pending) |
 | SPEC-004 | [Casting Engine](specs/casting-engine/spec.md) | `verified` |
 | SPEC-005 | [Readings](specs/readings/spec.md) | `verified` |
+| SPEC-006 | [Consultation API](specs/consultation-api/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence),
 `changeLine()`/`getResultingHexagram()`, and `YijingRelations` (nuclear/opposite/complement) —
@@ -95,8 +96,14 @@ randomness — see [SPEC-004](specs/casting-engine/spec.md).
 primary/resulting hexagram, notes with before/after/later labels, tags) and its SQLite
 persistence (`ConsultationRepository`/`SqliteConsultationRepository`, migration for
 `consultations`/`consultation_notes`/`tags`/`consultation_tags`) — see
-[SPEC-005](specs/readings/spec.md). `apps/api` is now at 30 tests, 169 assertions.
+[SPEC-005](specs/readings/spec.md).
 
-Next recommended step: a first HTTP API spec (e.g. `POST /api/consultations`,
-`GET /api/consultations`) that wires `Casting` + `Readings` together behind actual endpoints —
-or populate classical text for all 64 hexagrams (SPEC-002's remaining tasks) in parallel.
+`POST /api/consultations`, `GET /api/consultations`, and `GET /api/consultations/{id}` are now
+live — `ConsultationController` wires a chosen `Casting` method into a persisted `Consultation`
+and returns it as JSON, with `422`/`404` handled explicitly (no uncaught exceptions reaching
+the client) — see [SPEC-006](specs/consultation-api/spec.md). `apps/api` is now at 41 tests,
+208 assertions.
+
+Next recommended step: SPEC-003 (Hexagram Explorer — `GET /api/hexagrams`, `/api/trigrams`) so
+the frontend has something to browse before wiring up the consultation flow, or populate
+classical text for all 64 hexagrams (SPEC-002's remaining tasks) in parallel.

@@ -48,7 +48,9 @@ final class SqliteConsultationRepository implements ConsultationRepository
 
     public function findAll(): array
     {
-        $statement = $this->pdo->prepare('SELECT * FROM consultations ORDER BY created_at DESC, id DESC');
+        // rowid (not id, a UUID with no relation to insertion order) breaks ties for
+        // consultations created within the same createdAt second.
+        $statement = $this->pdo->prepare('SELECT * FROM consultations ORDER BY created_at DESC, rowid DESC');
         $statement->execute();
 
         $consultations = [];
