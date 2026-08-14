@@ -8,6 +8,16 @@ const router = createRouter({
       name: 'home',
       component: () => import('../pages/home/HomePage.vue'),
     },
+    {
+      path: '/hexagrams',
+      name: 'hexagrams',
+      component: () => import('../pages/hexagrams/HexagramListPage.vue'),
+    },
+    {
+      path: '/hexagrams/:number',
+      name: 'hexagram-detail',
+      component: () => import('../pages/hexagrams/HexagramDetailPage.vue'),
+    },
   ],
 })
 

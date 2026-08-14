@@ -82,6 +82,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-005 | [Readings](specs/readings/spec.md) | `verified` |
 | SPEC-006 | [Consultation API](specs/consultation-api/spec.md) | `verified` |
 | SPEC-003 | [Hexagram Explorer](specs/hexagram-explorer/spec.md) | `verified` |
+| SPEC-007 | [Hexagram Explorer UI](specs/hexagram-explorer-ui/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, and `YijingRelations`
@@ -109,6 +110,14 @@ the client) — see [SPEC-006](specs/consultation-api/spec.md).
 read-only browsing over `yijing-core`'s static reference data, no database involved — see
 [SPEC-003](specs/hexagram-explorer/spec.md). `apps/api` is now at 52 tests, 380 assertions.
 
-Next recommended step: frontend work (Vue routing, hexagram explorer page, consultation flow)
-now has a full API surface to consume, or populate classical text for all 64 hexagrams
-(SPEC-002's remaining tasks) so judgment/image/line-statement fields stop being `null`.
+`apps/web` now has a real page: `/hexagrams` and `/hexagrams/:number`, backed by a small typed
+API client (`shared/api`) and a Vite dev proxy so `npm run dev` talks to the PHP dev server
+same-origin, no CORS needed — see [SPEC-007](specs/hexagram-explorer-ui/spec.md). This is the
+pattern (`entities/<domain>` for types+fetch, `pages/<domain>` for routes, feature-sliced
+layering) later pages (the consultation flow) will follow.
+
+Next recommended step: the consultation flow (`/consultations/new`, `/consultations`,
+`/consultations/:id`) — the larger, multi-step frontend piece, now that the API-consumption
+pattern is proven — or populate classical text for all 64 hexagrams (SPEC-002's remaining
+tasks) so judgment/image/line-statement fields stop being `null` everywhere, including in the
+UI that now displays them.
