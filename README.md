@@ -77,7 +77,7 @@ plain-VPS instructions, all Docker-free.
 | ID       | Feature               | Status     |
 | -------- | ----------------------- | ---------- |
 | SPEC-001 | Project Architecture   | `verified` |
-| SPEC-002 | I Ching Domain Model   | `in-progress` (structural pass done, classical text pending) |
+| SPEC-002 | [I Ching Domain Model](specs/domain-model/spec.md) | `verified` |
 | SPEC-004 | [Casting Engine](specs/casting-engine/spec.md) | `verified` |
 | SPEC-005 | [Readings](specs/readings/spec.md) | `verified` |
 | SPEC-006 | [Consultation API](specs/consultation-api/spec.md) | `verified` |
@@ -86,10 +86,13 @@ plain-VPS instructions, all Docker-free.
 | SPEC-009 | [Consultation Flow UI](specs/consultation-flow-ui/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
-plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, and `YijingRelations`
-(nuclear/opposite/complement) — 48 tests, 757 assertions. Judgment/image/line-statement text
-(Legge, 1899, public domain) is the remaining work — see
-[SPEC-002's tasks.md](specs/domain-model/tasks.md).
+plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
+(nuclear/opposite/complement), and — as of the classical-text pass — full judgment/image/6
+line-statement text for all 64 hexagrams (James Legge, 1899, public domain; transcribed and
+cross-checked against an independent source) via `Data/HexagramTextCatalog.php`. These fields
+are non-nullable now; every hexagram everywhere (Explorer, consultation detail) shows real
+classical text instead of a placeholder. 51 tests, 1530 assertions — see
+[SPEC-002](specs/domain-model/spec.md).
 
 `apps/api/src/Casting` implements the casting engine — `DivinationMethod` interface with
 `ThreeCoinsMethod` (traditional 6/7/8/9 coin-sum rule), `ManualMethod`, and `RandomMethod`
@@ -109,7 +112,7 @@ the client) — see [SPEC-006](specs/consultation-api/spec.md).
 
 `GET /api/hexagrams`, `GET /api/hexagrams/{number}`, and `GET /api/trigrams` are now live —
 read-only browsing over `yijing-core`'s static reference data, no database involved — see
-[SPEC-003](specs/hexagram-explorer/spec.md). `apps/api` is now at 52 tests, 380 assertions.
+[SPEC-003](specs/hexagram-explorer/spec.md). `apps/api` is at 52 tests, 380 assertions.
 
 `apps/web` now has a real page: `/hexagrams` and `/hexagrams/:number`, backed by a small typed
 API client (`shared/api`) and a Vite dev proxy so `npm run dev` talks to the PHP dev server
@@ -124,6 +127,10 @@ and `/consultations` (history, newest-first) — see
 the plan's core MVP loop end to end: ask a question → cast → see the hexagram → find it again
 later.
 
-Next recommended step: populate classical text for all 64 hexagrams (SPEC-002's remaining
-tasks) so judgment/image/line-statement fields stop being `null` everywhere the UI shows them,
-or start SPEC-008 (AI interpretation) now that there's a full consultation record to interpret.
+Every backend and frontend spec through SPEC-009 is now `verified`, including SPEC-002's
+classical-text pass — real Legge translation renders everywhere the UI shows a hexagram, not
+placeholder text.
+
+Next recommended step: SPEC-008 (AI interpretation) — a full consultation record with real
+classical text now exists to build an `InterpretationContext` from, per the original plan's
+Phase 8 (`InterpretationContextBuilder` → `InterpretationProvider`, mock provider first).

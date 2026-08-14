@@ -1,7 +1,7 @@
 # Tasks — I Ching Domain Model (SPEC-002)
 
-**Spec status: `in-progress`** — structural pass complete (see `spec.md`). Classical text tasks
-remain pending until picked up as a follow-up.
+**Spec status: `verified`** — both the structural pass and the classical text pass are
+complete (see `spec.md`).
 
 ## Structural pass (done)
 
@@ -18,8 +18,11 @@ remain pending until picked up as a follow-up.
 | TASK-DM-010 | Wire `yijing-core` lint/stan into `scripts/verify.mjs`            | REQ-ARCH-008               | `npm run verify`           | done |
 | TASK-DM-011 | Implement `Hexagram::fromKingWenNumber()` (added while building SPEC-003/006) | REQ-HX-008 | `HexagramTest` | done |
 
-## Classical text pass (follow-up, not started)
+## Classical text pass (done)
 
 | Task ID     | Description                                                     | Requirement(s)          | Test(s)                | Status  |
 | ----------- | ------------------------------------------------------------------ | ------------------------- | ------------------------ | ------- |
-| TASK-DM-001 | Populate judgment/image/6 line statements for all 64 hexagrams from Legge (1899, public domain), accurately transcribed | REQ-HX-003, REQ-DM-003 | manual review against source | pending |
+| TASK-DM-001 | Populate judgment/image/6 line statements for all 64 hexagrams from Legge (1899, public domain), accurately transcribed | REQ-HX-003, REQ-DM-003 | `HexagramTextCatalogTest`, cross-checked against ctext.org | done |
+| TASK-DM-012 | Add `Data/HexagramTextCatalog.php`, wire into `Hexagram::fromLines()` | REQ-HX-003 | `HexagramTest`, `HexagramTextCatalogTest` | done |
+| TASK-DM-013 | Make `judgment`/`image`/`lineStatements` non-nullable on `Hexagram`  | REQ-DM-003 | `HexagramTest` | done |
+| TASK-DM-014 | Update downstream tests that asserted the old null-placeholder state | (apps/api regression) | `HexagramControllerTest` | done |

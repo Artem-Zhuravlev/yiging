@@ -94,6 +94,9 @@ final class HexagramTest extends TestCase
 
             self::assertSame($number, $hexagram->kingWenNumber, "Hexagram {$number}");
             self::assertSame($entry['chineseName'], $hexagram->chineseName, "Hexagram {$number}");
+            self::assertNotSame('', $hexagram->judgment, "Hexagram {$number} judgment");
+            self::assertNotSame('', $hexagram->image, "Hexagram {$number} image");
+            self::assertCount(6, $hexagram->lineStatements, "Hexagram {$number} line statements");
 
             foreach ($hexagram->lines as $line) {
                 self::assertFalse($line->changing, "Hexagram {$number} line {$line->position}");

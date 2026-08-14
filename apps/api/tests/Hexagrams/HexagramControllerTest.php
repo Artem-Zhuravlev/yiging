@@ -43,9 +43,9 @@ final class HexagramControllerTest extends TestCase
         self::assertCount(6, $first['lines']);
         self::assertArrayHasKey('id', $first['upperTrigram']);
         self::assertArrayHasKey('id', $first['lowerTrigram']);
-        self::assertNull($first['judgment']);
-        self::assertNull($first['image']);
-        self::assertNull($first['lineStatements']);
+        self::assertNotEmpty($first['judgment']);
+        self::assertNotEmpty($first['image']);
+        self::assertCount(6, $first['lineStatements']);
     }
 
     public function testShowReturnsTheFirstHexagram(): void

@@ -5,21 +5,22 @@ declare(strict_types=1);
 namespace Yijing\Core;
 
 use Yijing\Core\Data\HexagramCatalog;
+use Yijing\Core\Data\HexagramTextCatalog;
 
 final readonly class Hexagram
 {
     /**
      * @param list<Line> $lines exactly 6 lines, positions 1-6, bottom to top
-     * @param list<string>|null $lineStatements exactly 6 entries, positions 1-6, when present
+     * @param list<string> $lineStatements exactly 6 entries, positions 1-6
      */
     private function __construct(
         public array $lines,
         public int $kingWenNumber,
         public string $chineseName,
         public string $pinyin,
-        public ?string $judgment = null,
-        public ?string $image = null,
-        public ?array $lineStatements = null,
+        public string $judgment,
+        public string $image,
+        public array $lineStatements,
     ) {
     }
 
@@ -38,8 +39,17 @@ final readonly class Hexagram
         $pattern = self::patternOf($lines);
         $kingWenNumber = HexagramCatalog::kingWenNumberForPattern($pattern);
         $entry = HexagramCatalog::entryFor($kingWenNumber);
+        $text = HexagramTextCatalog::textFor($kingWenNumber);
 
-        return new self($lines, $kingWenNumber, $entry['chineseName'], $entry['pinyin']);
+        return new self(
+            $lines,
+            $kingWenNumber,
+            $entry['chineseName'],
+            $entry['pinyin'],
+            $text['judgment'],
+            $text['image'],
+            $text['lineStatements'],
+        );
     }
 
     /**
