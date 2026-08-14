@@ -83,6 +83,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-006 | [Consultation API](specs/consultation-api/spec.md) | `verified` |
 | SPEC-003 | [Hexagram Explorer](specs/hexagram-explorer/spec.md) | `verified` |
 | SPEC-007 | [Hexagram Explorer UI](specs/hexagram-explorer-ui/spec.md) | `verified` |
+| SPEC-009 | [Consultation Flow UI](specs/consultation-flow-ui/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, and `YijingRelations`
@@ -116,8 +117,13 @@ same-origin, no CORS needed — see [SPEC-007](specs/hexagram-explorer-ui/spec.m
 pattern (`entities/<domain>` for types+fetch, `pages/<domain>` for routes, feature-sliced
 layering) later pages (the consultation flow) will follow.
 
-Next recommended step: the consultation flow (`/consultations/new`, `/consultations`,
-`/consultations/:id`) — the larger, multi-step frontend piece, now that the API-consumption
-pattern is proven — or populate classical text for all 64 hexagrams (SPEC-002's remaining
-tasks) so judgment/image/line-statement fields stop being `null` everywhere, including in the
-UI that now displays them.
+The consultation flow is live: `/consultations/new` (question + Three Coins/Manual casting),
+`/consultations/:id` (full detail — hexagram diagrams with changing lines marked, notes, tags),
+and `/consultations` (history, newest-first) — see
+[SPEC-009](specs/consultation-flow-ui/spec.md). `apps/web` is now at 30 tests. This completes
+the plan's core MVP loop end to end: ask a question → cast → see the hexagram → find it again
+later.
+
+Next recommended step: populate classical text for all 64 hexagrams (SPEC-002's remaining
+tasks) so judgment/image/line-statement fields stop being `null` everywhere the UI shows them,
+or start SPEC-008 (AI interpretation) now that there's a full consultation record to interpret.

@@ -5,6 +5,8 @@
     <div class="mx-auto flex max-w-5xl gap-6 text-sm font-medium">
       <router-link to="/" class="hover:underline">Yijing</router-link>
       <router-link to="/hexagrams" class="hover:underline">Hexagrams</router-link>
+      <router-link to="/consultations/new" class="hover:underline">New Consultation</router-link>
+      <router-link to="/consultations" class="hover:underline">History</router-link>
     </div>
   </nav>
   <router-view />

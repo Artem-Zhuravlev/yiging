@@ -18,6 +18,21 @@ const router = createRouter({
       name: 'hexagram-detail',
       component: () => import('../pages/hexagrams/HexagramDetailPage.vue'),
     },
+    {
+      path: '/consultations/new',
+      name: 'consultation-new',
+      component: () => import('../pages/consultations/NewConsultationPage.vue'),
+    },
+    {
+      path: '/consultations',
+      name: 'consultations',
+      component: () => import('../pages/consultations/ConsultationHistoryPage.vue'),
+    },
+    {
+      path: '/consultations/:id',
+      name: 'consultation-detail',
+      component: () => import('../pages/consultations/ConsultationPage.vue'),
+    },
   ],
 })
 

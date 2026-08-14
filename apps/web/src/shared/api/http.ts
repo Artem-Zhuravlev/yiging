@@ -14,9 +14,7 @@ interface ErrorBody {
   error?: string
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
-  const response = await fetch(`${BASE_URL}${path}`)
-
+async function handleResponse<T>(path: string, response: Response): Promise<T> {
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as ErrorBody | null
     throw new ApiError(
@@ -26,4 +24,20 @@ export async function apiGet<T>(path: string): Promise<T> {
   }
 
   return (await response.json()) as T
+}
+
+export async function apiGet<T>(path: string): Promise<T> {
+  const response = await fetch(`${BASE_URL}${path}`)
+
+  return handleResponse<T>(path, response)
+}
+
+export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  return handleResponse<T>(path, response)
 }

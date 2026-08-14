@@ -47,4 +47,18 @@ describe('HexagramLines', () => {
     expect(wrapper.find('[data-position="1"]').findAll('span')).toHaveLength(1)
     expect(wrapper.find('[data-position="2"]').findAll('span')).toHaveLength(2)
   })
+
+  it('marks changing lines and leaves non-changing lines unmarked', () => {
+    const wrapper = mount(HexagramLines, {
+      props: {
+        lines: [
+          { position: 1, polarity: 'yang', changing: true },
+          { position: 2, polarity: 'yin' },
+        ],
+      },
+    })
+
+    expect(wrapper.find('[data-position="1"]').attributes('data-changing')).toBe('true')
+    expect(wrapper.find('[data-position="2"]').attributes('data-changing')).toBeUndefined()
+  })
 })

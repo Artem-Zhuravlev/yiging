@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { apiGet, ApiError } from './http'
+import { apiGet, apiPost, ApiError } from './http'
 
 describe('apiGet', () => {
   afterEach(() => {
@@ -47,5 +47,47 @@ describe('apiGet', () => {
     )
 
     await expect(apiGet('/broken')).rejects.toBeInstanceOf(ApiError)
+  })
+})
+
+describe('apiPost', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('sends a JSON body and resolves parsed JSON on a successful response', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: '1' }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await apiPost<{ id: string }>('/things', { name: 'test' })
+
+    expect(result).toEqual({ id: '1' })
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/things',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'test' }),
+      }),
+    )
+  })
+
+  it('throws an ApiError with the status and message on a non-2xx response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 422,
+        json: () => Promise.resolve({ error: 'Invalid input.' }),
+      }),
+    )
+
+    await expect(apiPost('/things', {})).rejects.toMatchObject({
+      status: 422,
+      message: 'Invalid input.',
+    })
   })
 })

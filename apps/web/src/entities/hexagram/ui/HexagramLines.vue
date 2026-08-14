@@ -16,15 +16,21 @@ const topToBottom = computed(() => [...props.lines].reverse())
     <div
       v-for="line in topToBottom"
       :key="line.position"
-      class="flex h-2 w-16 gap-2"
+      class="flex h-2 w-16 items-center gap-2"
       :data-position="line.position"
       :data-polarity="line.polarity"
+      :data-changing="line.changing ? 'true' : undefined"
     >
       <span v-if="line.polarity === 'yang'" class="h-full w-full rounded-sm bg-neutral-800" />
       <template v-else>
         <span class="h-full w-[45%] rounded-sm bg-neutral-800" />
         <span class="h-full w-[45%] rounded-sm bg-neutral-800" />
       </template>
+      <span
+        v-if="line.changing"
+        class="h-1.5 w-1.5 shrink-0 rounded-full bg-red-500"
+        title="Changing line"
+      />
     </div>
   </div>
 </template>
