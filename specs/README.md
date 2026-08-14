@@ -84,3 +84,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-003 | [Hexagram Explorer](hexagram-explorer/spec.md) | `verified` |
 | SPEC-007 | [Hexagram Explorer UI](hexagram-explorer-ui/spec.md) | `verified` |
 | SPEC-009 | [Consultation Flow UI](consultation-flow-ui/spec.md) | `verified` |
+| SPEC-008 | [AI Interpretation](ai-interpretation/spec.md) | `verified` |

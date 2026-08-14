@@ -84,6 +84,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-003 | [Hexagram Explorer](specs/hexagram-explorer/spec.md) | `verified` |
 | SPEC-007 | [Hexagram Explorer UI](specs/hexagram-explorer-ui/spec.md) | `verified` |
 | SPEC-009 | [Consultation Flow UI](specs/consultation-flow-ui/spec.md) | `verified` |
+| SPEC-008 | [AI Interpretation](specs/ai-interpretation/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -127,10 +128,20 @@ and `/consultations` (history, newest-first) — see
 the plan's core MVP loop end to end: ask a question → cast → see the hexagram → find it again
 later.
 
-Every backend and frontend spec through SPEC-009 is now `verified`, including SPEC-002's
-classical-text pass — real Legge translation renders everywhere the UI shows a hexagram, not
-placeholder text.
+`POST /api/interpretations/{consultationId}` is now live — builds an `InterpretationContext`
+from a `Consultation` (its real primary/resulting hexagrams, only the *changing* lines' text,
+existing notes) and hands it to a swappable `InterpretationProvider`. The only implementation
+so far is `MockInterpretationProvider`: fully deterministic, built entirely from the context's
+own canonical text, no API key or external call — every `sourceReferences` entry traces back to
+real Legge text, nothing invented — see [SPEC-008](specs/ai-interpretation/spec.md). `apps/api`
+is now at 60 tests, 413 assertions.
 
-Next recommended step: SPEC-008 (AI interpretation) — a full consultation record with real
-classical text now exists to build an `InterpretationContext` from, per the original plan's
-Phase 8 (`InterpretationContextBuilder` → `InterpretationProvider`, mock provider first).
+Every spec is now `verified`, SPEC-001 through SPEC-009 — the entire backend, domain model, and
+core frontend loop (ask → cast → see → interpret → find again) from the original plan's MVP
+definition is complete.
+
+Next recommended steps (independent of each other, per SPEC-008's explicit "out of scope"):
+a real `InterpretationProvider` (needs an API key + secret management + rate limiting, none of
+which exist yet — a deliberate gap, not an oversight), a frontend UI for triggering
+interpretation (`/consultations/:id`'s "get AI interpretation" step), or plan section 26+
+territory (analytics, search/filter on history, journal notes editing UI).
