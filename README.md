@@ -95,6 +95,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-017 | [Hexagram Comparison](specs/hexagram-comparison/spec.md) | `verified` |
 | SPEC-018 | [Deep Hexagram Page](specs/deep-hexagram-page/spec.md) | `verified` |
 | SPEC-019 | [Rich Consultation Context](specs/consultation-context/spec.md) | `verified` |
+| SPEC-020 | [Consultation Outcome](specs/consultation-outcome/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -269,9 +270,25 @@ same session, before this schema change existed) loading correctly with all five
 real backward-compatibility proof, not just a synthetic test. See
 [SPEC-019](specs/consultation-context/spec.md).
 
-Next recommended steps: continue the plan's batch with features 31-36 (consultation outcomes,
-follow-up links, timeline, repeated hexagrams/lines, personal statistics — domain/UI work on data
-already in hand) or 37-40 (AI interpretation layering, profiles, source-grounding, conversation —
-building on the existing `InterpretationContext`/`InterpretationProvider` abstraction), or provide
-a second public-domain I Ching translation source to unblock features 26/27, or verify the live
-Gemini call (see above) whenever an `AI_API_KEY` is available.
+Feature 31 of the plan's next batch is live: a consultation can now carry a
+**`ConsultationOutcome`** — `whatActuallyHappened`, `outcome`, `reflection`, plus a `recordedAt`
+timestamp — stored in its own `consultation_outcomes` table (one row per consultation, linked by
+`consultation_id` as its primary key) rather than more columns on `consultations`, exactly the
+"separate historical record" the feature asked for. Settable/editable via the same
+`PATCH /api/consultations/{id}` endpoint SPEC-013/019 already extended, reusing SPEC-019's
+present-string-sets/present-null-clears/absent-leaves-unchanged semantics for the three new keys.
+Implementing this deliberately audited every existing `Consultation` wither method
+(`withAddedNote`/`withAddedTag`/`withUpdatedContext`) to thread the new `outcome` field through
+explicitly — the exact bug class SPEC-019 found by accident, this time checked for on purpose.
+Verified live end to end, including recording a real outcome on a consultation created earlier in
+this session (well before this feature existed) without disturbing its question, hexagrams, notes,
+tags, or context fields. See [SPEC-020](specs/consultation-outcome/spec.md).
+
+Next recommended steps: continue the plan's batch with features 32-36 (follow-up consultation
+links, a chronological timeline, repeated-hexagram/changing-line detection, personal statistics —
+all domain/UI work on data already in hand, and all reference "outcome status" directly, which
+SPEC-020's linked-entity design was chosen to support) or 37-40 (AI interpretation layering,
+profiles, source-grounding, conversation — building on the existing
+`InterpretationContext`/`InterpretationProvider` abstraction), or provide a second public-domain
+I Ching translation source to unblock features 26/27, or verify the live Gemini call (see above)
+whenever an `AI_API_KEY` is available.

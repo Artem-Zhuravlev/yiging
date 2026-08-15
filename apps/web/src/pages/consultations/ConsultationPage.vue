@@ -58,6 +58,17 @@ function contextFormFrom(consultation: Consultation | null) {
   }
 }
 
+const outcomeForm = ref(outcomeFormFrom(null))
+const outcomeFormState = ref<FormState>({ status: 'idle' })
+
+function outcomeFormFrom(consultation: Consultation | null) {
+  return {
+    whatActuallyHappened: consultation?.outcome?.whatActuallyHappened ?? '',
+    outcome: consultation?.outcome?.outcome ?? '',
+    reflection: consultation?.outcome?.reflection ?? '',
+  }
+}
+
 async function addNote(): Promise<void> {
   if (state.value.status !== 'loaded' || noteFormState.value.status === 'submitting') {
     return
@@ -138,6 +149,36 @@ async function saveContext(): Promise<void> {
   }
 }
 
+// Same shape as saveContext(): sends the full current form state every time, blank meaning
+// "clear this field" (SPEC-020 reuses SPEC-019's PATCH semantics) — but this is a genuinely
+// separate historical record (its own consultation_outcomes row), never touching question,
+// hexagrams, notes, tags, or the context fields above.
+async function saveOutcome(): Promise<void> {
+  if (state.value.status !== 'loaded' || outcomeFormState.value.status === 'submitting') {
+    return
+  }
+
+  const loaded = state.value
+  outcomeFormState.value = { status: 'submitting' }
+
+  try {
+    const updated = await updateConsultation(loaded.consultation.id, {
+      whatActuallyHappened:
+        outcomeForm.value.whatActuallyHappened.trim() === '' ? null : outcomeForm.value.whatActuallyHappened,
+      outcome: outcomeForm.value.outcome.trim() === '' ? null : outcomeForm.value.outcome,
+      reflection: outcomeForm.value.reflection.trim() === '' ? null : outcomeForm.value.reflection,
+    })
+    state.value = { ...loaded, consultation: updated }
+    outcomeForm.value = outcomeFormFrom(updated)
+    outcomeFormState.value = { status: 'idle' }
+  } catch (error) {
+    outcomeFormState.value = {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to save outcome.',
+    }
+  }
+}
+
 async function getInterpretation(): Promise<void> {
   if (interpretationState.value.status === 'loading') {
     return
@@ -176,6 +217,7 @@ onMounted(async () => {
       resultingLines: resultingHexagram.lines,
     }
     contextForm.value = contextFormFrom(consultation)
+    outcomeForm.value = outcomeFormFrom(consultation)
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
       state.value = { status: 'not-found' }
@@ -384,6 +426,57 @@ onMounted(async () => {
             class="self-start rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-white disabled:opacity-50"
           >
             {{ contextFormState.status === 'submitting' ? 'Saving…' : 'Save Context' }}
+          </button>
+        </form>
+      </div>
+
+      <div>
+        <h2 class="mb-2 text-sm font-medium text-neutral-500">Outcome</h2>
+        <p v-if="state.consultation.outcome" class="mb-2 text-xs text-neutral-400">
+          Last recorded {{ new Date(state.consultation.outcome.recordedAt).toLocaleString() }}
+        </p>
+        <form class="flex flex-col gap-3" @submit.prevent="saveOutcome">
+          <div>
+            <label for="edit-what-happened" class="mb-1 block text-xs text-neutral-500">
+              What actually happened
+            </label>
+            <textarea
+              id="edit-what-happened"
+              v-model="outcomeForm.whatActuallyHappened"
+              rows="2"
+              maxlength="5000"
+              class="w-full rounded-md border border-neutral-300 p-2 text-sm"
+            />
+          </div>
+          <div>
+            <label for="edit-outcome" class="mb-1 block text-xs text-neutral-500">Outcome</label>
+            <textarea
+              id="edit-outcome"
+              v-model="outcomeForm.outcome"
+              rows="2"
+              maxlength="5000"
+              class="w-full rounded-md border border-neutral-300 p-2 text-sm"
+            />
+          </div>
+          <div>
+            <label for="edit-reflection" class="mb-1 block text-xs text-neutral-500">Reflection</label>
+            <textarea
+              id="edit-reflection"
+              v-model="outcomeForm.reflection"
+              rows="2"
+              maxlength="5000"
+              class="w-full rounded-md border border-neutral-300 p-2 text-sm"
+            />
+          </div>
+          <p v-if="outcomeFormState.status === 'error'" class="text-sm text-red-600">
+            {{ outcomeFormState.message }}
+          </p>
+          <button
+            type="submit"
+            :disabled="outcomeFormState.status === 'submitting'"
+            class="self-start rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+          >
+            {{ outcomeFormState.status === 'submitting' ? 'Saving…' : 'Save Outcome' }}
           </button>
         </form>
       </div>

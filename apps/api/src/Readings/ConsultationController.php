@@ -122,14 +122,19 @@ final class ConsultationController
             'backgroundInformation',
             'initialInterpretation',
         ];
+        $outcomeKeys = ['whatActuallyHappened', 'outcome', 'reflection'];
         $touchesAnyContextField = array_filter(
             $contextKeys,
             static fn (string $key): bool => array_key_exists($key, $body),
         ) !== [];
+        $touchesAnyOutcomeField = array_filter(
+            $outcomeKeys,
+            static fn (string $key): bool => array_key_exists($key, $body),
+        ) !== [];
 
-        if ($noteInput === null && $tagInput === null && !$touchesAnyContextField) {
+        if ($noteInput === null && $tagInput === null && !$touchesAnyContextField && !$touchesAnyOutcomeField) {
             return $this->errorResponse(
-                'Provide "note", "tag", and/or a context field to update.',
+                'Provide "note", "tag", a context field, and/or an outcome field to update.',
                 Response::HTTP_UNPROCESSABLE_ENTITY,
             );
         }
@@ -166,6 +171,23 @@ final class ConsultationController
                         'initialInterpretation',
                         $consultation->initialInterpretation,
                     ),
+                );
+            }
+
+            if ($touchesAnyOutcomeField) {
+                $consultation = $consultation->withUpdatedOutcome(
+                    whatActuallyHappened: $this->resolveContextField(
+                        $body,
+                        'whatActuallyHappened',
+                        $consultation->outcome?->whatActuallyHappened,
+                    ),
+                    outcome: $this->resolveContextField($body, 'outcome', $consultation->outcome?->outcome),
+                    reflection: $this->resolveContextField(
+                        $body,
+                        'reflection',
+                        $consultation->outcome?->reflection,
+                    ),
+                    recordedAt: $this->clock->now(),
                 );
             }
         } catch (\InvalidArgumentException $e) {
@@ -341,6 +363,12 @@ final class ConsultationController
             'whatUserWantsToUnderstand' => $consultation->whatUserWantsToUnderstand,
             'backgroundInformation' => $consultation->backgroundInformation,
             'initialInterpretation' => $consultation->initialInterpretation,
+            'outcome' => $consultation->outcome === null ? null : [
+                'whatActuallyHappened' => $consultation->outcome->whatActuallyHappened,
+                'outcome' => $consultation->outcome->outcome,
+                'reflection' => $consultation->outcome->reflection,
+                'recordedAt' => $consultation->outcome->recordedAt->format(DATE_ATOM),
+            ],
         ];
     }
 

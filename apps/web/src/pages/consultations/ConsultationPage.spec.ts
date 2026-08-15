@@ -66,6 +66,7 @@ const sampleConsultation: Consultation = {
   whatUserWantsToUnderstand: null,
   backgroundInformation: null,
   initialInterpretation: null,
+  outcome: null,
 }
 
 const sampleInterpretation: Interpretation = {
@@ -169,6 +170,86 @@ describe('ConsultationPage', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('context save failed')
+    expect(wrapper.text()).toContain('Should I take the offer?')
+  })
+
+  it('pre-fills the outcome form from the loaded consultation', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue({
+      ...sampleConsultation,
+      outcome: {
+        whatActuallyHappened: 'Took the offer.',
+        outcome: 'Going well.',
+        reflection: null,
+        recordedAt: '2026-08-20T09:00:00+00:00',
+      },
+    })
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    const whatHappened = wrapper.find('#edit-what-happened').element as HTMLTextAreaElement
+    const outcomeField = wrapper.find('#edit-outcome').element as HTMLTextAreaElement
+    const reflection = wrapper.find('#edit-reflection').element as HTMLTextAreaElement
+    expect(whatHappened.value).toBe('Took the offer.')
+    expect(outcomeField.value).toBe('Going well.')
+    expect(reflection.value).toBe('')
+    expect(wrapper.text()).toContain('Last recorded')
+  })
+
+  it('has no outcome section content when nothing has been recorded yet', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Last recorded')
+  })
+
+  it('saves the outcome form and updates the page in place', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    vi.mocked(updateConsultation).mockResolvedValue({
+      ...sampleConsultation,
+      outcome: {
+        whatActuallyHappened: 'Took the offer.',
+        outcome: null,
+        reflection: null,
+        recordedAt: '2026-08-20T09:00:00+00:00',
+      },
+    })
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    await wrapper.find('#edit-what-happened').setValue('Took the offer.')
+    const outcomeForm = wrapper.findAll('form')[3]!
+    await outcomeForm.trigger('submit')
+    await flushPromises()
+
+    expect(updateConsultation).toHaveBeenCalledWith('abc-123', {
+      whatActuallyHappened: 'Took the offer.',
+      outcome: null,
+      reflection: null,
+    })
+    expect(wrapper.text()).toContain('Last recorded')
+  })
+
+  it('shows an inline error when saving the outcome fails, without disturbing the rest of the page', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    vi.mocked(updateConsultation).mockRejectedValue(new Error('outcome save failed'))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    await wrapper.find('#edit-what-happened').setValue('Took the offer.')
+    const outcomeForm = wrapper.findAll('form')[3]!
+    await outcomeForm.trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('outcome save failed')
     expect(wrapper.text()).toContain('Should I take the offer?')
   })
 

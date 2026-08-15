@@ -401,6 +401,112 @@ final class ConsultationControllerTest extends TestCase
         self::assertSame('Some context.', $this->decode($response)['context']);
     }
 
+    public function testCreatedConsultationHasNoOutcome(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        self::assertNull($created['outcome']);
+    }
+
+    public function testUpdateRecordsAnOutcome(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'whatActuallyHappened' => 'Took the offer.',
+            'outcome' => 'Started two weeks later, going well.',
+            'reflection' => 'Glad I trusted the reading.',
+        ]);
+
+        self::assertSame(200, $response->getStatusCode());
+        $outcome = $this->decode($response)['outcome'];
+
+        self::assertSame('Took the offer.', $outcome['whatActuallyHappened']);
+        self::assertSame('Started two weeks later, going well.', $outcome['outcome']);
+        self::assertSame('Glad I trusted the reading.', $outcome['reflection']);
+        self::assertNotEmpty($outcome['recordedAt']);
+    }
+
+    public function testUpdateTouchingOneOutcomeFieldPreservesTheOthers(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+        $this->patchJson('/api/consultations/' . $created['id'], [
+            'whatActuallyHappened' => 'Took the offer.',
+            'outcome' => 'Going well.',
+        ]);
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'reflection' => 'Added later.',
+        ]);
+
+        $outcome = $this->decode($response)['outcome'];
+        self::assertSame('Took the offer.', $outcome['whatActuallyHappened'], 'untouched field must be preserved');
+        self::assertSame('Going well.', $outcome['outcome'], 'untouched field must be preserved');
+        self::assertSame('Added later.', $outcome['reflection']);
+    }
+
+    public function testUpdateRecordingAnOutcomeDoesNotDisturbNotesTagsOrContext(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+            'context' => 'Some context.',
+        ]));
+        $this->patchJson('/api/consultations/' . $created['id'], ['tag' => 'career']);
+        $this->patchJson('/api/consultations/' . $created['id'], [
+            'note' => ['label' => 'before', 'text' => 'Feeling uncertain.'],
+        ]);
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'whatActuallyHappened' => 'Took the offer.',
+        ]);
+
+        $body = $this->decode($response);
+        self::assertSame('Should I take the offer?', $body['question']);
+        self::assertSame('Some context.', $body['context']);
+        self::assertSame(['career'], $body['tags']);
+        self::assertCount(1, $body['notes']);
+        self::assertSame('Feeling uncertain.', $body['notes'][0]['text']);
+    }
+
+    public function testUpdateWithAnOutcomeFieldOverTheLengthLimitReturns422(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'outcome' => str_repeat('a', 5001),
+        ]);
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testUpdateWithOnlyAnOutcomeFieldDoesNotRequireNoteOrTag(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'reflection' => 'A quick reflection.',
+        ]);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame('A quick reflection.', $this->decode($response)['outcome']['reflection']);
+    }
+
     public function testUpdateWithNeitherNoteNorTagReturns422(): void
     {
         $created = $this->decode($this->postJson('/api/consultations', [

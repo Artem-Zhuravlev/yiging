@@ -137,6 +137,100 @@ final class SqliteConsultationRepositoryTest extends TestCase
         self::assertNull($found->initialInterpretation);
     }
 
+    public function testAConsultationWithNoOutcomeRoundTripsAsNull(): void
+    {
+        $consultation = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        );
+
+        $this->repository->save($consultation);
+        $found = $this->repository->findById('consult-1');
+
+        self::assertNotNull($found);
+        self::assertNull($found->outcome);
+    }
+
+    public function testSaveAndFindByIdRoundTripsAnOutcome(): void
+    {
+        $consultation = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        )->withUpdatedOutcome(
+            'Took the offer.',
+            'Started two weeks later, going well.',
+            'Glad I trusted the reading.',
+            new \DateTimeImmutable('2026-08-20T09:00:00+00:00'),
+        );
+
+        $this->repository->save($consultation);
+        $found = $this->repository->findById('consult-1');
+
+        self::assertNotNull($found);
+        self::assertNotNull($found->outcome);
+        self::assertSame('Took the offer.', $found->outcome->whatActuallyHappened);
+        self::assertSame('Started two weeks later, going well.', $found->outcome->outcome);
+        self::assertSame('Glad I trusted the reading.', $found->outcome->reflection);
+        self::assertSame(
+            '2026-08-20T09:00:00+00:00',
+            $found->outcome->recordedAt->format(DATE_ATOM),
+        );
+    }
+
+    public function testSaveUpsertsAnExistingOutcomeRatherThanDuplicatingTheRow(): void
+    {
+        $consultation = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        )->withUpdatedOutcome('First version.', null, null, new \DateTimeImmutable('2026-08-20T09:00:00+00:00'));
+        $this->repository->save($consultation);
+
+        $updated = $consultation->withUpdatedOutcome(
+            'Second version.',
+            null,
+            null,
+            new \DateTimeImmutable('2026-08-21T09:00:00+00:00'),
+        );
+        $this->repository->save($updated);
+
+        $found = $this->repository->findById('consult-1');
+        self::assertNotNull($found);
+        self::assertNotNull($found->outcome);
+        self::assertSame('Second version.', $found->outcome->whatActuallyHappened);
+
+        $countStatement = $this->pdo->query('SELECT COUNT(*) FROM consultation_outcomes');
+        self::assertNotFalse($countStatement);
+        self::assertSame(1, (int) $countStatement->fetchColumn());
+    }
+
+    public function testSavingAConsultationWithoutTouchingOutcomeWritesNoRow(): void
+    {
+        // Adding a note (a save() call where $consultation->outcome stays null) must not create
+        // a stray consultation_outcomes row.
+        $consultation = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        )->withAddedTag('career');
+
+        $this->repository->save($consultation);
+
+        $countStatement = $this->pdo->query('SELECT COUNT(*) FROM consultation_outcomes');
+        self::assertNotFalse($countStatement);
+        self::assertSame(0, (int) $countStatement->fetchColumn());
+    }
+
     public function testFindByIdReturnsNullForAMissingConsultation(): void
     {
         self::assertNull($this->repository->findById('does-not-exist'));

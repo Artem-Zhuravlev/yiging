@@ -17,6 +17,7 @@ const sample: Consultation = {
   whatUserWantsToUnderstand: null,
   backgroundInformation: null,
   initialInterpretation: null,
+  outcome: null,
 }
 
 describe('entities/consultation api', () => {

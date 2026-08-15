@@ -22,6 +22,7 @@ final class SqliteConsultationRepository implements ConsultationRepository
             $this->upsertConsultation($consultation);
             $this->replaceNotes($consultation);
             $this->replaceTags($consultation);
+            $this->replaceOutcome($consultation);
 
             $this->pdo->commit();
         } catch (\Throwable $e) {
@@ -144,6 +145,35 @@ final class SqliteConsultationRepository implements ConsultationRepository
         }
     }
 
+    private function replaceOutcome(Consultation $consultation): void
+    {
+        // Untouched (outcome === null) writes nothing — no row means "never recorded," distinct
+        // from a row whose fields are all currently blank (see SPEC-020's "Edge cases").
+        if ($consultation->outcome === null) {
+            return;
+        }
+
+        $statement = $this->pdo->prepare(
+            'INSERT INTO consultation_outcomes
+                (consultation_id, what_actually_happened, outcome, reflection, recorded_at)
+             VALUES
+                (:consultation_id, :what_actually_happened, :outcome, :reflection, :recorded_at)
+             ON CONFLICT(consultation_id) DO UPDATE SET
+                what_actually_happened = excluded.what_actually_happened,
+                outcome = excluded.outcome,
+                reflection = excluded.reflection,
+                recorded_at = excluded.recorded_at',
+        );
+
+        $statement->execute([
+            'consultation_id' => $consultation->id,
+            'what_actually_happened' => $consultation->outcome->whatActuallyHappened,
+            'outcome' => $consultation->outcome->outcome,
+            'reflection' => $consultation->outcome->reflection,
+            'recorded_at' => $consultation->outcome->recordedAt->format(DATE_ATOM),
+        ]);
+    }
+
     /**
      * @param array<string, mixed> $row
      */
@@ -185,6 +215,7 @@ final class SqliteConsultationRepository implements ConsultationRepository
             initialInterpretation: $row['initial_interpretation'] === null
                 ? null
                 : (string) $row['initial_interpretation'],
+            outcome: $this->loadOutcome($id),
         );
     }
 
@@ -230,6 +261,27 @@ final class SqliteConsultationRepository implements ConsultationRepository
         }
 
         return $tags;
+    }
+
+    private function loadOutcome(string $consultationId): ?ConsultationOutcome
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT what_actually_happened, outcome, reflection, recorded_at
+             FROM consultation_outcomes WHERE consultation_id = :id',
+        );
+        $statement->execute(['id' => $consultationId]);
+        $row = $statement->fetch();
+
+        if (!is_array($row)) {
+            return null;
+        }
+
+        return new ConsultationOutcome(
+            $row['what_actually_happened'] === null ? null : (string) $row['what_actually_happened'],
+            $row['outcome'] === null ? null : (string) $row['outcome'],
+            $row['reflection'] === null ? null : (string) $row['reflection'],
+            new \DateTimeImmutable((string) $row['recorded_at']),
+        );
     }
 
     /**

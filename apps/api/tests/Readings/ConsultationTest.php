@@ -7,6 +7,7 @@ namespace App\Tests\Readings;
 use App\Readings\CastingMethodName;
 use App\Readings\Consultation;
 use App\Readings\ConsultationNote;
+use App\Readings\ConsultationOutcome;
 use App\Readings\NoteLabel;
 use App\Tests\Readings\Support\HexagramFixture;
 use PHPUnit\Framework\TestCase;
@@ -269,6 +270,159 @@ final class ConsultationTest extends TestCase
 
         self::assertSame('Some context.', $withNote->context);
         self::assertSame('Some context.', $withTag->context);
+    }
+
+    public function testANewConsultationHasNoOutcome(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        );
+
+        self::assertNull($consultation->outcome);
+    }
+
+    public function testWithUpdatedOutcomeSetsAllThreeFieldsAndRecordedAt(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        );
+
+        $recordedAt = new \DateTimeImmutable('2026-08-15T12:00:00+00:00');
+        $withOutcome = $consultation->withUpdatedOutcome(
+            'Took the offer.',
+            'Started two weeks later, going well.',
+            'Glad I trusted the reading.',
+            $recordedAt,
+        );
+
+        self::assertNull($consultation->outcome, 'original instance must not be mutated');
+        self::assertNotNull($withOutcome->outcome);
+        self::assertSame('Took the offer.', $withOutcome->outcome->whatActuallyHappened);
+        self::assertSame('Started two weeks later, going well.', $withOutcome->outcome->outcome);
+        self::assertSame('Glad I trusted the reading.', $withOutcome->outcome->reflection);
+        self::assertSame($recordedAt, $withOutcome->outcome->recordedAt);
+    }
+
+    public function testWithUpdatedOutcomeCanLeaveIndividualFieldsNull(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        );
+
+        $withOutcome = $consultation->withUpdatedOutcome(
+            'Took the offer.',
+            null,
+            null,
+            new \DateTimeImmutable(),
+        );
+
+        self::assertNotNull($withOutcome->outcome);
+        self::assertSame('Took the offer.', $withOutcome->outcome->whatActuallyHappened);
+        self::assertNull($withOutcome->outcome->outcome);
+        self::assertNull($withOutcome->outcome->reflection);
+    }
+
+    public function testWithUpdatedOutcomeValidatesFieldLength(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        );
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $consultation->withUpdatedOutcome(str_repeat('a', 5001), null, null, new \DateTimeImmutable());
+    }
+
+    public function testWithAddedNotePreservesAnAlreadySetOutcome(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        )->withUpdatedOutcome('Took the offer.', null, null, new \DateTimeImmutable());
+
+        $note = new ConsultationNote(NoteLabel::After, 'Note text.', new \DateTimeImmutable());
+        $withNote = $consultation->withAddedNote($note);
+
+        self::assertSame('Took the offer.', $withNote->outcome?->whatActuallyHappened);
+    }
+
+    public function testWithAddedTagPreservesAnAlreadySetOutcome(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        )->withUpdatedOutcome('Took the offer.', null, null, new \DateTimeImmutable());
+
+        $withTag = $consultation->withAddedTag('career');
+
+        self::assertSame('Took the offer.', $withTag->outcome?->whatActuallyHappened);
+    }
+
+    public function testWithUpdatedContextPreservesAnAlreadySetOutcome(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        )->withUpdatedOutcome('Took the offer.', null, null, new \DateTimeImmutable());
+
+        $withContext = $consultation->withUpdatedContext('New context.', null, null, null, null);
+
+        self::assertSame('Took the offer.', $withContext->outcome?->whatActuallyHappened);
+    }
+
+    public function testWithUpdatedOutcomePreservesExistingContextFields(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+            context: 'Some context.',
+        );
+
+        $withOutcome = $consultation->withUpdatedOutcome('Took the offer.', null, null, new \DateTimeImmutable());
+
+        self::assertSame('Some context.', $withOutcome->context);
+    }
+
+    public function testConsultationOutcomeAcceptsAFieldAtExactlyTheLengthLimit(): void
+    {
+        $outcome = new ConsultationOutcome(str_repeat('a', 5000), null, null, new \DateTimeImmutable());
+
+        self::assertSame(5000, mb_strlen((string) $outcome->whatActuallyHappened));
+    }
+
+    public function testConsultationOutcomeRejectsAFieldOverTheLengthLimit(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        new ConsultationOutcome(null, str_repeat('a', 5001), null, new \DateTimeImmutable());
     }
 
     public function testChangingLinePositionsMatchesThePrimaryHexagramsChangingLines(): void

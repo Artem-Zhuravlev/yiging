@@ -26,6 +26,7 @@ function sample(id: string, question: string): Consultation {
     whatUserWantsToUnderstand: null,
     backgroundInformation: null,
     initialInterpretation: null,
+    outcome: null,
   }
 }
 

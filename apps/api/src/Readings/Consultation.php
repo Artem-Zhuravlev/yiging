@@ -30,6 +30,7 @@ final readonly class Consultation
         public ?string $whatUserWantsToUnderstand = null,
         public ?string $backgroundInformation = null,
         public ?string $initialInterpretation = null,
+        public ?ConsultationOutcome $outcome = null,
     ) {
     }
 
@@ -45,6 +46,8 @@ final readonly class Consultation
         ?string $backgroundInformation = null,
         ?string $initialInterpretation = null,
     ): self {
+        // Note: a brand-new consultation never has an outcome yet, so create() intentionally
+        // has no outcome parameter — one is only ever attached later via withUpdatedOutcome().
         if (trim($question) === '') {
             throw new \InvalidArgumentException('A consultation question must not be empty.');
         }
@@ -98,6 +101,7 @@ final readonly class Consultation
         ?string $whatUserWantsToUnderstand = null,
         ?string $backgroundInformation = null,
         ?string $initialInterpretation = null,
+        ?ConsultationOutcome $outcome = null,
     ): self {
         return new self(
             $id,
@@ -113,6 +117,7 @@ final readonly class Consultation
             $whatUserWantsToUnderstand,
             $backgroundInformation,
             $initialInterpretation,
+            $outcome,
         );
     }
 
@@ -132,6 +137,7 @@ final readonly class Consultation
             $this->whatUserWantsToUnderstand,
             $this->backgroundInformation,
             $this->initialInterpretation,
+            $this->outcome,
         );
     }
 
@@ -155,6 +161,7 @@ final readonly class Consultation
             $this->whatUserWantsToUnderstand,
             $this->backgroundInformation,
             $this->initialInterpretation,
+            $this->outcome,
         );
     }
 
@@ -185,6 +192,31 @@ final readonly class Consultation
             $whatUserWantsToUnderstand,
             $backgroundInformation,
             $initialInterpretation,
+            $this->outcome,
+        );
+    }
+
+    public function withUpdatedOutcome(
+        ?string $whatActuallyHappened,
+        ?string $outcome,
+        ?string $reflection,
+        \DateTimeImmutable $recordedAt,
+    ): self {
+        return new self(
+            $this->id,
+            $this->question,
+            $this->method,
+            $this->primaryHexagram,
+            $this->resultingHexagram,
+            $this->createdAt,
+            $this->notes,
+            $this->tags,
+            $this->context,
+            $this->whatHappenedBefore,
+            $this->whatUserWantsToUnderstand,
+            $this->backgroundInformation,
+            $this->initialInterpretation,
+            new ConsultationOutcome($whatActuallyHappened, $outcome, $reflection, $recordedAt),
         );
     }
 

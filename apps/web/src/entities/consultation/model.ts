@@ -36,6 +36,16 @@ export interface ConsultationContext {
   initialInterpretation: string | null
 }
 
+/** A separate historical record of what actually happened, kept structurally distinct from the
+ * original consultation and its interpretation (SPEC-020) — null until the user records
+ * something, never modifying `question`/hexagrams/interpretation. */
+export interface ConsultationOutcome {
+  whatActuallyHappened: string | null
+  outcome: string | null
+  reflection: string | null
+  recordedAt: string
+}
+
 export interface Consultation extends ConsultationContext {
   id: string
   question: string
@@ -46,6 +56,7 @@ export interface Consultation extends ConsultationContext {
   createdAt: string
   notes: ConsultationNote[]
   tags: string[]
+  outcome: ConsultationOutcome | null
 }
 
 export type NewConsultationRequest = (
@@ -54,7 +65,9 @@ export type NewConsultationRequest = (
 ) &
   Partial<ConsultationContext>
 
-export interface ConsultationPatch extends Partial<ConsultationContext> {
+export interface ConsultationPatch
+  extends Partial<ConsultationContext>,
+    Partial<Omit<ConsultationOutcome, 'recordedAt'>> {
   note?: { label: ConsultationNote['label']; text: string }
   tag?: string
 }
