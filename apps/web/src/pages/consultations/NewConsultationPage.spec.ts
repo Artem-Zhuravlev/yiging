@@ -1,17 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { reactive } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import NewConsultationPage from './NewConsultationPage.vue'
-import { createConsultation } from '../../entities/consultation/api'
+import { createConsultation, fetchConsultation } from '../../entities/consultation/api'
 import { ApiError } from '../../shared/api/http'
 import type { Consultation, NewConsultationRequest } from '../../entities/consultation/model'
 
 const push = vi.fn()
+const route = reactive<{ query: Record<string, string> }>({ query: {} })
 
 vi.mock('../../entities/consultation/api', () => ({
   createConsultation: vi.fn(),
+  fetchConsultation: vi.fn(),
 }))
 
 vi.mock('vue-router', () => ({
+  useRoute: () => route,
   useRouter: () => ({ push }),
 }))
 
@@ -31,12 +35,16 @@ const sample: Consultation = {
   backgroundInformation: null,
   initialInterpretation: null,
   outcome: null,
+  followUpTo: null,
+  followUps: [],
 }
 
 describe('NewConsultationPage', () => {
   beforeEach(() => {
     push.mockClear()
     vi.mocked(createConsultation).mockClear()
+    vi.mocked(fetchConsultation).mockReset()
+    route.query = {}
   })
 
   it('submits a three_coins request and navigates to the new consultation', async () => {
@@ -100,6 +108,40 @@ describe('NewConsultationPage', () => {
       method: 'three_coins',
       context: 'Some context.',
     })
+  })
+
+  it('shows the target question and submits the link when ?followUpTo= is present', async () => {
+    route.query = { followUpTo: 'original-id' }
+    vi.mocked(fetchConsultation).mockResolvedValue({ ...sample, id: 'original-id', question: 'Original?' })
+    vi.mocked(createConsultation).mockResolvedValue(sample)
+
+    const wrapper = mount(NewConsultationPage)
+    await flushPromises()
+
+    expect(fetchConsultation).toHaveBeenCalledWith('original-id')
+    expect(wrapper.text()).toContain('Follow-up to: Original?')
+
+    await wrapper.find('#question').setValue('Follow-up question?')
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(createConsultation).toHaveBeenCalledWith({
+      question: 'Follow-up question?',
+      method: 'three_coins',
+      followUpToConsultationId: 'original-id',
+    })
+  })
+
+  it('has no follow-up banner and omits the link when there is no ?followUpTo=', async () => {
+    vi.mocked(createConsultation).mockResolvedValue(sample)
+
+    const wrapper = mount(NewConsultationPage)
+    await wrapper.find('#question').setValue('Test?')
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Follow-up to:')
+    expect(createConsultation).toHaveBeenCalledWith({ question: 'Test?', method: 'three_coins' })
   })
 
   it('shows the API error message inline on a 422 without navigating', async () => {

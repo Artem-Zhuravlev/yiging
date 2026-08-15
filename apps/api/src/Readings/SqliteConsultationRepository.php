@@ -66,11 +66,13 @@ final class SqliteConsultationRepository implements ConsultationRepository
             'INSERT INTO consultations
                 (id, question, method, primary_king_wen_number, changing_line_positions,
                  resulting_king_wen_number, created_at, context, what_happened_before,
-                 what_user_wants_to_understand, background_information, initial_interpretation)
+                 what_user_wants_to_understand, background_information, initial_interpretation,
+                 follow_up_to_consultation_id)
              VALUES
                 (:id, :question, :method, :primary_king_wen_number, :changing_line_positions,
                  :resulting_king_wen_number, :created_at, :context, :what_happened_before,
-                 :what_user_wants_to_understand, :background_information, :initial_interpretation)
+                 :what_user_wants_to_understand, :background_information, :initial_interpretation,
+                 :follow_up_to_consultation_id)
              ON CONFLICT(id) DO UPDATE SET
                 question = excluded.question,
                 method = excluded.method,
@@ -82,7 +84,8 @@ final class SqliteConsultationRepository implements ConsultationRepository
                 what_happened_before = excluded.what_happened_before,
                 what_user_wants_to_understand = excluded.what_user_wants_to_understand,
                 background_information = excluded.background_information,
-                initial_interpretation = excluded.initial_interpretation',
+                initial_interpretation = excluded.initial_interpretation,
+                follow_up_to_consultation_id = excluded.follow_up_to_consultation_id',
         );
 
         $statement->execute([
@@ -98,6 +101,7 @@ final class SqliteConsultationRepository implements ConsultationRepository
             'what_user_wants_to_understand' => $consultation->whatUserWantsToUnderstand,
             'background_information' => $consultation->backgroundInformation,
             'initial_interpretation' => $consultation->initialInterpretation,
+            'follow_up_to_consultation_id' => $consultation->followUpToConsultationId,
         ]);
     }
 
@@ -216,7 +220,42 @@ final class SqliteConsultationRepository implements ConsultationRepository
                 ? null
                 : (string) $row['initial_interpretation'],
             outcome: $this->loadOutcome($id),
+            followUpToConsultationId: $row['follow_up_to_consultation_id'] === null
+                ? null
+                : (string) $row['follow_up_to_consultation_id'],
         );
+    }
+
+    public function findSummaryById(string $id): ?ConsultationSummary
+    {
+        $statement = $this->pdo->prepare('SELECT id, question FROM consultations WHERE id = :id');
+        $statement->execute(['id' => $id]);
+        $row = $statement->fetch();
+
+        if (!is_array($row)) {
+            return null;
+        }
+
+        return new ConsultationSummary((string) $row['id'], (string) $row['question']);
+    }
+
+    /**
+     * @return list<ConsultationSummary>
+     */
+    public function findFollowUpSummaries(string $consultationId): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT id, question FROM consultations
+             WHERE follow_up_to_consultation_id = :id ORDER BY created_at ASC',
+        );
+        $statement->execute(['id' => $consultationId]);
+
+        $summaries = [];
+        while (is_array($row = $statement->fetch())) {
+            $summaries[] = new ConsultationSummary((string) $row['id'], (string) $row['question']);
+        }
+
+        return $summaries;
     }
 
     /**

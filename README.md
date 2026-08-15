@@ -96,6 +96,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-018 | [Deep Hexagram Page](specs/deep-hexagram-page/spec.md) | `verified` |
 | SPEC-019 | [Rich Consultation Context](specs/consultation-context/spec.md) | `verified` |
 | SPEC-020 | [Consultation Outcome](specs/consultation-outcome/spec.md) | `verified` |
+| SPEC-021 | [Follow-up Consultations](specs/consultation-follow-ups/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -284,11 +285,22 @@ Verified live end to end, including recording a real outcome on a consultation c
 this session (well before this feature existed) without disturbing its question, hexagrams, notes,
 tags, or context fields. See [SPEC-020](specs/consultation-outcome/spec.md).
 
-Next recommended steps: continue the plan's batch with features 32-36 (follow-up consultation
-links, a chronological timeline, repeated-hexagram/changing-line detection, personal statistics —
-all domain/UI work on data already in hand, and all reference "outcome status" directly, which
-SPEC-020's linked-entity design was chosen to support) or 37-40 (AI interpretation layering,
-profiles, source-grounding, conversation — building on the existing
-`InterpretationContext`/`InterpretationProvider` abstraction), or provide a second public-domain
-I Ching translation source to unblock features 26/27, or verify the live Gemini call (see above)
-whenever an `AI_API_KEY` is available.
+Feature 32 of the plan's next batch is live: consultations can now be explicitly linked —
+`followUpToConsultationId` is a plain self-referential foreign key on `consultations`, resolved
+server-side into readable `{id, question}` summaries in both directions (`followUpTo` the
+consultation this one follows up on; `followUps` every consultation that follows up on this one)
+so the UI never has to join raw IDs itself. Set via the same `PATCH`/`POST` endpoints, reusing
+SPEC-019's set/clear/leave-unchanged semantics. `/consultations/new?followUpTo={id}` is the
+primary flow — a "Create Follow-up" link on `ConsultationPage` carries the target forward, shown
+back to the user as "Follow-up to: {question}" before they even submit. Verified live end to end
+on the same consultation used throughout this session's manual checks: created a real follow-up
+from it, confirmed both directions navigate correctly, and confirmed it — genuinely pre-dating
+this migration by several specs — still loaded correctly throughout. See
+[SPEC-021](specs/consultation-follow-ups/spec.md).
+
+Next recommended steps: continue the plan's batch with features 33-36 (a chronological timeline,
+repeated-hexagram/changing-line detection, personal statistics — all domain/UI work on data
+already in hand) or 37-40 (AI interpretation layering, profiles, source-grounding, conversation —
+building on the existing `InterpretationContext`/`InterpretationProvider` abstraction), or provide
+a second public-domain I Ching translation source to unblock features 26/27, or verify the live
+Gemini call (see above) whenever an `AI_API_KEY` is available.

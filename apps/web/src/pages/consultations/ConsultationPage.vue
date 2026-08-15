@@ -285,6 +285,39 @@ onMounted(async () => {
       </p>
 
       <div>
+        <p v-if="state.consultation.followUpTo" class="text-sm text-neutral-500">
+          Follow-up to:
+          <router-link
+            :to="`/consultations/${state.consultation.followUpTo.id}`"
+            class="underline hover:no-underline"
+          >
+            {{ state.consultation.followUpTo.question }}
+          </router-link>
+        </p>
+
+        <div v-if="state.consultation.followUps.length > 0" class="mt-1">
+          <h2 class="text-sm font-medium text-neutral-500">Follow-ups</h2>
+          <ul class="mt-1 flex flex-col gap-1">
+            <li v-for="followUp in state.consultation.followUps" :key="followUp.id">
+              <router-link
+                :to="`/consultations/${followUp.id}`"
+                class="text-sm underline hover:no-underline"
+              >
+                {{ followUp.question }}
+              </router-link>
+            </li>
+          </ul>
+        </div>
+
+        <router-link
+          :to="`/consultations/new?followUpTo=${state.consultation.id}`"
+          class="mt-1 inline-block text-sm underline hover:no-underline"
+        >
+          Create Follow-up
+        </router-link>
+      </div>
+
+      <div>
         <h2 class="mb-2 text-sm font-medium text-neutral-500">Notes</h2>
         <ul v-if="state.consultation.notes.length > 0" class="mb-3 flex flex-col gap-2">
           <li v-for="(note, index) in state.consultation.notes" :key="index">

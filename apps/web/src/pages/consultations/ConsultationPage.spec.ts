@@ -67,6 +67,8 @@ const sampleConsultation: Consultation = {
   backgroundInformation: null,
   initialInterpretation: null,
   outcome: null,
+  followUpTo: null,
+  followUps: [],
 }
 
 const sampleInterpretation: Interpretation = {
@@ -113,6 +115,64 @@ describe('ConsultationPage', () => {
     const compareLink = wrapper.findAll('a').find((a) => a.text() === 'Compare hexagrams')
     expect(compareLink).toBeDefined()
     expect(compareLink!.attributes('to')).toBe('/hexagrams/compare?a=1&b=44')
+  })
+
+  it('shows a working "Create Follow-up" link', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    const createFollowUpLink = wrapper.findAll('a').find((a) => a.text() === 'Create Follow-up')
+    expect(createFollowUpLink).toBeDefined()
+    expect(createFollowUpLink!.attributes('to')).toBe('/consultations/new?followUpTo=abc-123')
+  })
+
+  it('shows the follow-up-to link when set', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue({
+      ...sampleConsultation,
+      followUpTo: { id: 'original-id', question: 'Original question?' },
+    })
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Follow-up to:')
+    const link = wrapper.findAll('a').find((a) => a.text() === 'Original question?')
+    expect(link).toBeDefined()
+    expect(link!.attributes('to')).toBe('/consultations/original-id')
+  })
+
+  it('has no follow-up-to text when unset', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Follow-up to:')
+  })
+
+  it('lists follow-ups linking to each', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue({
+      ...sampleConsultation,
+      followUps: [
+        { id: 'follow-up-1', question: 'First follow-up?' },
+        { id: 'follow-up-2', question: 'Second follow-up?' },
+      ],
+    })
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Follow-ups')
+    const firstLink = wrapper.findAll('a').find((a) => a.text() === 'First follow-up?')
+    const secondLink = wrapper.findAll('a').find((a) => a.text() === 'Second follow-up?')
+    expect(firstLink!.attributes('to')).toBe('/consultations/follow-up-1')
+    expect(secondLink!.attributes('to')).toBe('/consultations/follow-up-2')
   })
 
   it('pre-fills the context form from the loaded consultation', async () => {

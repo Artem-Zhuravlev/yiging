@@ -96,3 +96,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-018 | [Deep Hexagram Page](deep-hexagram-page/spec.md) | `verified` |
 | SPEC-019 | [Rich Consultation Context](consultation-context/spec.md) | `verified` |
 | SPEC-020 | [Consultation Outcome](consultation-outcome/spec.md) | `verified` |
+| SPEC-021 | [Follow-up Consultations](consultation-follow-ups/spec.md) | `verified` |

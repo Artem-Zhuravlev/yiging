@@ -27,6 +27,8 @@ function sample(id: string, question: string): Consultation {
     backgroundInformation: null,
     initialInterpretation: null,
     outcome: null,
+    followUpTo: null,
+    followUps: [],
   }
 }
 

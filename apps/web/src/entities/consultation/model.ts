@@ -46,6 +46,13 @@ export interface ConsultationOutcome {
   recordedAt: string
 }
 
+/** A minimal display shape for a linked consultation (SPEC-021) — deliberately not a full
+ * Consultation, matching the backend's own ConsultationSummary. */
+export interface ConsultationSummary {
+  id: string
+  question: string
+}
+
 export interface Consultation extends ConsultationContext {
   id: string
   question: string
@@ -57,17 +64,20 @@ export interface Consultation extends ConsultationContext {
   notes: ConsultationNote[]
   tags: string[]
   outcome: ConsultationOutcome | null
+  followUpTo: ConsultationSummary | null
+  followUps: ConsultationSummary[]
 }
 
 export type NewConsultationRequest = (
   | { question: string; method: 'three_coins' }
   | { question: string; method: 'manual'; lines: ManualLine[] }
 ) &
-  Partial<ConsultationContext>
+  Partial<ConsultationContext> & { followUpToConsultationId?: string }
 
 export interface ConsultationPatch
   extends Partial<ConsultationContext>,
     Partial<Omit<ConsultationOutcome, 'recordedAt'>> {
   note?: { label: ConsultationNote['label']; text: string }
   tag?: string
+  followUpToConsultationId?: string | null
 }

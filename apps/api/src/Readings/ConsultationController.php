@@ -51,6 +51,9 @@ final class ConsultationController
             $divinationMethod = $this->resolveDivinationMethod($methodName, $body);
             $hexagram = $divinationMethod->cast();
 
+            $followUpToConsultationId = $this->parseOptionalContextField($body, 'followUpToConsultationId');
+            $this->validateFollowUpTargetExists($followUpToConsultationId);
+
             $consultation = Consultation::create(
                 $this->idGenerator->generate(),
                 $question,
@@ -62,6 +65,7 @@ final class ConsultationController
                 whatUserWantsToUnderstand: $this->parseOptionalContextField($body, 'whatUserWantsToUnderstand'),
                 backgroundInformation: $this->parseOptionalContextField($body, 'backgroundInformation'),
                 initialInterpretation: $this->parseOptionalContextField($body, 'initialInterpretation'),
+                followUpToConsultationId: $followUpToConsultationId,
             );
         } catch (\InvalidArgumentException $e) {
             return $this->errorResponse($e->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -131,10 +135,18 @@ final class ConsultationController
             $outcomeKeys,
             static fn (string $key): bool => array_key_exists($key, $body),
         ) !== [];
+        $touchesFollowUp = array_key_exists('followUpToConsultationId', $body);
 
-        if ($noteInput === null && $tagInput === null && !$touchesAnyContextField && !$touchesAnyOutcomeField) {
+        if (
+            $noteInput === null
+            && $tagInput === null
+            && !$touchesAnyContextField
+            && !$touchesAnyOutcomeField
+            && !$touchesFollowUp
+        ) {
             return $this->errorResponse(
-                'Provide "note", "tag", a context field, and/or an outcome field to update.',
+                'Provide "note", "tag", a context field, an outcome field, and/or '
+                    . '"followUpToConsultationId" to update.',
                 Response::HTTP_UNPROCESSABLE_ENTITY,
             );
         }
@@ -189,6 +201,16 @@ final class ConsultationController
                     ),
                     recordedAt: $this->clock->now(),
                 );
+            }
+
+            if ($touchesFollowUp) {
+                $followUpToConsultationId = $this->resolveContextField(
+                    $body,
+                    'followUpToConsultationId',
+                    $consultation->followUpToConsultationId,
+                );
+                $this->validateFollowUpTargetExists($followUpToConsultationId);
+                $consultation = $consultation->withFollowUpTo($followUpToConsultationId);
             }
         } catch (\InvalidArgumentException $e) {
             return $this->errorResponse($e->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -265,6 +287,19 @@ final class ConsultationController
         }
 
         return $value;
+    }
+
+    private function validateFollowUpTargetExists(?string $followUpToConsultationId): void
+    {
+        if ($followUpToConsultationId === null) {
+            return;
+        }
+
+        if ($this->repository->findSummaryById($followUpToConsultationId) === null) {
+            throw new \InvalidArgumentException(
+                '"followUpToConsultationId" must reference an existing consultation.',
+            );
+        }
     }
 
     /**
@@ -369,7 +404,33 @@ final class ConsultationController
                 'reflection' => $consultation->outcome->reflection,
                 'recordedAt' => $consultation->outcome->recordedAt->format(DATE_ATOM),
             ],
+            'followUpTo' => $this->resolveFollowUpToSummary($consultation),
+            'followUps' => array_map(
+                static fn (ConsultationSummary $summary): array => [
+                    'id' => $summary->id,
+                    'question' => $summary->question,
+                ],
+                $this->repository->findFollowUpSummaries($consultation->id),
+            ),
         ];
+    }
+
+    /**
+     * @return array{id: string, question: string}|null
+     */
+    private function resolveFollowUpToSummary(Consultation $consultation): ?array
+    {
+        if ($consultation->followUpToConsultationId === null) {
+            return null;
+        }
+
+        $summary = $this->repository->findSummaryById($consultation->followUpToConsultationId);
+
+        if ($summary === null) {
+            return null;
+        }
+
+        return ['id' => $summary->id, 'question' => $summary->question];
     }
 
     /**

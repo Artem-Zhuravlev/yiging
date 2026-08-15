@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { createConsultation } from '../../entities/consultation/api'
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { createConsultation, fetchConsultation } from '../../entities/consultation/api'
 import type { ManualLine, NewConsultationRequest, SelectableCastingMethod } from '../../entities/consultation/model'
 import { ApiError } from '../../shared/api/http'
 
@@ -20,6 +20,13 @@ const whatUserWantsToUnderstand = ref('')
 const backgroundInformation = ref('')
 const initialInterpretation = ref('')
 
+// Set once, from ?followUpTo= on mount — never edited by the user, just carried through to the
+// request and shown as a small "Follow-up to" banner (fetched only for a readable label; the
+// link itself only needs the id, already known from the query param).
+const followUpToConsultationId = ref<string | undefined>(undefined)
+const followUpToQuestion = ref<string | null>(null)
+
+const route = useRoute()
 const router = useRouter()
 
 // Blank fields are omitted from the request entirely (undefined), rather than sent as empty
@@ -41,6 +48,7 @@ async function submit(): Promise<void> {
     whatUserWantsToUnderstand: orUndefined(whatUserWantsToUnderstand.value),
     backgroundInformation: orUndefined(backgroundInformation.value),
     initialInterpretation: orUndefined(initialInterpretation.value),
+    followUpToConsultationId: followUpToConsultationId.value,
   }
 
   try {
@@ -53,13 +61,35 @@ async function submit(): Promise<void> {
     }
   }
 }
+
+onMounted(async () => {
+  const queryValue = route.query.followUpTo
+  const id = typeof queryValue === 'string' ? queryValue : undefined
+
+  if (id === undefined) {
+    return
+  }
+
+  followUpToConsultationId.value = id
+  try {
+    const target = await fetchConsultation(id)
+    followUpToQuestion.value = target.question
+  } catch {
+    // A stale/invalid ?followUpTo= just means no label is shown; the link is still submitted
+    // as-is and the backend validates it exists at save time.
+  }
+})
 </script>
 
 <template>
   <main class="mx-auto max-w-xl px-6 py-10">
-    <h1 class="mb-6 text-2xl font-semibold tracking-tight">New Consultation</h1>
+    <h1 class="text-2xl font-semibold tracking-tight">New Consultation</h1>
+    <p v-if="followUpToConsultationId" class="mt-1 text-sm text-neutral-500">
+      Follow-up to: <span v-if="followUpToQuestion">{{ followUpToQuestion }}</span>
+      <span v-else>…</span>
+    </p>
 
-    <form class="flex flex-col gap-6" @submit.prevent="submit">
+    <form class="mt-6 flex flex-col gap-6" @submit.prevent="submit">
       <div>
         <label for="question" class="mb-1 block text-sm font-medium text-neutral-700">
           Question

@@ -425,6 +425,139 @@ final class ConsultationTest extends TestCase
         new ConsultationOutcome(null, str_repeat('a', 5001), null, new \DateTimeImmutable());
     }
 
+    public function testANewConsultationHasNoFollowUpLink(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        );
+
+        self::assertNull($consultation->followUpToConsultationId);
+    }
+
+    public function testCreateAcceptsAFollowUpToConsultationId(): void
+    {
+        $consultation = Consultation::create(
+            'id-2',
+            'Did I make the right call?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+            followUpToConsultationId: 'id-1',
+        );
+
+        self::assertSame('id-1', $consultation->followUpToConsultationId);
+    }
+
+    public function testWithFollowUpToSetsAndClearsTheLink(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        );
+
+        $linked = $consultation->withFollowUpTo('other-id');
+        self::assertSame('other-id', $linked->followUpToConsultationId);
+        self::assertNull($consultation->followUpToConsultationId, 'original instance must not be mutated');
+
+        $cleared = $linked->withFollowUpTo(null);
+        self::assertNull($cleared->followUpToConsultationId);
+    }
+
+    public function testWithFollowUpToRejectsSelfReference(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        );
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $consultation->withFollowUpTo('id-1');
+    }
+
+    public function testWithAddedNotePreservesAnAlreadySetFollowUpLink(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        )->withFollowUpTo('other-id');
+
+        $withNote = $consultation->withAddedNote(new ConsultationNote(NoteLabel::After, 'Note.', new \DateTimeImmutable()));
+
+        self::assertSame('other-id', $withNote->followUpToConsultationId);
+    }
+
+    public function testWithAddedTagPreservesAnAlreadySetFollowUpLink(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        )->withFollowUpTo('other-id');
+
+        self::assertSame('other-id', $consultation->withAddedTag('career')->followUpToConsultationId);
+    }
+
+    public function testWithUpdatedContextPreservesAnAlreadySetFollowUpLink(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        )->withFollowUpTo('other-id');
+
+        $withContext = $consultation->withUpdatedContext('New context.', null, null, null, null);
+
+        self::assertSame('other-id', $withContext->followUpToConsultationId);
+    }
+
+    public function testWithUpdatedOutcomePreservesAnAlreadySetFollowUpLink(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        )->withFollowUpTo('other-id');
+
+        $withOutcome = $consultation->withUpdatedOutcome('Took it.', null, null, new \DateTimeImmutable());
+
+        self::assertSame('other-id', $withOutcome->followUpToConsultationId);
+    }
+
+    public function testWithFollowUpToPreservesExistingOutcome(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        )->withUpdatedOutcome('Took it.', null, null, new \DateTimeImmutable());
+
+        $linked = $consultation->withFollowUpTo('other-id');
+
+        self::assertSame('Took it.', $linked->outcome?->whatActuallyHappened);
+    }
+
     public function testChangingLinePositionsMatchesThePrimaryHexagramsChangingLines(): void
     {
         $primary = self::hexagramFromPattern('101010', changingPositions: [2, 5]);

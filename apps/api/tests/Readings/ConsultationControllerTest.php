@@ -507,6 +507,175 @@ final class ConsultationControllerTest extends TestCase
         self::assertSame('A quick reflection.', $this->decode($response)['outcome']['reflection']);
     }
 
+    public function testCreatedConsultationHasNoFollowUpLinkOrFollowUps(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        self::assertNull($created['followUpTo']);
+        self::assertSame([], $created['followUps']);
+    }
+
+    public function testCreateWithAFollowUpToConsultationIdResolvesTheSummary(): void
+    {
+        $original = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $followUpResponse = $this->postJson('/api/consultations', [
+            'question' => 'Did I make the right call?',
+            'method' => 'three_coins',
+            'followUpToConsultationId' => $original['id'],
+        ]);
+        $followUp = $this->decode($followUpResponse);
+
+        self::assertSame(201, $followUpResponse->getStatusCode());
+        self::assertSame($original['id'], $followUp['followUpTo']['id']);
+        self::assertSame('Should I take the offer?', $followUp['followUpTo']['question']);
+    }
+
+    public function testCreateWithAFollowUpToConsultationIdPointingAtNothingReturns422(): void
+    {
+        $response = $this->postJson('/api/consultations', [
+            'question' => 'Did I make the right call?',
+            'method' => 'three_coins',
+            'followUpToConsultationId' => 'does-not-exist',
+        ]);
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testGetOnAConsultationWithFollowUpsListsThem(): void
+    {
+        $original = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+        $followUp = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Did I make the right call?',
+            'method' => 'three_coins',
+            'followUpToConsultationId' => $original['id'],
+        ]));
+
+        $response = $this->kernel->handle(Request::create('/api/consultations/' . $original['id'], 'GET'));
+        $body = $this->decode($response);
+
+        self::assertCount(1, $body['followUps']);
+        self::assertSame($followUp['id'], $body['followUps'][0]['id']);
+        self::assertSame('Did I make the right call?', $body['followUps'][0]['question']);
+    }
+
+    public function testUpdateSetsAFollowUpLink(): void
+    {
+        $original = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Did I make the right call?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'followUpToConsultationId' => $original['id'],
+        ]);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame($original['id'], $this->decode($response)['followUpTo']['id']);
+    }
+
+    public function testUpdateClearsAFollowUpLink(): void
+    {
+        $original = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Did I make the right call?',
+            'method' => 'three_coins',
+            'followUpToConsultationId' => $original['id'],
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'followUpToConsultationId' => null,
+        ]);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertNull($this->decode($response)['followUpTo']);
+    }
+
+    public function testUpdateWithAFollowUpToConsultationIdEqualToItsOwnIdReturns422(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'followUpToConsultationId' => $created['id'],
+        ]);
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testUpdateWithAFollowUpToConsultationIdPointingAtNothingReturns422(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'followUpToConsultationId' => 'does-not-exist',
+        ]);
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testUpdateWithOnlyAFollowUpFieldDoesNotRequireNoteOrTag(): void
+    {
+        $original = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Did I make the right call?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'followUpToConsultationId' => $original['id'],
+        ]);
+
+        self::assertSame(200, $response->getStatusCode());
+    }
+
+    public function testUpdateSettingAFollowUpLinkDoesNotDisturbOtherFields(): void
+    {
+        $original = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Did I make the right call?',
+            'method' => 'three_coins',
+            'context' => 'Some context.',
+        ]));
+        $this->patchJson('/api/consultations/' . $created['id'], ['tag' => 'career']);
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'followUpToConsultationId' => $original['id'],
+        ]);
+
+        $body = $this->decode($response);
+        self::assertSame('Did I make the right call?', $body['question']);
+        self::assertSame('Some context.', $body['context']);
+        self::assertSame(['career'], $body['tags']);
+    }
+
     public function testUpdateWithNeitherNoteNorTagReturns422(): void
     {
         $created = $this->decode($this->postJson('/api/consultations', [

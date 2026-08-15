@@ -231,6 +231,120 @@ final class SqliteConsultationRepositoryTest extends TestCase
         self::assertSame(0, (int) $countStatement->fetchColumn());
     }
 
+    public function testSaveAndFindByIdRoundTripsAFollowUpLink(): void
+    {
+        $original = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        );
+        $this->repository->save($original);
+
+        $followUp = Consultation::create(
+            'consult-2',
+            'Did I make the right call?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-15T10:00:00+00:00'),
+            followUpToConsultationId: 'consult-1',
+        );
+        $this->repository->save($followUp);
+
+        $found = $this->repository->findById('consult-2');
+        self::assertNotNull($found);
+        self::assertSame('consult-1', $found->followUpToConsultationId);
+    }
+
+    public function testAConsultationWithNoFollowUpLinkRoundTripsAsNull(): void
+    {
+        $consultation = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        );
+        $this->repository->save($consultation);
+
+        $found = $this->repository->findById('consult-1');
+        self::assertNotNull($found);
+        self::assertNull($found->followUpToConsultationId);
+    }
+
+    public function testFindSummaryByIdReturnsIdAndQuestion(): void
+    {
+        $consultation = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        );
+        $this->repository->save($consultation);
+
+        $summary = $this->repository->findSummaryById('consult-1');
+
+        self::assertNotNull($summary);
+        self::assertSame('consult-1', $summary->id);
+        self::assertSame('Should I take the offer?', $summary->question);
+    }
+
+    public function testFindSummaryByIdReturnsNullForAMissingConsultation(): void
+    {
+        self::assertNull($this->repository->findSummaryById('does-not-exist'));
+    }
+
+    public function testFindFollowUpSummariesListsThemOldestFirst(): void
+    {
+        $original = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        );
+        $this->repository->save($original);
+
+        $this->repository->save(Consultation::create(
+            'consult-3',
+            'Third question?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-16T10:00:00+00:00'),
+            followUpToConsultationId: 'consult-1',
+        ));
+        $this->repository->save(Consultation::create(
+            'consult-2',
+            'Second question?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-15T10:00:00+00:00'),
+            followUpToConsultationId: 'consult-1',
+        ));
+
+        $followUps = $this->repository->findFollowUpSummaries('consult-1');
+
+        self::assertCount(2, $followUps);
+        self::assertSame('consult-2', $followUps[0]->id);
+        self::assertSame('consult-3', $followUps[1]->id);
+    }
+
+    public function testFindFollowUpSummariesReturnsEmptyArrayWhenThereAreNone(): void
+    {
+        $consultation = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        );
+        $this->repository->save($consultation);
+
+        self::assertSame([], $this->repository->findFollowUpSummaries('consult-1'));
+    }
+
     public function testFindByIdReturnsNullForAMissingConsultation(): void
     {
         self::assertNull($this->repository->findById('does-not-exist'));

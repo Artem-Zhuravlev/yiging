@@ -18,6 +18,8 @@ const sample: Consultation = {
   backgroundInformation: null,
   initialInterpretation: null,
   outcome: null,
+  followUpTo: null,
+  followUps: [],
 }
 
 describe('entities/consultation api', () => {

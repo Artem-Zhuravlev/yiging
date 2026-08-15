@@ -31,6 +31,7 @@ final readonly class Consultation
         public ?string $backgroundInformation = null,
         public ?string $initialInterpretation = null,
         public ?ConsultationOutcome $outcome = null,
+        public ?string $followUpToConsultationId = null,
     ) {
     }
 
@@ -45,9 +46,12 @@ final readonly class Consultation
         ?string $whatUserWantsToUnderstand = null,
         ?string $backgroundInformation = null,
         ?string $initialInterpretation = null,
+        ?string $followUpToConsultationId = null,
     ): self {
         // Note: a brand-new consultation never has an outcome yet, so create() intentionally
         // has no outcome parameter — one is only ever attached later via withUpdatedOutcome().
+        // followUpToConsultationId's existence is validated by the controller (repository
+        // access required); self-reference is structurally impossible here since $id is new.
         if (trim($question) === '') {
             throw new \InvalidArgumentException('A consultation question must not be empty.');
         }
@@ -76,6 +80,7 @@ final readonly class Consultation
             whatUserWantsToUnderstand: $whatUserWantsToUnderstand,
             backgroundInformation: $backgroundInformation,
             initialInterpretation: $initialInterpretation,
+            followUpToConsultationId: $followUpToConsultationId,
         );
     }
 
@@ -102,6 +107,7 @@ final readonly class Consultation
         ?string $backgroundInformation = null,
         ?string $initialInterpretation = null,
         ?ConsultationOutcome $outcome = null,
+        ?string $followUpToConsultationId = null,
     ): self {
         return new self(
             $id,
@@ -118,6 +124,7 @@ final readonly class Consultation
             $backgroundInformation,
             $initialInterpretation,
             $outcome,
+            $followUpToConsultationId,
         );
     }
 
@@ -138,6 +145,7 @@ final readonly class Consultation
             $this->backgroundInformation,
             $this->initialInterpretation,
             $this->outcome,
+            $this->followUpToConsultationId,
         );
     }
 
@@ -162,6 +170,7 @@ final readonly class Consultation
             $this->backgroundInformation,
             $this->initialInterpretation,
             $this->outcome,
+            $this->followUpToConsultationId,
         );
     }
 
@@ -193,6 +202,7 @@ final readonly class Consultation
             $backgroundInformation,
             $initialInterpretation,
             $this->outcome,
+            $this->followUpToConsultationId,
         );
     }
 
@@ -217,6 +227,32 @@ final readonly class Consultation
             $this->backgroundInformation,
             $this->initialInterpretation,
             new ConsultationOutcome($whatActuallyHappened, $outcome, $reflection, $recordedAt),
+            $this->followUpToConsultationId,
+        );
+    }
+
+    public function withFollowUpTo(?string $followUpToConsultationId): self
+    {
+        if ($followUpToConsultationId === $this->id) {
+            throw new \InvalidArgumentException('A consultation cannot be a follow-up to itself.');
+        }
+
+        return new self(
+            $this->id,
+            $this->question,
+            $this->method,
+            $this->primaryHexagram,
+            $this->resultingHexagram,
+            $this->createdAt,
+            $this->notes,
+            $this->tags,
+            $this->context,
+            $this->whatHappenedBefore,
+            $this->whatUserWantsToUnderstand,
+            $this->backgroundInformation,
+            $this->initialInterpretation,
+            $this->outcome,
+            $followUpToConsultationId,
         );
     }
 
