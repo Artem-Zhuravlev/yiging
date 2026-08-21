@@ -42,4 +42,17 @@ interface ConsultationRepository
      *     line positions are exactly this set, ordered newest-first (createdAt descending)
      */
     public function findByChangingLinePositions(array $positions, string $excludeId): array;
+
+    public function existsById(string $id): bool;
+
+    /**
+     * Saves an entire pre-validated import batch (SPEC-028) in one transaction: every
+     * consultation is inserted with its follow-up link cleared first, then every original link is
+     * restored in a second pass, so cross-references within the same batch resolve regardless of
+     * array order. Callers MUST have already validated ids are unique, don't already exist, and
+     * every followUpToConsultationId resolves — this method does no validation of its own.
+     *
+     * @param list<Consultation> $consultations
+     */
+    public function saveImportBatch(array $consultations): void;
 }

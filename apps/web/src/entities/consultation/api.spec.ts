@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { createConsultation, fetchConsultations, fetchConsultation, updateConsultation } from './api'
+import {
+  createConsultation,
+  fetchConsultations,
+  fetchConsultation,
+  updateConsultation,
+  importConsultationsBackup,
+} from './api'
 import type { Consultation, ConsultationDetail } from './model'
 
 const sample: Consultation = {
@@ -90,6 +96,22 @@ describe('entities/consultation api', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/consultations/abc-123',
       expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ tag: 'career' }) }),
+    )
+  })
+
+  it('importConsultationsBackup posts to /consultations/import and resolves the import count', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ imported: 2 }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await importConsultationsBackup([sample])
+
+    expect(result).toEqual({ imported: 2 })
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/consultations/import',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify([sample]) }),
     )
   })
 })

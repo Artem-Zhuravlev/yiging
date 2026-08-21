@@ -1,12 +1,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { fetchConsultations } from '../../entities/consultation/api'
+import {
+  exportConsultationsBackup,
+  fetchConsultations,
+  importConsultationsBackup,
+} from '../../entities/consultation/api'
 import type { Consultation } from '../../entities/consultation/model'
 
 type State =
   | { status: 'loading' }
   | { status: 'error'; message: string }
   | { status: 'loaded'; consultations: Consultation[] }
+
+type ImportState =
+  | { status: 'idle' }
+  | { status: 'importing' }
+  | { status: 'error'; message: string }
+  | { status: 'success'; imported: number }
 
 interface ConsultationGroup {
   dateLabel: string
@@ -17,6 +27,7 @@ const state = ref<State>({ status: 'loading' })
 const selectedTags = ref<Set<string>>(new Set())
 const favoritesOnly = ref(false)
 const searchQuery = ref('')
+const importState = ref<ImportState>({ status: 'idle' })
 
 onMounted(async () => {
   try {
@@ -72,11 +83,73 @@ function toggleTag(tag: string): void {
   else next.add(tag)
   selectedTags.value = next
 }
+
+function exportBackup(): void {
+  if (state.value.status !== 'loaded') return
+  exportConsultationsBackup(state.value.consultations)
+}
+
+async function handleImportFile(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  importState.value = { status: 'importing' }
+
+  try {
+    const text = await file.text()
+    let items: unknown[]
+    try {
+      items = JSON.parse(text)
+    } catch {
+      throw new Error('That file is not valid JSON.')
+    }
+    if (!Array.isArray(items)) {
+      throw new Error('That file does not contain a backup array.')
+    }
+
+    const { imported } = await importConsultationsBackup(items)
+    importState.value = { status: 'success', imported }
+
+    const consultations = await fetchConsultations()
+    state.value = { status: 'loaded', consultations }
+  } catch (error) {
+    importState.value = {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to import backup.',
+    }
+  } finally {
+    input.value = ''
+  }
+}
 </script>
 
 <template>
   <main class="mx-auto max-w-2xl px-6 py-10">
-    <h1 class="mb-6 text-2xl font-semibold tracking-tight">History</h1>
+    <div class="mb-6 flex items-center justify-between gap-3">
+      <h1 class="text-2xl font-semibold tracking-tight">History</h1>
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          class="text-sm text-neutral-500 hover:text-neutral-900"
+          :disabled="state.status !== 'loaded'"
+          @click="exportBackup"
+        >
+          Export Backup (JSON)
+        </button>
+        <label class="cursor-pointer text-sm text-neutral-500 hover:text-neutral-900">
+          Import Backup (JSON)
+          <input type="file" accept="application/json" class="hidden" @change="handleImportFile" />
+        </label>
+      </div>
+    </div>
+
+    <p v-if="importState.status === 'success'" class="mb-4 text-sm text-green-700">
+      Imported {{ importState.imported }} consultation{{ importState.imported === 1 ? '' : 's' }}.
+    </p>
+    <p v-else-if="importState.status === 'error'" class="mb-4 text-sm text-red-600">
+      {{ importState.message }}
+    </p>
 
     <p v-if="state.status === 'loading'" class="text-neutral-500">Loading…</p>
     <p v-else-if="state.status === 'error'" class="text-red-600">{{ state.message }}</p>

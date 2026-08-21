@@ -7,6 +7,7 @@ namespace App\Tests\Readings;
 use App\Readings\CastingMethodName;
 use App\Readings\Consultation;
 use App\Readings\ConsultationNote;
+use App\Readings\ConsultationSummary;
 use App\Readings\NoteLabel;
 use App\Readings\SqliteConsultationRepository;
 use App\Tests\Readings\Support\HexagramFixture;
@@ -467,6 +468,55 @@ final class SqliteConsultationRepositoryTest extends TestCase
 
         self::assertNotNull($found);
         self::assertFalse($found->favorite);
+    }
+
+    public function testExistsByIdReflectsWhetherAConsultationHasBeenSaved(): void
+    {
+        self::assertFalse($this->repository->existsById('consult-1'));
+
+        $this->repository->save(Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        ));
+
+        self::assertTrue($this->repository->existsById('consult-1'));
+    }
+
+    public function testSaveImportBatchInsertsEveryConsultationAndResolvesFollowUpLinksInEitherOrder(): void
+    {
+        $original = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        );
+        // Forward reference: consult-2 (earlier in the batch) links to consult-1 (later in the
+        // batch) — must resolve regardless of array order.
+        $followUp = Consultation::create(
+            'consult-2',
+            'Did I make the right call?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-15T10:00:00+00:00'),
+            followUpToConsultationId: 'consult-1',
+        );
+
+        $this->repository->saveImportBatch([$followUp, $original]);
+
+        $foundOriginal = $this->repository->findById('consult-1');
+        $foundFollowUp = $this->repository->findById('consult-2');
+
+        self::assertNotNull($foundOriginal);
+        self::assertNotNull($foundFollowUp);
+        self::assertSame('consult-1', $foundFollowUp->followUpToConsultationId);
+        self::assertSame([$foundFollowUp->id], array_map(
+            static fn (ConsultationSummary $s): string => $s->id,
+            $this->repository->findFollowUpSummaries('consult-1'),
+        ));
     }
 
     public function testFindByIdReturnsNullForAMissingConsultation(): void

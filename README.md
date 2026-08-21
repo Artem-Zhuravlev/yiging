@@ -103,6 +103,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-025 | [Consultation Favorites](specs/consultation-favorites/spec.md) | `verified` |
 | SPEC-026 | [Full-Text Search](specs/full-text-search/spec.md) | `verified` |
 | SPEC-027 | [Consultation Print / PDF Export](specs/consultation-print-export/spec.md) | `verified` |
+| SPEC-028 | [Consultation History Backup](specs/history-backup/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -371,6 +372,20 @@ has actually been fetched, avoiding an empty dashed box in the printout. Manuall
 the generated stylesheet directly (`@media print { .print\:hidden { display: none; } }`) confirms
 Tailwind emitted the rule correctly; the button and all thirteen hidden elements pass their own
 component tests. See [SPEC-027](specs/consultation-print-export/spec.md).
+
+`ConsultationHistoryPage` now has "Export Backup (JSON)" (a pure client-side download of the
+already-loaded history, no extra request) and "Import Backup (JSON)" (a new
+`POST /api/consultations/import`, all-or-nothing in one transaction, rejecting the whole batch if
+any id already exists or any follow-up link is unresolvable). Import reconstructs every field via
+`Consultation::reconstitute()` — the same "trusted, previously-validated state" factory the
+repository's own row-hydration already uses — preserving original ids, timestamps, hexagrams,
+notes' own timestamps, tags, context, outcome, favorite flag, and follow-up links exactly, via a
+two-pass insert (rows first, links second) so cross-references resolve regardless of array order.
+Manually verified against the real running dev server: re-importing the live history was correctly
+rejected (duplicate ids), and both the empty-array and malformed-JSON edge cases behaved exactly
+as the automated `ConsultationControllerTest::testImportRoundTripsAFullExportedConsultation` (a
+full export→fresh-database→import→field-by-field-comparison test) already proves for the success
+path. See [SPEC-028](specs/history-backup/spec.md).
 
 Next recommended steps: hexagram favorites (the deferred half of feature 4), AI interpretation
 layering, profiles, source-grounding, and conversation (building on the existing

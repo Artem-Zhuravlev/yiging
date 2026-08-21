@@ -1,11 +1,17 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import ConsultationHistoryPage from './ConsultationHistoryPage.vue'
-import { fetchConsultations } from '../../entities/consultation/api'
+import {
+  exportConsultationsBackup,
+  fetchConsultations,
+  importConsultationsBackup,
+} from '../../entities/consultation/api'
 import type { Consultation } from '../../entities/consultation/model'
 
 vi.mock('../../entities/consultation/api', () => ({
   fetchConsultations: vi.fn(),
+  exportConsultationsBackup: vi.fn(),
+  importConsultationsBackup: vi.fn(),
 }))
 
 const stubs = { RouterLink: { template: '<a><slot /></a>' } }
@@ -35,6 +41,11 @@ function sample(id: string, question: string, overrides: Partial<Consultation> =
 }
 
 describe('ConsultationHistoryPage', () => {
+  beforeEach(() => {
+    vi.mocked(exportConsultationsBackup).mockClear()
+    vi.mocked(importConsultationsBackup).mockClear()
+  })
+
   it('renders every consultation, linking to its detail page', async () => {
     vi.mocked(fetchConsultations).mockResolvedValue([
       sample('1', 'First?'),
@@ -240,5 +251,80 @@ describe('ConsultationHistoryPage', () => {
     expect(wrapper.text()).toContain('No consultations match the selected tags.')
     expect(wrapper.text()).not.toContain('Only career')
     expect(wrapper.text()).not.toContain('No consultations yet')
+  })
+
+  async function selectFile(wrapper: ReturnType<typeof mount>, contents: string): Promise<void> {
+    const input = wrapper.find('input[type="file"]').element as HTMLInputElement
+    const file = new File([contents], 'backup.json', { type: 'application/json' })
+    Object.defineProperty(input, 'files', { value: [file], configurable: true })
+    await wrapper.find('input[type="file"]').trigger('change')
+    await flushPromises()
+  }
+
+  it('exports the currently loaded consultations', async () => {
+    const consultations = [sample('1', 'A?'), sample('2', 'B?')]
+    vi.mocked(fetchConsultations).mockResolvedValue(consultations)
+
+    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
+    await flushPromises()
+
+    const button = wrapper.findAll('button').find((b) => b.text() === 'Export Backup (JSON)')!
+    await button.trigger('click')
+
+    expect(exportConsultationsBackup).toHaveBeenCalledWith(consultations)
+  })
+
+  it('imports a valid backup file, shows a success message, and refreshes the list', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValueOnce([sample('1', 'Original?')])
+    vi.mocked(importConsultationsBackup).mockResolvedValue({ imported: 2 })
+
+    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
+    await flushPromises()
+
+    vi.mocked(fetchConsultations).mockResolvedValueOnce([
+      sample('1', 'Original?'),
+      sample('2', 'Restored?'),
+    ])
+    await selectFile(wrapper, '[{"id":"2","question":"Restored?"}]')
+
+    expect(importConsultationsBackup).toHaveBeenCalledWith([{ id: '2', question: 'Restored?' }])
+    expect(wrapper.text()).toContain('Imported 2 consultations.')
+    expect(wrapper.text()).toContain('Restored?')
+  })
+
+  it('shows an error and never calls the API when the selected file is not valid JSON', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValue([sample('1', 'A?')])
+
+    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
+    await flushPromises()
+
+    await selectFile(wrapper, 'not json at all')
+
+    expect(importConsultationsBackup).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('not valid JSON')
+  })
+
+  it('shows an error and never calls the API when the file is valid JSON but not an array', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValue([sample('1', 'A?')])
+
+    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
+    await flushPromises()
+
+    await selectFile(wrapper, '{"not": "an array"}')
+
+    expect(importConsultationsBackup).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('does not contain a backup array')
+  })
+
+  it('shows an inline error when the import API call fails', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValue([sample('1', 'A?')])
+    vi.mocked(importConsultationsBackup).mockRejectedValue(new Error('duplicate ids'))
+
+    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
+    await flushPromises()
+
+    await selectFile(wrapper, '[]')
+
+    expect(wrapper.text()).toContain('duplicate ids')
   })
 })

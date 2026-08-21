@@ -817,6 +817,143 @@ final class ConsultationControllerTest extends TestCase
         self::assertTrue($updated['favorite']);
     }
 
+    public function testImportRoundTripsAFullExportedConsultation(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'manual',
+            'lines' => array_fill(0, 6, ['polarity' => 'yang', 'changing' => true]),
+            'context' => 'Some context.',
+        ]));
+        $this->patchJson('/api/consultations/' . $created['id'], ['tag' => 'career']);
+        $this->patchJson('/api/consultations/' . $created['id'], ['favorite' => true]);
+        $this->patchJson('/api/consultations/' . $created['id'], [
+            'note' => ['label' => 'after', 'text' => 'Went well.'],
+        ]);
+        $this->patchJson('/api/consultations/' . $created['id'], ['whatActuallyHappened' => 'Took it.']);
+        $exported = $this->decode($this->kernel->handle(Request::create('/api/consultations', 'GET')))[0];
+
+        // Restore into a fresh database.
+        $freshDatabasePath = tempnam(sys_get_temp_dir(), 'yijing_test_') . '.sqlite';
+        $freshConfig = new Config(['app_env' => 'testing', 'database_path' => $freshDatabasePath]);
+        $freshPdo = Database::connect($freshConfig);
+        $apiRoot = dirname(__DIR__, 2);
+        foreach (glob($apiRoot . '/database/migrations/*.php') ?: [] as $file) {
+            /** @var array{up: string} $migration */
+            $migration = require $file;
+            $freshPdo->exec($migration['up']);
+        }
+        $freshKernel = new Kernel($freshConfig, require $apiRoot . '/config/routes.php');
+
+        $importResponse = $freshKernel->handle(Request::create(
+            '/api/consultations/import',
+            'POST',
+            content: json_encode([$exported], JSON_THROW_ON_ERROR),
+        ));
+
+        self::assertSame(201, $importResponse->getStatusCode());
+        self::assertSame(['imported' => 1], $this->decode($importResponse));
+
+        $restored = $this->decode($freshKernel->handle(Request::create(
+            '/api/consultations/' . $exported['id'],
+            'GET',
+        )));
+
+        self::assertSame($exported['id'], $restored['id']);
+        self::assertSame($exported['createdAt'], $restored['createdAt']);
+        self::assertSame($exported['question'], $restored['question']);
+        self::assertSame($exported['context'], $restored['context']);
+        self::assertSame($exported['tags'], $restored['tags']);
+        self::assertSame($exported['notes'], $restored['notes']);
+        self::assertTrue($restored['favorite']);
+        self::assertSame('Took it.', $restored['outcome']['whatActuallyHappened']);
+
+        // Release every reference to the fresh PDO connection first — on Windows, SQLite keeps
+        // the file locked until the last PDO object is garbage-collected, so unlink() can
+        // otherwise fail with "Resource temporarily unavailable".
+        unset($freshKernel, $freshPdo);
+        gc_collect_cycles();
+        if (is_file($freshDatabasePath)) {
+            unlink($freshDatabasePath);
+        }
+    }
+
+    public function testImportRejectsTheWholeBatchWhenAnIdAlreadyExists(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'random',
+        ]));
+        $exported = $this->decode($this->kernel->handle(Request::create('/api/consultations', 'GET')))[0];
+
+        $response = $this->kernel->handle(Request::create(
+            '/api/consultations/import',
+            'POST',
+            content: json_encode([$exported], JSON_THROW_ON_ERROR),
+        ));
+
+        self::assertSame(422, $response->getStatusCode());
+        // Nothing was duplicated — still exactly the one original consultation.
+        $all = $this->decode($this->kernel->handle(Request::create('/api/consultations', 'GET')));
+        self::assertCount(1, $all);
+        self::assertSame($created['id'], $all[0]['id']);
+    }
+
+    public function testImportRejectsAnUnresolvableFollowUpLink(): void
+    {
+        $item = [
+            'id' => 'orphan-1',
+            'question' => 'Orphaned follow-up?',
+            'method' => 'three_coins',
+            'primaryHexagram' => ['kingWenNumber' => 1],
+            'changingLinePositions' => [],
+            'resultingHexagram' => ['kingWenNumber' => 1],
+            'createdAt' => '2026-08-14T10:00:00+00:00',
+            'notes' => [],
+            'tags' => [],
+            'favorite' => false,
+            'followUpTo' => ['id' => 'does-not-exist', 'question' => 'x'],
+        ];
+
+        $response = $this->kernel->handle(Request::create(
+            '/api/consultations/import',
+            'POST',
+            content: json_encode([$item], JSON_THROW_ON_ERROR),
+        ));
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testImportOfAnEmptyArrayIsANoOpSuccess(): void
+    {
+        $response = $this->kernel->handle(Request::create(
+            '/api/consultations/import',
+            'POST',
+            content: '[]',
+        ));
+
+        self::assertSame(201, $response->getStatusCode());
+        self::assertSame(['imported' => 0], $this->decode($response));
+    }
+
+    public function testImportWithMalformedJsonReturns422(): void
+    {
+        $response = $this->kernel->handle(Request::create('/api/consultations/import', 'POST', content: 'not json'));
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testImportWithANonArrayBodyReturns422(): void
+    {
+        $response = $this->kernel->handle(Request::create(
+            '/api/consultations/import',
+            'POST',
+            content: '{"not": "an array"}',
+        ));
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
     public function testUpdateWithNeitherNoteNorTagReturns422(): void
     {
         $created = $this->decode($this->postJson('/api/consultations', [

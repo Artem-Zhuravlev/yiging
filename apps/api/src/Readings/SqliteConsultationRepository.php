@@ -322,6 +322,52 @@ final class SqliteConsultationRepository implements ConsultationRepository
         return $summaries;
     }
 
+    public function existsById(string $id): bool
+    {
+        $statement = $this->pdo->prepare('SELECT 1 FROM consultations WHERE id = :id LIMIT 1');
+        $statement->execute(['id' => $id]);
+
+        return $statement->fetchColumn() !== false;
+    }
+
+    public function saveImportBatch(array $consultations): void
+    {
+        $this->pdo->beginTransaction();
+
+        try {
+            foreach ($consultations as $consultation) {
+                $this->upsertConsultation($consultation->withFollowUpTo(null));
+                $this->replaceNotes($consultation);
+                $this->replaceTags($consultation);
+                $this->replaceOutcome($consultation);
+            }
+
+            foreach ($consultations as $consultation) {
+                if ($consultation->followUpToConsultationId !== null) {
+                    $this->updateFollowUpLink($consultation->id, $consultation->followUpToConsultationId);
+                }
+            }
+
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+
+            throw $e;
+        }
+    }
+
+    private function updateFollowUpLink(string $id, ?string $followUpToConsultationId): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE consultations SET follow_up_to_consultation_id = :follow_up_to_consultation_id
+             WHERE id = :id',
+        );
+        $statement->execute([
+            'id' => $id,
+            'follow_up_to_consultation_id' => $followUpToConsultationId,
+        ]);
+    }
+
     /**
      * @return list<ConsultationNote>
      */

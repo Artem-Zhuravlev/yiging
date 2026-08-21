@@ -76,6 +76,52 @@ final class ConsultationController
         return new JsonResponse($this->toJson($consultation), Response::HTTP_CREATED);
     }
 
+    public function import(Request $request): Response
+    {
+        try {
+            $items = $this->decodeJsonArrayBody($request);
+        } catch (\JsonException) {
+            return $this->errorResponse('Malformed JSON body.', Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        try {
+            $consultations = array_map(fn (mixed $item): Consultation => $this->parseImportItem($item), $items);
+
+            $batchIds = array_map(static fn (Consultation $c): string => $c->id, $consultations);
+
+            if (count($batchIds) !== count(array_unique($batchIds))) {
+                throw new \InvalidArgumentException('Import batch contains duplicate ids.');
+            }
+
+            foreach ($consultations as $consultation) {
+                if ($this->repository->existsById($consultation->id)) {
+                    throw new \InvalidArgumentException(
+                        sprintf('A consultation with id "%s" already exists.', $consultation->id),
+                    );
+                }
+            }
+
+            foreach ($consultations as $consultation) {
+                if (
+                    $consultation->followUpToConsultationId !== null
+                    && !in_array($consultation->followUpToConsultationId, $batchIds, true)
+                    && $this->repository->findSummaryById($consultation->followUpToConsultationId) === null
+                ) {
+                    throw new \InvalidArgumentException(sprintf(
+                        'Consultation "%s" references a followUpToConsultationId that does not exist.',
+                        $consultation->id,
+                    ));
+                }
+            }
+        } catch (\InvalidArgumentException $e) {
+            return $this->errorResponse($e->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $this->repository->saveImportBatch($consultations);
+
+        return new JsonResponse(['imported' => count($consultations)], Response::HTTP_CREATED);
+    }
+
     public function index(): Response
     {
         $consultations = array_map(
@@ -374,6 +420,171 @@ final class ConsultationController
 
         /** @var array<string, mixed> $decoded */
         return $decoded;
+    }
+
+    /**
+     * @return list<mixed>
+     */
+    private function decodeJsonArrayBody(Request $request): array
+    {
+        $decoded = json_decode($request->getContent(), true, 512, JSON_THROW_ON_ERROR);
+
+        if (!is_array($decoded) || !array_is_list($decoded)) {
+            throw new \JsonException('Request body must be a JSON array.');
+        }
+
+        /** @var list<mixed> $decoded */
+        return $decoded;
+    }
+
+    private function parseImportItem(mixed $item): Consultation
+    {
+        if (!is_array($item)) {
+            throw new \InvalidArgumentException('Each import item must be an object.');
+        }
+
+        $id = $item['id'] ?? null;
+        $question = $item['question'] ?? null;
+        $method = CastingMethodName::tryFrom(is_string($item['method'] ?? null) ? $item['method'] : '');
+        $primaryKingWenNumber = $item['primaryHexagram']['kingWenNumber'] ?? null;
+        $resultingKingWenNumber = $item['resultingHexagram']['kingWenNumber'] ?? null;
+        $changingLinePositions = $item['changingLinePositions'] ?? [];
+        $createdAt = $item['createdAt'] ?? null;
+
+        if (
+            !is_string($id) || $id === ''
+            || !is_string($question)
+            || $method === null
+            || !is_int($primaryKingWenNumber)
+            || !is_int($resultingKingWenNumber)
+            || !is_array($changingLinePositions)
+            || !is_string($createdAt)
+        ) {
+            throw new \InvalidArgumentException('Malformed import item: missing or invalid required fields.');
+        }
+
+        try {
+            $primaryHexagram = self::hexagramFromKingWenNumber($primaryKingWenNumber, array_values($changingLinePositions));
+            $resultingHexagram = self::hexagramFromKingWenNumber($resultingKingWenNumber, []);
+            $createdAtDate = new \DateTimeImmutable($createdAt);
+        } catch (\Exception $e) {
+            throw new \InvalidArgumentException('Malformed import item: ' . $e->getMessage());
+        }
+
+        return Consultation::reconstitute(
+            $id,
+            $question,
+            $method,
+            $primaryHexagram,
+            $resultingHexagram,
+            $createdAtDate,
+            $this->parseImportNotes($item['notes'] ?? []),
+            $this->parseImportTags($item['tags'] ?? []),
+            context: $this->validatedContextFieldValue($item['context'] ?? null, 'context'),
+            whatHappenedBefore: $this->validatedContextFieldValue(
+                $item['whatHappenedBefore'] ?? null,
+                'whatHappenedBefore',
+            ),
+            whatUserWantsToUnderstand: $this->validatedContextFieldValue(
+                $item['whatUserWantsToUnderstand'] ?? null,
+                'whatUserWantsToUnderstand',
+            ),
+            backgroundInformation: $this->validatedContextFieldValue(
+                $item['backgroundInformation'] ?? null,
+                'backgroundInformation',
+            ),
+            initialInterpretation: $this->validatedContextFieldValue(
+                $item['initialInterpretation'] ?? null,
+                'initialInterpretation',
+            ),
+            outcome: $this->parseImportOutcome($item['outcome'] ?? null),
+            followUpToConsultationId: is_string($item['followUpTo']['id'] ?? null)
+                ? $item['followUpTo']['id']
+                : null,
+            favorite: (bool) ($item['favorite'] ?? false),
+        );
+    }
+
+    /**
+     * @return list<ConsultationNote>
+     */
+    private function parseImportNotes(mixed $notes): array
+    {
+        if (!is_array($notes)) {
+            throw new \InvalidArgumentException('Malformed import item: "notes" must be an array.');
+        }
+
+        return array_map(function (mixed $note): ConsultationNote {
+            if (!is_array($note) || !is_string($note['label'] ?? null) || !is_string($note['text'] ?? null)) {
+                throw new \InvalidArgumentException('Malformed import item: malformed note.');
+            }
+
+            $label = NoteLabel::tryFrom($note['label']);
+
+            if ($label === null) {
+                throw new \InvalidArgumentException('Malformed import item: invalid note label.');
+            }
+
+            return new ConsultationNote($label, $note['text'], new \DateTimeImmutable((string) ($note['createdAt'] ?? 'now')));
+        }, array_values($notes));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function parseImportTags(mixed $tags): array
+    {
+        if (!is_array($tags)) {
+            throw new \InvalidArgumentException('Malformed import item: "tags" must be an array.');
+        }
+
+        foreach ($tags as $tag) {
+            if (!is_string($tag)) {
+                throw new \InvalidArgumentException('Malformed import item: tags must be strings.');
+            }
+        }
+
+        /** @var list<string> */
+        return array_values($tags);
+    }
+
+    private function parseImportOutcome(mixed $outcome): ?ConsultationOutcome
+    {
+        if ($outcome === null) {
+            return null;
+        }
+
+        if (!is_array($outcome)) {
+            throw new \InvalidArgumentException('Malformed import item: "outcome" must be an object or null.');
+        }
+
+        return new ConsultationOutcome(
+            $this->validatedContextFieldValue($outcome['whatActuallyHappened'] ?? null, 'whatActuallyHappened'),
+            $this->validatedContextFieldValue($outcome['outcome'] ?? null, 'outcome'),
+            $this->validatedContextFieldValue($outcome['reflection'] ?? null, 'reflection'),
+            new \DateTimeImmutable((string) ($outcome['recordedAt'] ?? 'now')),
+        );
+    }
+
+    /**
+     * @param list<int> $changingPositions
+     */
+    private static function hexagramFromKingWenNumber(int $kingWenNumber, array $changingPositions): Hexagram
+    {
+        $base = Hexagram::fromKingWenNumber($kingWenNumber);
+
+        if ($changingPositions === []) {
+            return $base;
+        }
+
+        $lines = array_map(
+            static fn (Line $line): Line => in_array($line->position, $changingPositions, true)
+                ? new Line($line->position, $line->polarity, true)
+                : $line,
+            $base->lines,
+        );
+
+        return Hexagram::fromLines($lines);
     }
 
     private function errorResponse(string $message, int $status): JsonResponse
