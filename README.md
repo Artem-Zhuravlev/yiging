@@ -107,6 +107,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-029 | [Consultation Public Share Link](specs/consultation-public-share/spec.md) | `verified` |
 | SPEC-030 | [Practice Journal](specs/practice-journal/spec.md) | `verified` |
 | SPEC-031 | [Hexagram Favorites](specs/hexagram-favorites/spec.md) | `verified` |
+| SPEC-032 | [Hexagram of the Day](specs/hexagram-of-the-day/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -432,6 +433,14 @@ running dev server: starred hexagram 1 from the Explorer grid without triggering
 confirmed the favorites-only filter narrowed correctly, toggled hexagram 2's favorite from its
 detail page, and confirmed `404`/idempotent-`204` directly against the API for an out-of-range
 number and a repeated unmark. See [SPEC-031](specs/hexagram-favorites/spec.md).
+
+The home page now shows a "Hexagram of the Day" — a pure, deterministic function
+(`hexagramOfTheDayNumber()`) mapping the visitor's local calendar date to a King Wen number via
+day-count-since-epoch modulo 64, no persistence, no randomness, no new endpoint (it fetches the
+result through the existing `GET /api/hexagrams/{id}`). The same hexagram shows all day for one
+visitor; a different local calendar day yields a different one over a 64-day cycle. Manually
+verified against the real running dev server: today (2026-08-21) shows hexagram 15 (謙, Qiān),
+linking correctly to its detail page. See [SPEC-032](specs/hexagram-of-the-day/spec.md).
 
 Next recommended steps: AI interpretation layering, profiles, source-grounding, and conversation
 (building on the existing `InterpretationContext`/`InterpretationProvider` abstraction),
