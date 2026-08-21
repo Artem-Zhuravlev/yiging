@@ -97,6 +97,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-019 | [Rich Consultation Context](specs/consultation-context/spec.md) | `verified` |
 | SPEC-020 | [Consultation Outcome](specs/consultation-outcome/spec.md) | `verified` |
 | SPEC-021 | [Follow-up Consultations](specs/consultation-follow-ups/spec.md) | `verified` |
+| SPEC-022 | [Consultation Timeline](specs/consultation-timeline/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -298,9 +299,20 @@ from it, confirmed both directions navigate correctly, and confirmed it — genu
 this migration by several specs — still loaded correctly throughout. See
 [SPEC-021](specs/consultation-follow-ups/spec.md).
 
-Next recommended steps: continue the plan's batch with features 33-36 (a chronological timeline,
-repeated-hexagram/changing-line detection, personal statistics — all domain/UI work on data
-already in hand) or 37-40 (AI interpretation layering, profiles, source-grounding, conversation —
-building on the existing `InterpretationContext`/`InterpretationProvider` abstraction), or provide
-a second public-domain I Ching translation source to unblock features 26/27, or verify the live
-Gemini call (see above) whenever an `AI_API_KEY` is available.
+`ConsultationHistoryPage` now groups consultations under a date heading per local calendar day
+(newest-first, both across and within groups) and adds a client-side, multi-select tag filter
+(AND semantics — a consultation must carry every selected tag) built entirely from data
+`GET /api/consultations` already returns: no new endpoint, query parameter, or schema change.
+Date groups with zero matches after filtering don't render their heading, and a distinct "No
+consultations match the selected tags" message is shown separately from the existing "no
+consultations yet" empty state. Manually verified against the real running dev server: created
+two new tagged consultations, confirmed date grouping against the existing multi-day history,
+confirmed AND-filtering narrows correctly, and confirmed the zero-match message renders when two
+non-overlapping tags are both selected. See [SPEC-022](specs/consultation-timeline/spec.md).
+
+Next recommended steps: continue the plan's batch with repeated-hexagram/changing-line detection
+and personal statistics (both domain/UI work on data already in hand, same family as the timeline
+just shipped), or AI interpretation layering, profiles, source-grounding, and conversation
+(building on the existing `InterpretationContext`/`InterpretationProvider` abstraction), or
+provide a second public-domain I Ching translation source to unblock features 26/27, or verify the
+live Gemini call (see above) whenever an `AI_API_KEY` is available.
