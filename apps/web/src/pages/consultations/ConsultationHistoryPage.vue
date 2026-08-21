@@ -16,6 +16,7 @@ interface ConsultationGroup {
 const state = ref<State>({ status: 'loading' })
 const selectedTags = ref<Set<string>>(new Set())
 const favoritesOnly = ref(false)
+const searchQuery = ref('')
 
 onMounted(async () => {
   try {
@@ -34,12 +35,21 @@ const allTags = computed<string[]>(() => {
   return [...new Set(state.value.consultations.flatMap((c) => c.tags))].sort()
 })
 
+function matchesSearch(consultation: Consultation, query: string): boolean {
+  const needle = query.toLowerCase()
+  if (consultation.question.toLowerCase().includes(needle)) return true
+  return consultation.notes.some((note) => note.text.toLowerCase().includes(needle))
+}
+
 const filteredConsultations = computed<Consultation[]>(() => {
   if (state.value.status !== 'loaded') return []
+
+  const query = searchQuery.value.trim()
 
   return state.value.consultations
     .filter((c) => selectedTags.value.size === 0 || [...selectedTags.value].every((t) => c.tags.includes(t)))
     .filter((c) => !favoritesOnly.value || c.favorite)
+    .filter((c) => query === '' || matchesSearch(c, query))
 })
 
 const groupedConsultations = computed<ConsultationGroup[]>(() => {
@@ -77,6 +87,13 @@ function toggleTag(tag: string): void {
     </p>
 
     <template v-else>
+      <input
+        v-model="searchQuery"
+        type="search"
+        placeholder="Search questions and notes…"
+        class="mb-4 w-full rounded-md border border-neutral-300 p-2 text-sm"
+      />
+
       <div class="mb-6 flex flex-wrap gap-2">
         <button
           type="button"

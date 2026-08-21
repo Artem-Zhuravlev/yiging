@@ -10,7 +10,7 @@ vi.mock('../../entities/hexagram/api', () => ({
 
 const stubs = { RouterLink: { template: '<a><slot /></a>' } }
 
-function sampleHexagram(kingWenNumber: number): Hexagram {
+function sampleHexagram(kingWenNumber: number, overrides: Partial<Hexagram> = {}): Hexagram {
   return {
     kingWenNumber,
     chineseName: '乾',
@@ -30,6 +30,7 @@ function sampleHexagram(kingWenNumber: number): Hexagram {
       reversed: { kingWenNumber, chineseName: '乾', pinyin: 'Qián' },
       complement: { kingWenNumber, chineseName: '乾', pinyin: 'Qián' },
     },
+    ...overrides,
   }
 }
 
@@ -68,5 +69,36 @@ describe('HexagramListPage', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('network down')
+  })
+
+  it('filters by Chinese name, pinyin, Judgment, or Image text, case-insensitively', async () => {
+    vi.mocked(fetchHexagrams).mockResolvedValue([
+      sampleHexagram(1, { chineseName: '乾', pinyin: 'Qián', judgment: 'Great success.', image: null }),
+      sampleHexagram(2, { chineseName: '坤', pinyin: 'Kūn', judgment: null, image: 'The Earth image.' }),
+      sampleHexagram(3, { chineseName: '屯', pinyin: 'Zhūn', judgment: 'Difficulty.', image: 'Clouds.' }),
+    ])
+
+    const wrapper = mount(HexagramListPage, { global: { stubs } })
+    await flushPromises()
+
+    await wrapper.find('input[type="search"]').setValue('EARTH')
+
+    expect(wrapper.text()).toContain('坤')
+    expect(wrapper.text()).not.toContain('乾')
+    expect(wrapper.text()).not.toContain('屯')
+  })
+
+  it('shows all hexagrams again when the search is cleared', async () => {
+    vi.mocked(fetchHexagrams).mockResolvedValue([sampleHexagram(1), sampleHexagram(2)])
+
+    const wrapper = mount(HexagramListPage, { global: { stubs } })
+    await flushPromises()
+
+    const input = wrapper.find('input[type="search"]')
+    await input.setValue('nonexistent query')
+    expect(wrapper.text()).toContain('No hexagrams match your search.')
+
+    await input.setValue('')
+    expect(wrapper.findAll('ul a')).toHaveLength(2)
   })
 })

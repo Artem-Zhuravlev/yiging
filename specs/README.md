@@ -101,3 +101,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-023 | [Repeated Pattern Detection](repeated-pattern-detection/spec.md) | `verified` |
 | SPEC-024 | [Personal Statistics](personal-statistics/spec.md) | `verified` |
 | SPEC-025 | [Consultation Favorites](consultation-favorites/spec.md) | `verified` |
+| SPEC-026 | [Full-Text Search](full-text-search/spec.md) | `verified` |

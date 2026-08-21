@@ -159,6 +159,70 @@ describe('ConsultationHistoryPage', () => {
     expect(wrapper.findAll('button').some((b) => b.text().includes('Favorites only'))).toBe(true)
   })
 
+  it('filters by question text, case-insensitively', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValue([
+      sample('1', 'Should I take the new offer?'),
+      sample('2', 'Is this relationship healthy?'),
+    ])
+
+    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
+    await flushPromises()
+
+    await wrapper.find('input[type="search"]').setValue('OFFER')
+
+    expect(wrapper.text()).toContain('Should I take the new offer?')
+    expect(wrapper.text()).not.toContain('Is this relationship healthy?')
+  })
+
+  it('filters by note text', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValue([
+      sample('1', 'First question?', {
+        notes: [{ label: 'after', text: 'It went great in the end.', createdAt: '2026-08-14T09:00:00+00:00' }],
+      }),
+      sample('2', 'Second question?'),
+    ])
+
+    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
+    await flushPromises()
+
+    await wrapper.find('input[type="search"]').setValue('went great')
+
+    expect(wrapper.text()).toContain('First question?')
+    expect(wrapper.text()).not.toContain('Second question?')
+  })
+
+  it('composes search with an active tag filter and favorites-only', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValue([
+      sample('1', 'Offer from company A?', { favorite: true, tags: ['career'] }),
+      sample('2', 'Offer from company B?', { favorite: false, tags: ['career'] }),
+    ])
+
+    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
+    await flushPromises()
+
+    const favoritesToggle = wrapper.findAll('button').find((b) => b.text().includes('Favorites only'))!
+    await favoritesToggle.trigger('click')
+    await wrapper.find('input[type="search"]').setValue('offer')
+
+    expect(wrapper.text()).toContain('Offer from company A?')
+    expect(wrapper.text()).not.toContain('Offer from company B?')
+  })
+
+  it('restores the full list when the search is cleared', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValue([sample('1', 'A?'), sample('2', 'B?')])
+
+    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
+    await flushPromises()
+
+    const input = wrapper.find('input[type="search"]')
+    await input.setValue('nonexistent')
+    expect(wrapper.text()).toContain('No consultations match the selected tags.')
+
+    await input.setValue('')
+    expect(wrapper.text()).toContain('A?')
+    expect(wrapper.text()).toContain('B?')
+  })
+
   it('shows a distinct message when the tag filter matches nothing', async () => {
     vi.mocked(fetchConsultations).mockResolvedValue([
       sample('1', 'Only career', { tags: ['career'] }),
