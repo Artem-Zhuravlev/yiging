@@ -1,4 +1,4 @@
-import { apiGet } from '../../shared/api/http'
+import { apiDelete, apiGet, apiPut } from '../../shared/api/http'
 import type { Hexagram, HexagramComparison, LinePolarity } from './model'
 
 export function fetchHexagrams(): Promise<Hexagram[]> {
@@ -16,4 +16,12 @@ export function computeHexagramFromLines(polarities: LinePolarity[]): Promise<He
 
 export function compareHexagrams(a: number, b: number): Promise<HexagramComparison> {
   return apiGet<HexagramComparison>(`/hexagrams/compare?a=${a}&b=${b}`)
+}
+
+export function markHexagramFavorite(kingWenNumber: number): Promise<void> {
+  return apiPut(`/hexagrams/${kingWenNumber}/favorite`)
+}
+
+export function unmarkHexagramFavorite(kingWenNumber: number): Promise<void> {
+  return apiDelete(`/hexagrams/${kingWenNumber}/favorite`)
 }

@@ -2,12 +2,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { reactive } from 'vue'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import HexagramDetailPage from './HexagramDetailPage.vue'
-import { fetchHexagram } from '../../entities/hexagram/api'
+import {
+  fetchHexagram,
+  markHexagramFavorite,
+  unmarkHexagramFavorite,
+} from '../../entities/hexagram/api'
 import { ApiError } from '../../shared/api/http'
 import type { Hexagram } from '../../entities/hexagram/model'
 
 vi.mock('../../entities/hexagram/api', () => ({
   fetchHexagram: vi.fn(),
+  markHexagramFavorite: vi.fn(),
+  unmarkHexagramFavorite: vi.fn(),
 }))
 
 const route = reactive({ params: { number: '1' } })
@@ -34,6 +40,7 @@ const sampleHexagram: Hexagram = {
     reversed: { kingWenNumber: 1, chineseName: '乾', pinyin: 'Qián' },
     complement: { kingWenNumber: 2, chineseName: '坤', pinyin: 'Kūn' },
   },
+  favorite: false,
 }
 
 describe('HexagramDetailPage', () => {
@@ -41,6 +48,8 @@ describe('HexagramDetailPage', () => {
 
   beforeEach(() => {
     route.params.number = '1'
+    vi.mocked(markHexagramFavorite).mockClear().mockResolvedValue(undefined)
+    vi.mocked(unmarkHexagramFavorite).mockClear().mockResolvedValue(undefined)
   })
 
   // Every mounted instance's watch() keeps listening on the shared `route` mock above until
@@ -146,6 +155,34 @@ describe('HexagramDetailPage', () => {
 
     expect(fetchHexagram).toHaveBeenCalledWith(54)
     expect(wrapper.find('h1').text()).toBe('䷻ 54. 歸妹')
+  })
+
+  it('toggles the favorite state via the toggle button', async () => {
+    vi.mocked(fetchHexagram).mockResolvedValue(sampleHexagram)
+
+    wrapper = mount(HexagramDetailPage, { global: { stubs } })
+    await flushPromises()
+
+    const button = wrapper.findAll('button').find((b) => b.text().includes('Add to Favorites'))!
+    await button.trigger('click')
+    await flushPromises()
+
+    expect(markHexagramFavorite).toHaveBeenCalledWith(1)
+    expect(wrapper.text()).toContain('★ Favorited')
+  })
+
+  it('shows an inline error when toggling favorite fails', async () => {
+    vi.mocked(fetchHexagram).mockResolvedValue(sampleHexagram)
+    vi.mocked(markHexagramFavorite).mockRejectedValue(new Error('favorite toggle failed'))
+
+    wrapper = mount(HexagramDetailPage, { global: { stubs } })
+    await flushPromises()
+
+    const button = wrapper.findAll('button').find((b) => b.text().includes('Add to Favorites'))!
+    await button.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('favorite toggle failed')
   })
 
   it('shows a not-found state on a 404', async () => {

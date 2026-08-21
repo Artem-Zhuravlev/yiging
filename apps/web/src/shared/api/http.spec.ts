@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { apiGet, apiPost, apiPatch, ApiError } from './http'
+import { apiGet, apiPost, apiPatch, apiPut, apiDelete, ApiError } from './http'
 
 describe('apiGet', () => {
   afterEach(() => {
@@ -130,6 +130,66 @@ describe('apiPatch', () => {
     await expect(apiPatch('/things/1', {})).rejects.toMatchObject({
       status: 422,
       message: 'Invalid input.',
+    })
+  })
+})
+
+describe('apiPut', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('sends a PUT request and resolves without attempting to parse a body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(apiPut('/things/1/favorite')).resolves.toBeUndefined()
+    expect(fetchMock).toHaveBeenCalledWith('/api/things/1/favorite', { method: 'PUT' })
+  })
+
+  it('throws an ApiError with the status and message on a non-2xx response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: () => Promise.resolve({ error: 'Not Found' }),
+      }),
+    )
+
+    await expect(apiPut('/things/1/favorite')).rejects.toMatchObject({
+      status: 404,
+      message: 'Not Found',
+    })
+  })
+})
+
+describe('apiDelete', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('sends a DELETE request and resolves without attempting to parse a body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(apiDelete('/things/1/favorite')).resolves.toBeUndefined()
+    expect(fetchMock).toHaveBeenCalledWith('/api/things/1/favorite', { method: 'DELETE' })
+  })
+
+  it('throws an ApiError with the status and message on a non-2xx response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+        json: () => Promise.resolve({ error: 'Not Found' }),
+      }),
+    )
+
+    await expect(apiDelete('/things/1/favorite')).rejects.toMatchObject({
+      status: 404,
+      message: 'Not Found',
     })
   })
 })

@@ -106,3 +106,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-028 | [Consultation History Backup](history-backup/spec.md) | `verified` |
 | SPEC-029 | [Consultation Public Share Link](consultation-public-share/spec.md) | `verified` |
 | SPEC-030 | [Practice Journal](practice-journal/spec.md) | `verified` |
+| SPEC-031 | [Hexagram Favorites](hexagram-favorites/spec.md) | `verified` |

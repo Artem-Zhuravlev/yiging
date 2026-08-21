@@ -36,6 +36,7 @@ function sampleHexagram(kingWenNumber: number, chineseName: string): Hexagram {
       reversed: { kingWenNumber: kingWenNumber, chineseName, pinyin: 'x' },
       complement: { kingWenNumber: 2, chineseName: 'x', pinyin: 'x' },
     },
+    favorite: false,
   }
 }
 

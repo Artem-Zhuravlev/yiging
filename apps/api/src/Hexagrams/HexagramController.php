@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Hexagrams;
 
+use App\Core\Config;
+use App\Core\Database;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,16 +18,24 @@ use Yijing\Core\LinePolarity;
 use Yijing\Core\Trigram;
 use Yijing\Core\YijingRelations;
 
-// No constructor: this controller has no database access to configure. Kernel::invoke()
-// constructs every controller as `new $class($config)`; PHP silently ignores the extra
-// argument when a class declares no __construct(), so this stays compatible without a
-// dead, unused Config parameter.
 final class HexagramController
 {
+    private readonly HexagramFavoritesRepository $favorites;
+
+    public function __construct(Config $config)
+    {
+        $this->favorites = new SqliteHexagramFavoritesRepository(Database::connect($config));
+    }
+
     public function index(): Response
     {
+        $favoriteNumbers = $this->favorites->allFavoriteNumbers();
+
         $hexagrams = array_map(
-            fn (int $kingWenNumber): array => $this->toJson(Hexagram::fromKingWenNumber($kingWenNumber)),
+            fn (int $kingWenNumber): array => $this->toJson(
+                Hexagram::fromKingWenNumber($kingWenNumber),
+                in_array($kingWenNumber, $favoriteNumbers, true),
+            ),
             array_keys(HexagramCatalog::all()),
         );
 
@@ -43,7 +53,39 @@ final class HexagramController
             return new JsonResponse(['error' => 'Not Found'], Response::HTTP_NOT_FOUND);
         }
 
-        return new JsonResponse($this->toJson($hexagram));
+        return new JsonResponse($this->toJson($hexagram, $this->favorites->isFavorite($hexagram->kingWenNumber)));
+    }
+
+    /**
+     * @param array<string, string> $vars
+     */
+    public function markFavorite(Request $request, array $vars): Response
+    {
+        try {
+            $hexagram = Hexagram::fromKingWenNumber((int) $vars['id']);
+        } catch (\InvalidArgumentException) {
+            return new JsonResponse(['error' => 'Not Found'], Response::HTTP_NOT_FOUND);
+        }
+
+        $this->favorites->add($hexagram->kingWenNumber);
+
+        return new Response('', Response::HTTP_NO_CONTENT);
+    }
+
+    /**
+     * @param array<string, string> $vars
+     */
+    public function unmarkFavorite(Request $request, array $vars): Response
+    {
+        try {
+            $hexagram = Hexagram::fromKingWenNumber((int) $vars['id']);
+        } catch (\InvalidArgumentException) {
+            return new JsonResponse(['error' => 'Not Found'], Response::HTTP_NOT_FOUND);
+        }
+
+        $this->favorites->remove($hexagram->kingWenNumber);
+
+        return new Response('', Response::HTTP_NO_CONTENT);
     }
 
     public function fromLines(Request $request): Response
@@ -54,7 +96,7 @@ final class HexagramController
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        return new JsonResponse($this->toJson(Hexagram::fromLines($lines)));
+        return new JsonResponse($this->toJson(Hexagram::fromLines($lines), false));
     }
 
     public function compare(Request $request): Response
@@ -74,8 +116,8 @@ final class HexagramController
         }
 
         return new JsonResponse([
-            'a' => $this->toJson($a),
-            'b' => $this->toJson($b),
+            'a' => $this->toJson($a, false),
+            'b' => $this->toJson($b, false),
             'lineComparisons' => array_map(
                 static fn (LineComparison $c): array => [
                     'position' => $c->position,
@@ -140,7 +182,7 @@ final class HexagramController
     /**
      * @return array<string, mixed>
      */
-    private function toJson(Hexagram $hexagram): array
+    private function toJson(Hexagram $hexagram, bool $favorite): array
     {
         return [
             'kingWenNumber' => $hexagram->kingWenNumber,
@@ -160,6 +202,7 @@ final class HexagramController
             'image' => $hexagram->image,
             'lineStatements' => $hexagram->lineStatements,
             'relationships' => $this->relationshipsToJson($hexagram),
+            'favorite' => $favorite,
         ];
     }
 

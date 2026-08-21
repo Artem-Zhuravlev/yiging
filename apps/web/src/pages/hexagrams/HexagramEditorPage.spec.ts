@@ -26,6 +26,7 @@ const qian: Hexagram = {
     reversed: { kingWenNumber: 1, chineseName: '乾', pinyin: 'Qián' },
     complement: { kingWenNumber: 2, chineseName: '坤', pinyin: 'Kūn' },
   },
+  favorite: false,
 }
 
 const tai: Hexagram = {
@@ -51,6 +52,7 @@ const tai: Hexagram = {
     reversed: { kingWenNumber: 12, chineseName: '否', pinyin: 'Pǐ' },
     complement: { kingWenNumber: 12, chineseName: '否', pinyin: 'Pǐ' },
   },
+  favorite: false,
 }
 
 describe('HexagramEditorPage', () => {

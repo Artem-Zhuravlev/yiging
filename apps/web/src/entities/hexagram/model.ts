@@ -40,6 +40,7 @@ export interface Hexagram {
   image: string | null
   lineStatements: string[] | null
   relationships: HexagramRelationships
+  favorite: boolean
 }
 
 export interface LineComparison {

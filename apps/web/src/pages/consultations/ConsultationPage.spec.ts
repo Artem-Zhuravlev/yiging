@@ -48,6 +48,7 @@ function sampleHexagram(kingWenNumber: number): Hexagram {
       reversed: { kingWenNumber, chineseName: '乾', pinyin: 'Qián' },
       complement: { kingWenNumber, chineseName: '乾', pinyin: 'Qián' },
     },
+    favorite: false,
   }
 }
 

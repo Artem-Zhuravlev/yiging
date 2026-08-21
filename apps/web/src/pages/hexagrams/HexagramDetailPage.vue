@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { fetchHexagram } from '../../entities/hexagram/api'
+import {
+  fetchHexagram,
+  markHexagramFavorite,
+  unmarkHexagramFavorite,
+} from '../../entities/hexagram/api'
 import { ApiError } from '../../shared/api/http'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
 import type { Hexagram, HexagramSummary } from '../../entities/hexagram/model'
@@ -14,6 +18,8 @@ type State =
   | { status: 'error'; message: string }
   | { status: 'loaded'; hexagram: Hexagram }
 
+type FavoriteFormState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string }
+
 interface RelatedHexagram {
   label: string
   summary: HexagramSummary
@@ -23,6 +29,31 @@ interface RelatedHexagram {
 const route = useRoute()
 const state = ref<State>({ status: 'loading' })
 const kingWenNumber = computed(() => Number(route.params.number))
+const favoriteFormState = ref<FavoriteFormState>({ status: 'idle' })
+
+async function toggleFavorite(): Promise<void> {
+  if (state.value.status !== 'loaded' || favoriteFormState.value.status === 'submitting') {
+    return
+  }
+
+  const loaded = state.value
+  favoriteFormState.value = { status: 'submitting' }
+
+  try {
+    if (loaded.hexagram.favorite) {
+      await unmarkHexagramFavorite(loaded.hexagram.kingWenNumber)
+    } else {
+      await markHexagramFavorite(loaded.hexagram.kingWenNumber)
+    }
+    state.value = { status: 'loaded', hexagram: { ...loaded.hexagram, favorite: !loaded.hexagram.favorite } }
+    favoriteFormState.value = { status: 'idle' }
+  } catch (error) {
+    favoriteFormState.value = {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to update favorite.',
+    }
+  }
+}
 
 const relatedHexagrams = computed<RelatedHexagram[]>(() => {
   if (state.value.status !== 'loaded') {
@@ -72,14 +103,29 @@ watch(
     <p v-else-if="state.status === 'error'" class="mt-6 text-red-600">{{ state.message }}</p>
 
     <div v-else class="mt-6 flex flex-col gap-6">
-      <div class="flex items-center gap-6">
-        <HexagramLines :lines="state.hexagram.lines" />
-        <div>
-          <h1 class="text-2xl font-semibold tracking-tight">
-            <span class="mr-1 text-3xl" aria-hidden="true">{{ state.hexagram.symbol }}</span>
-            {{ state.hexagram.kingWenNumber }}. {{ state.hexagram.chineseName }}
-          </h1>
-          <p class="text-neutral-500">{{ state.hexagram.pinyin }}</p>
+      <div class="flex items-start justify-between gap-6">
+        <div class="flex items-center gap-6">
+          <HexagramLines :lines="state.hexagram.lines" />
+          <div>
+            <h1 class="text-2xl font-semibold tracking-tight">
+              <span class="mr-1 text-3xl" aria-hidden="true">{{ state.hexagram.symbol }}</span>
+              {{ state.hexagram.kingWenNumber }}. {{ state.hexagram.chineseName }}
+            </h1>
+            <p class="text-neutral-500">{{ state.hexagram.pinyin }}</p>
+          </div>
+        </div>
+        <div class="shrink-0">
+          <button
+            type="button"
+            :disabled="favoriteFormState.status === 'submitting'"
+            class="text-sm text-neutral-500 hover:text-neutral-900 disabled:opacity-50"
+            @click="toggleFavorite"
+          >
+            {{ state.hexagram.favorite ? '★ Favorited' : '☆ Add to Favorites' }}
+          </button>
+          <p v-if="favoriteFormState.status === 'error'" class="mt-1 text-sm text-red-600">
+            {{ favoriteFormState.message }}
+          </p>
         </div>
       </div>
 

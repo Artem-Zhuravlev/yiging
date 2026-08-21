@@ -18,6 +18,7 @@ const sample: Hexagram = {
     reversed: { kingWenNumber: 12, chineseName: '否', pinyin: 'Pǐ' },
     complement: { kingWenNumber: 12, chineseName: '否', pinyin: 'Pǐ' },
   },
+  favorite: false,
 }
 
 describe('entities/hexagram api', () => {

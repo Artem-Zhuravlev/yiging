@@ -106,6 +106,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-028 | [Consultation History Backup](specs/history-backup/spec.md) | `verified` |
 | SPEC-029 | [Consultation Public Share Link](specs/consultation-public-share/spec.md) | `verified` |
 | SPEC-030 | [Practice Journal](specs/practice-journal/spec.md) | `verified` |
+| SPEC-031 | [Hexagram Favorites](specs/hexagram-favorites/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -417,9 +418,23 @@ rather than being folded into this batch. Manually verified against the real run
 added a real entry via the form, confirmed it appeared immediately under today's date heading.
 See [SPEC-030](specs/practice-journal/spec.md).
 
-Next recommended steps: hexagram favorites (the deferred half of feature 4), AI interpretation
-layering, profiles, source-grounding, and conversation (building on the existing
-`InterpretationContext`/`InterpretationProvider` abstraction), authentication (feature 9,
-deliberately skipped this session — see above), or provide a second public-domain I Ching
-translation source to unblock features 26/27, or verify the live Gemini call (see above) whenever
-an `AI_API_KEY` is available.
+Feature 4 is now fully closed: `HexagramController` gained its first-ever database access (a new
+`favorite_hexagrams` marker table, `king_wen_number INTEGER PRIMARY KEY`, no relation to
+`consultations`) — the constructor comment explaining it previously had none was removed, since
+that premise no longer holds. `PUT`/`DELETE /api/hexagrams/{number}/favorite` toggle a favorite
+(both idempotent, `404` for an invalid number); `GET /api/hexagrams`/`{id}` gained `favorite`,
+`index()` computing it from one bulk `allFavoriteNumbers()` query rather than 64 individual
+lookups. `HexagramListPage` gained a star per card plus a "Favorites only" filter composing with
+SPEC-026's search; `HexagramDetailPage` gained a toggle button matching `ConsultationPage`'s own
+pattern. `shared/api/http.ts` gained `apiPut`/`apiDelete` (both `Promise<void>`, since every
+caller responds `204 No Content` with nothing to parse). Manually verified against the real
+running dev server: starred hexagram 1 from the Explorer grid without triggering card navigation,
+confirmed the favorites-only filter narrowed correctly, toggled hexagram 2's favorite from its
+detail page, and confirmed `404`/idempotent-`204` directly against the API for an out-of-range
+number and a repeated unmark. See [SPEC-031](specs/hexagram-favorites/spec.md).
+
+Next recommended steps: AI interpretation layering, profiles, source-grounding, and conversation
+(building on the existing `InterpretationContext`/`InterpretationProvider` abstraction),
+authentication (feature 9, deliberately skipped this session — see above), or provide a second
+public-domain I Ching translation source to unblock features 26/27, or verify the live Gemini call
+(see above) whenever an `AI_API_KEY` is available.

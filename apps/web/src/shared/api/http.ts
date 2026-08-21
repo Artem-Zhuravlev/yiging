@@ -51,3 +51,27 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
 
   return handleResponse<T>(path, response)
 }
+
+/** For endpoints that respond 204 No Content on success — unlike apiGet/apiPost/apiPatch,
+ * this never attempts to parse a response body (there isn't one). */
+async function handleNoContentResponse(path: string, response: Response): Promise<void> {
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as ErrorBody | null
+    throw new ApiError(
+      response.status,
+      body?.error ?? `Request to ${path} failed with status ${response.status}`,
+    )
+  }
+}
+
+export async function apiPut(path: string): Promise<void> {
+  const response = await fetch(`${BASE_URL}${path}`, { method: 'PUT' })
+
+  return handleNoContentResponse(path, response)
+}
+
+export async function apiDelete(path: string): Promise<void> {
+  const response = await fetch(`${BASE_URL}${path}`, { method: 'DELETE' })
+
+  return handleNoContentResponse(path, response)
+}

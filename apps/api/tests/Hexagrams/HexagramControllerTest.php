@@ -5,21 +5,45 @@ declare(strict_types=1);
 namespace App\Tests\Hexagrams;
 
 use App\Core\Config;
+use App\Core\Database;
 use App\Core\Kernel;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 
 final class HexagramControllerTest extends TestCase
 {
+    private string $databasePath;
     private Kernel $kernel;
 
     protected function setUp(): void
     {
         $apiRoot = dirname(__DIR__, 2);
-        $config = Config::fromEnv($apiRoot);
-        $routeDefinitions = require $apiRoot . '/config/routes.php';
+        $tempName = tempnam(sys_get_temp_dir(), 'yijing_test_');
+        self::assertNotFalse($tempName);
+        $this->databasePath = $tempName . '.sqlite';
 
+        $config = new Config(['app_env' => 'testing', 'database_path' => $this->databasePath]);
+
+        $pdo = Database::connect($config);
+        $migrationsDir = $apiRoot . '/database/migrations';
+        $files = glob($migrationsDir . '/*.php') ?: [];
+        sort($files);
+
+        foreach ($files as $file) {
+            /** @var array{up: string} $migration */
+            $migration = require $file;
+            $pdo->exec($migration['up']);
+        }
+
+        $routeDefinitions = require $apiRoot . '/config/routes.php';
         $this->kernel = new Kernel($config, $routeDefinitions);
+    }
+
+    protected function tearDown(): void
+    {
+        if (is_file($this->databasePath)) {
+            unlink($this->databasePath);
+        }
     }
 
     public function testIndexReturnsAllSixtyFourHexagramsInKingWenOrder(): void
@@ -245,6 +269,67 @@ final class HexagramControllerTest extends TestCase
         $response = $this->kernel->handle(Request::create('/api/hexagrams/not-a-number', 'GET'));
 
         self::assertSame(404, $response->getStatusCode());
+    }
+
+    public function testHexagramsAreNotFavoriteByDefault(): void
+    {
+        $body = $this->decode($this->kernel->handle(Request::create('/api/hexagrams/1', 'GET')));
+
+        self::assertFalse($body['favorite']);
+    }
+
+    public function testMarkAndUnmarkFavoriteToggleTheFlag(): void
+    {
+        $marked = $this->kernel->handle(Request::create('/api/hexagrams/1/favorite', 'PUT'));
+        self::assertSame(204, $marked->getStatusCode());
+
+        $afterMark = $this->decode($this->kernel->handle(Request::create('/api/hexagrams/1', 'GET')));
+        self::assertTrue($afterMark['favorite']);
+
+        $unmarked = $this->kernel->handle(Request::create('/api/hexagrams/1/favorite', 'DELETE'));
+        self::assertSame(204, $unmarked->getStatusCode());
+
+        $afterUnmark = $this->decode($this->kernel->handle(Request::create('/api/hexagrams/1', 'GET')));
+        self::assertFalse($afterUnmark['favorite']);
+    }
+
+    public function testMarkingAnAlreadyFavoriteHexagramIsIdempotent(): void
+    {
+        $this->kernel->handle(Request::create('/api/hexagrams/1/favorite', 'PUT'));
+        $response = $this->kernel->handle(Request::create('/api/hexagrams/1/favorite', 'PUT'));
+
+        self::assertSame(204, $response->getStatusCode());
+    }
+
+    public function testUnmarkingAHexagramThatWasNeverFavoriteIsIdempotent(): void
+    {
+        $response = $this->kernel->handle(Request::create('/api/hexagrams/1/favorite', 'DELETE'));
+
+        self::assertSame(204, $response->getStatusCode());
+    }
+
+    public function testMarkFavoriteReturns404ForAnOutOfRangeNumber(): void
+    {
+        $response = $this->kernel->handle(Request::create('/api/hexagrams/999/favorite', 'PUT'));
+
+        self::assertSame(404, $response->getStatusCode());
+    }
+
+    public function testUnmarkFavoriteReturns404ForAnOutOfRangeNumber(): void
+    {
+        $response = $this->kernel->handle(Request::create('/api/hexagrams/999/favorite', 'DELETE'));
+
+        self::assertSame(404, $response->getStatusCode());
+    }
+
+    public function testIndexReflectsFavoriteStatusPerHexagram(): void
+    {
+        $this->kernel->handle(Request::create('/api/hexagrams/1/favorite', 'PUT'));
+
+        $body = $this->decode($this->kernel->handle(Request::create('/api/hexagrams', 'GET')));
+
+        self::assertTrue($body[0]['favorite']);
+        self::assertFalse($body[1]['favorite']);
     }
 
     /**
