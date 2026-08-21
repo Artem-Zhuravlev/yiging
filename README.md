@@ -104,6 +104,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-026 | [Full-Text Search](specs/full-text-search/spec.md) | `verified` |
 | SPEC-027 | [Consultation Print / PDF Export](specs/consultation-print-export/spec.md) | `verified` |
 | SPEC-028 | [Consultation History Backup](specs/history-backup/spec.md) | `verified` |
+| SPEC-029 | [Consultation Public Share Link](specs/consultation-public-share/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -386,6 +387,21 @@ rejected (duplicate ids), and both the empty-array and malformed-JSON edge cases
 as the automated `ConsultationControllerTest::testImportRoundTripsAFullExportedConsultation` (a
 full export→fresh-database→import→field-by-field-comparison test) already proves for the success
 path. See [SPEC-028](specs/history-backup/spec.md).
+
+`/share/consultations/{id}` (new) renders a deliberately minimal, brand-new page component — not
+a parameterized `ConsultationPage` — showing only question, hexagrams, changing lines, notes,
+tags, context, and outcome, read-only, reusing `GET /api/consultations/{id}` exactly as-is (no new
+endpoint, no new access control: this app has no authentication anywhere, so the containment this
+feature adds is purely presentational, stated explicitly in the spec rather than left implied).
+Critically, it never reads `followUpTo`/`followUps`/`repeats` from the fetched response, since
+each of those fields carries another consultation's own `{id, question}` — omitted by construction
+rather than filtered, so there's no filter logic to get wrong. `App.vue`'s main nav collapses to
+just the site name (no links) on any route tagged `meta.public`, so a share-link recipient has no
+path into the rest of the history. `ConsultationPage` gained "Copy Share Link"
+(`navigator.clipboard`) and "View Public Share Page" controls. Manually verified against the real
+running dev server: the share page for a consultation with real follow-up and repeated-pattern
+data showed none of it, and the nav rendered as bare "Yijing" text with zero links.
+See [SPEC-029](specs/consultation-public-share/spec.md).
 
 Next recommended steps: hexagram favorites (the deferred half of feature 4), AI interpretation
 layering, profiles, source-grounding, and conversation (building on the existing

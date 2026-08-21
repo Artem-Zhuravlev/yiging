@@ -1,5 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+declare module 'vue-router' {
+  interface RouteMeta {
+    /** True for routes that must never render the main nav (SPEC-029) — a public share page
+     * must not offer a navigational path into the rest of the user's private history. */
+    public?: boolean
+  }
+}
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -42,6 +50,12 @@ const router = createRouter({
       path: '/consultations/:id',
       name: 'consultation-detail',
       component: () => import('../pages/consultations/ConsultationPage.vue'),
+    },
+    {
+      path: '/share/consultations/:id',
+      name: 'consultation-share',
+      meta: { public: true },
+      component: () => import('../pages/consultations/SharedConsultationPage.vue'),
     },
     {
       path: '/statistics',

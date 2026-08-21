@@ -279,6 +279,52 @@ describe('ConsultationPage', () => {
     expect(section.classes()).not.toContain('print:hidden')
   })
 
+  it('shows a working "View Public Share Page" link to the share route', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    const link = wrapper.findAll('a').find((a) => a.text() === 'View Public Share Page')
+    expect(link).toBeDefined()
+    expect(link!.attributes('to')).toBe('/share/consultations/abc-123')
+  })
+
+  it('copies the share link to the clipboard', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    const button = wrapper.findAll('button').find((b) => b.text() === 'Copy Share Link')!
+    await button.trigger('click')
+    await flushPromises()
+
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining('/share/consultations/abc-123'))
+    expect(wrapper.text()).toContain('Link Copied')
+  })
+
+  it('shows an inline error when copying the share link fails', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    Object.assign(navigator, {
+      clipboard: { writeText: vi.fn().mockRejectedValue(new Error('clipboard denied')) },
+    })
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    const button = wrapper.findAll('button').find((b) => b.text() === 'Copy Share Link')!
+    await button.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('clipboard denied')
+  })
+
   it('pre-fills the context form from the loaded consultation', async () => {
     vi.mocked(fetchConsultation).mockResolvedValue({
       ...sampleConsultation,

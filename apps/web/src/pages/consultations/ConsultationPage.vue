@@ -33,14 +33,18 @@ type InterpretationState =
 // never disturb the already-loaded consultation detail or the interpretation section.
 type FormState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string }
 
+type CopyLinkState = { status: 'idle' } | { status: 'copied' } | { status: 'error'; message: string }
+
 const route = useRoute()
 const id = computed(() => String(route.params.id))
+const shareUrl = computed(() => `${location.origin}/share/consultations/${id.value}`)
 const state = ref<State>({ status: 'loading' })
 const interpretationState = ref<InterpretationState>({ status: 'idle' })
 // Independent of `state`: repeats are computed once at load and never change when notes, tags,
 // context, or outcome are edited via PATCH (the hexagrams/changing lines never change), matching
 // the pattern above for `interpretationState`.
 const repeats = ref<ConsultationRepeats | null>(null)
+const copyLinkState = ref<CopyLinkState>({ status: 'idle' })
 
 const noteLabel = ref<'before' | 'after' | 'later'>('after')
 const noteText = ref('')
@@ -189,6 +193,18 @@ function printPage(): void {
   window.print()
 }
 
+async function copyShareLink(): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(shareUrl.value)
+    copyLinkState.value = { status: 'copied' }
+  } catch (error) {
+    copyLinkState.value = {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to copy link.',
+    }
+  }
+}
+
 async function toggleFavorite(): Promise<void> {
   if (state.value.status !== 'loaded' || favoriteFormState.value.status === 'submitting') {
     return
@@ -296,6 +312,20 @@ onMounted(async () => {
             >
               Print / Export
             </button>
+            <button
+              type="button"
+              class="text-sm text-neutral-500 hover:text-neutral-900"
+              @click="copyShareLink"
+            >
+              {{ copyLinkState.status === 'copied' ? 'Link Copied' : 'Copy Share Link' }}
+            </button>
+            <router-link
+              :to="`/share/consultations/${id}`"
+              target="_blank"
+              class="text-sm text-neutral-500 hover:text-neutral-900"
+            >
+              View Public Share Page
+            </router-link>
           </div>
         </div>
         <p class="text-sm text-neutral-500">
@@ -304,6 +334,9 @@ onMounted(async () => {
         </p>
         <p v-if="favoriteFormState.status === 'error'" class="mt-1 text-sm text-red-600">
           {{ favoriteFormState.message }}
+        </p>
+        <p v-if="copyLinkState.status === 'error'" class="mt-1 text-sm text-red-600">
+          {{ copyLinkState.message }}
         </p>
       </div>
 

@@ -104,3 +104,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-026 | [Full-Text Search](full-text-search/spec.md) | `verified` |
 | SPEC-027 | [Consultation Print / PDF Export](consultation-print-export/spec.md) | `verified` |
 | SPEC-028 | [Consultation History Backup](history-backup/spec.md) | `verified` |
+| SPEC-029 | [Consultation Public Share Link](consultation-public-share/spec.md) | `verified` |
