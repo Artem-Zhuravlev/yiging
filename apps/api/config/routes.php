@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\AI\InterpretationController;
+use App\AI\InterpretationProfileController;
 use App\Core\HealthController;
 use App\Hexagrams\HexagramController;
 use App\Journal\JournalController;
@@ -36,4 +37,7 @@ return static function (RouteCollector $r): void {
 
     $r->addRoute('POST', '/api/interpretations/{id}', [InterpretationController::class, 'create']);
     $r->addRoute('POST', '/api/interpretations/{id}/followup', [InterpretationController::class, 'followUp']);
+
+    $r->addRoute('GET', '/api/interpretation-profile', [InterpretationProfileController::class, 'show']);
+    $r->addRoute('PATCH', '/api/interpretation-profile', [InterpretationProfileController::class, 'update']);
 };

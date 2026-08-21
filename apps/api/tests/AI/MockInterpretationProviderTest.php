@@ -6,7 +6,10 @@ namespace App\Tests\AI;
 
 use App\AI\InterpretationContext;
 use App\AI\InterpretationLens;
+use App\AI\InterpretationProfile;
 use App\AI\MockInterpretationProvider;
+use App\AI\ResponseLength;
+use App\AI\Tone;
 use App\Tests\Readings\Support\HexagramFixture;
 use PHPUnit\Framework\TestCase;
 
@@ -28,7 +31,7 @@ final class MockInterpretationProviderTest extends TestCase
             [],
         );
 
-        $interpretation = (new MockInterpretationProvider())->interpret($context, InterpretationLens::General);
+        $interpretation = (new MockInterpretationProvider())->interpret($context, InterpretationLens::General, InterpretationProfile::default());
 
         self::assertStringContainsString('Should I take the offer?', $interpretation->summary);
         self::assertStringContainsString((string) $primary->kingWenNumber, $interpretation->summary);
@@ -53,7 +56,7 @@ final class MockInterpretationProviderTest extends TestCase
             [],
         );
 
-        $interpretation = (new MockInterpretationProvider())->interpret($context, InterpretationLens::General);
+        $interpretation = (new MockInterpretationProvider())->interpret($context, InterpretationLens::General, InterpretationProfile::default());
 
         self::assertNull($interpretation->changingLineMeaning);
         self::assertNull($interpretation->transition);
@@ -73,7 +76,7 @@ final class MockInterpretationProviderTest extends TestCase
             [],
         );
 
-        $interpretation = (new MockInterpretationProvider())->interpret($context, InterpretationLens::General);
+        $interpretation = (new MockInterpretationProvider())->interpret($context, InterpretationLens::General, InterpretationProfile::default());
 
         $expected = [
             "Hexagram {$primary->kingWenNumber} judgment (Legge, 1899)",
@@ -92,7 +95,7 @@ final class MockInterpretationProviderTest extends TestCase
 
         $context = new InterpretationContext('Q?', $primary, [], [], $primary, []);
 
-        $interpretation = (new MockInterpretationProvider())->interpret($context, InterpretationLens::General);
+        $interpretation = (new MockInterpretationProvider())->interpret($context, InterpretationLens::General, InterpretationProfile::default());
 
         self::assertCount(2, $interpretation->sourceReferences);
     }
@@ -102,7 +105,7 @@ final class MockInterpretationProviderTest extends TestCase
         $primary = self::hexagramFromPattern('111111');
         $context = new InterpretationContext('Q?', $primary, [], [], $primary, []);
 
-        $interpretation = (new MockInterpretationProvider())->interpret($context, InterpretationLens::General);
+        $interpretation = (new MockInterpretationProvider())->interpret($context, InterpretationLens::General, InterpretationProfile::default());
 
         foreach ($interpretation->uncertainties as $uncertainty) {
             self::assertStringNotContainsString('Requested lens', $uncertainty);
@@ -122,8 +125,8 @@ final class MockInterpretationProviderTest extends TestCase
             [],
         );
 
-        $general = (new MockInterpretationProvider())->interpret($context, InterpretationLens::General);
-        $psychological = (new MockInterpretationProvider())->interpret($context, InterpretationLens::Psychological);
+        $general = (new MockInterpretationProvider())->interpret($context, InterpretationLens::General, InterpretationProfile::default());
+        $psychological = (new MockInterpretationProvider())->interpret($context, InterpretationLens::Psychological, InterpretationProfile::default());
 
         self::assertSame($general->summary, $psychological->summary);
         self::assertSame($general->coreTheme, $psychological->coreTheme);
@@ -144,10 +147,61 @@ final class MockInterpretationProviderTest extends TestCase
         $context = new InterpretationContext('Q?', $primary, [], [], $primary, []);
 
         $answer = (new MockInterpretationProvider())
-            ->answerFollowUp($context, [], 'What should I avoid doing?');
+            ->answerFollowUp($context, [], 'What should I avoid doing?', InterpretationProfile::default());
 
         self::assertStringContainsString('What should I avoid doing?', $answer->answer);
         self::assertStringContainsString('mock', strtolower($answer->answer));
         self::assertSame($context->defaultSourceReferences(), $answer->sourceReferences);
+    }
+
+    public function testDefaultProfileAddsNoDisclosure(): void
+    {
+        $primary = self::hexagramFromPattern('111111');
+        $context = new InterpretationContext('Q?', $primary, [], [], $primary, []);
+
+        $interpretation = (new MockInterpretationProvider())
+            ->interpret($context, InterpretationLens::General, InterpretationProfile::default());
+
+        foreach ($interpretation->uncertainties as $uncertainty) {
+            self::assertStringNotContainsString('Active interpretation profile', $uncertainty);
+        }
+    }
+
+    public function testNonDefaultProfileDisclosesItselfWithoutChangingCanonicalFields(): void
+    {
+        $primary = self::hexagramFromPattern('111111', changingPositions: [1]);
+        $resulting = $primary->getResultingHexagram();
+        $context = new InterpretationContext(
+            'Should I take the offer?',
+            $primary,
+            [1],
+            [1 => $primary->lineStatements[0]],
+            $resulting,
+            [],
+        );
+        $profile = new InterpretationProfile(Tone::Formal, ResponseLength::Detailed);
+
+        $default = (new MockInterpretationProvider())
+            ->interpret($context, InterpretationLens::General, InterpretationProfile::default());
+        $withProfile = (new MockInterpretationProvider())
+            ->interpret($context, InterpretationLens::General, $profile);
+
+        self::assertSame($default->summary, $withProfile->summary);
+        self::assertSame($default->practicalReflection, $withProfile->practicalReflection);
+        self::assertStringContainsString(
+            'Active interpretation profile: tone=formal, length=detailed',
+            implode(' ', $withProfile->uncertainties),
+        );
+    }
+
+    public function testAnswerFollowUpDisclosesANonDefaultProfile(): void
+    {
+        $primary = self::hexagramFromPattern('111111');
+        $context = new InterpretationContext('Q?', $primary, [], [], $primary, []);
+        $profile = new InterpretationProfile(notes: 'Be direct.');
+
+        $answer = (new MockInterpretationProvider())->answerFollowUp($context, [], 'Q?', $profile);
+
+        self::assertStringContainsString('notes set', $answer->answer);
     }
 }

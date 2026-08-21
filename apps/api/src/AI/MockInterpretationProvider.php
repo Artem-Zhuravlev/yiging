@@ -13,8 +13,11 @@ namespace App\AI;
  */
 final class MockInterpretationProvider implements InterpretationProvider
 {
-    public function interpret(InterpretationContext $context, InterpretationLens $lens): Interpretation
-    {
+    public function interpret(
+        InterpretationContext $context,
+        InterpretationLens $lens,
+        InterpretationProfile $profile,
+    ): Interpretation {
         $hasChangingLines = $context->changingLinePositions !== [];
 
         $uncertainties = [
@@ -26,6 +29,16 @@ final class MockInterpretationProvider implements InterpretationProvider
             $uncertainties[] = sprintf(
                 'Requested lens: %s — the mock provider does not vary its interpretation by lens.',
                 $lens->value,
+            );
+        }
+
+        if (!$profile->isDefault()) {
+            $uncertainties[] = sprintf(
+                'Active interpretation profile: tone=%s, length=%s%s — the mock provider does not '
+                    . 'vary its interpretation by profile.',
+                $profile->tone->value,
+                $profile->length->value,
+                $profile->notes !== null ? ', notes set' : '',
             );
         }
 
@@ -61,16 +74,29 @@ final class MockInterpretationProvider implements InterpretationProvider
     /**
      * @param list<ConversationExchange> $history
      */
-    public function answerFollowUp(InterpretationContext $context, array $history, string $question): FollowUpAnswer
-    {
-        return new FollowUpAnswer(
-            answer: sprintf(
-                'This is a placeholder answer from the mock interpretation provider. Your '
-                    . 'question was: "%s" — it does not have real understanding of this '
-                    . 'conversation.',
-                $question,
-            ),
-            sourceReferences: $context->defaultSourceReferences(),
+    public function answerFollowUp(
+        InterpretationContext $context,
+        array $history,
+        string $question,
+        InterpretationProfile $profile,
+    ): FollowUpAnswer {
+        $answer = sprintf(
+            'This is a placeholder answer from the mock interpretation provider. Your '
+                . 'question was: "%s" — it does not have real understanding of this '
+                . 'conversation.',
+            $question,
         );
+
+        if (!$profile->isDefault()) {
+            $answer .= sprintf(
+                ' (Active interpretation profile: tone=%s, length=%s%s — not applied, since the '
+                    . 'mock provider does not vary by profile.)',
+                $profile->tone->value,
+                $profile->length->value,
+                $profile->notes !== null ? ', notes set' : '',
+            );
+        }
+
+        return new FollowUpAnswer($answer, $context->defaultSourceReferences());
     }
 }

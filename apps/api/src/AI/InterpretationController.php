@@ -19,6 +19,7 @@ final class InterpretationController
     private readonly ConsultationRepository $repository;
     private readonly InterpretationContextBuilder $contextBuilder;
     private readonly InterpretationProvider $provider;
+    private readonly InterpretationProfileRepository $profileRepository;
     private readonly RateLimiter $rateLimiter;
     private readonly int $rateLimitWindowSeconds;
 
@@ -28,6 +29,7 @@ final class InterpretationController
         $this->repository = new SqliteConsultationRepository($pdo);
         $this->contextBuilder = new InterpretationContextBuilder();
         $this->provider = self::resolveProvider($config);
+        $this->profileRepository = new SqliteInterpretationProfileRepository($pdo);
         $this->rateLimitWindowSeconds = $config->int('ai_rate_limit_window_seconds', 3600);
         $this->rateLimiter = new SqliteRateLimiter(
             $pdo,
@@ -78,9 +80,10 @@ final class InterpretationController
         }
 
         $context = $this->contextBuilder->build($consultation);
+        $profile = $this->profileRepository->get();
 
         try {
-            $interpretation = $this->provider->interpret($context, $lens);
+            $interpretation = $this->provider->interpret($context, $lens, $profile);
         } catch (InterpretationProviderException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_BAD_GATEWAY);
         }
@@ -140,9 +143,10 @@ final class InterpretationController
         }
 
         $context = $this->contextBuilder->build($consultation);
+        $profile = $this->profileRepository->get();
 
         try {
-            $answer = $this->provider->answerFollowUp($context, $history, $question);
+            $answer = $this->provider->answerFollowUp($context, $history, $question, $profile);
         } catch (InterpretationProviderException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_BAD_GATEWAY);
         }

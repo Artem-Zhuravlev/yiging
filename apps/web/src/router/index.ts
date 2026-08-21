@@ -67,6 +67,11 @@ const router = createRouter({
       name: 'journal',
       component: () => import('../pages/journal/JournalPage.vue'),
     },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('../pages/settings/InterpretationSettingsPage.vue'),
+    },
   ],
 })
 

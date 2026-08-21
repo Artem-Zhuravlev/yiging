@@ -110,6 +110,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-032 | [Hexagram of the Day](specs/hexagram-of-the-day/spec.md) | `verified` |
 | SPEC-033 | [Multi-Lens Interpretation](specs/multi-lens-interpretation/spec.md) | `verified` |
 | SPEC-034 | [Interpretation Follow-Up Questions](specs/interpretation-followup/spec.md) | `verified` |
+| SPEC-035 | [Interpretation Profile](specs/interpretation-profile/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -496,7 +497,26 @@ without repeating context verbatim — then the same chain reproduced end-to-end
 UI (typed question, submitted, real answer appeared in the thread). See
 [SPEC-034](specs/interpretation-followup/spec.md).
 
-Next recommended steps: interpretation profiles and source-grounding refinements (building on
-this same `InterpretationContext`/`InterpretationProvider` foundation, still Gemini-only per the
-user's direction), or authentication (feature 9, deliberately skipped this session — see above),
-or provide a second public-domain I Ching translation source to unblock features 26/27.
+A single global "interpretation profile" (tone, length, free-text notes — this app has no
+accounts, so one standing preference set, not one per user) now shapes every `interpret()`/
+`answerFollowUp()` call from `/settings` onward. `InterpretationProvider` gained a third
+parameter, `InterpretationProfile`; an all-default profile keeps the Gemini prompt byte-identical
+to its pre-SPEC-035 form (same guarantee SPEC-033 already established for `general` lens);
+`GET`/`PATCH /api/interpretation-profile` are new, `InterpretationController` loads the current
+profile once per request server-side (not sent by the client per-request, unlike lens). Manually
+verified with two real, back-to-back Gemini calls on the same consultation: neutral/standard
+produced plain analytical prose ("For the query regarding 'Repeat check B'..."), then setting
+tone=poetic, length=brief, notes="I love vivid natural imagery and metaphor" via `/settings`
+produced genuinely different, vivid, compact prose ("Like a dragon coiled deep beneath shadowy
+waters, your repeat check B calls for silent restraint...") — an unmistakable, real difference in
+actual model output, not a scripted variation. See
+[SPEC-035](specs/interpretation-profile/spec.md).
+
+This closes out the AI feature block for this session (features 6, 7, 9 — feature 8, multi-
+provider comparison, was explicitly excluded per the user's Gemini-only direction; feature 10,
+outcome-linking, remains).
+
+Next recommended steps: explicit interpretation-to-outcome linking (feature 10, the one AI
+feature not yet done), authentication (feature 9 of the *original* numbering — deliberately
+skipped this session, see above), or provide a second public-domain I Ching translation source to
+unblock features 26/27.

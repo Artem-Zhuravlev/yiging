@@ -13,6 +13,7 @@ const route = useRoute()
       <router-link to="/consultations" class="hover:underline">History</router-link>
       <router-link to="/journal" class="hover:underline">Journal</router-link>
       <router-link to="/statistics" class="hover:underline">Statistics</router-link>
+      <router-link to="/settings" class="hover:underline">Settings</router-link>
     </div>
   </nav>
   <nav v-else class="print:hidden border-b border-neutral-200 px-6 py-4">

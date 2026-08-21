@@ -8,7 +8,10 @@ use App\AI\ConversationExchange;
 use App\AI\GeminiInterpretationProvider;
 use App\AI\InterpretationContext;
 use App\AI\InterpretationLens;
+use App\AI\InterpretationProfile;
 use App\AI\InterpretationProviderException;
+use App\AI\ResponseLength;
+use App\AI\Tone;
 use App\Tests\AI\Support\FakeGeminiClient;
 use App\Tests\Readings\Support\HexagramFixture;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -47,7 +50,7 @@ final class GeminiInterpretationProviderTest extends TestCase
         ]);
 
         $interpretation = (new GeminiInterpretationProvider($client))
-            ->interpret($this->contextWithChangingLine(), InterpretationLens::General);
+            ->interpret($this->contextWithChangingLine(), InterpretationLens::General, InterpretationProfile::default());
 
         self::assertSame('A time for bold, well-considered action.', $interpretation->summary);
         self::assertSame('Creative strength meeting a threshold.', $interpretation->coreTheme);
@@ -70,7 +73,7 @@ final class GeminiInterpretationProviderTest extends TestCase
             'sourceReferences' => ['a fabricated citation the model made up'],
         ]);
 
-        $interpretation = (new GeminiInterpretationProvider($client))->interpret($context, InterpretationLens::General);
+        $interpretation = (new GeminiInterpretationProvider($client))->interpret($context, InterpretationLens::General, InterpretationProfile::default());
 
         self::assertSame($context->defaultSourceReferences(), $interpretation->sourceReferences);
         self::assertNotContains('a fabricated citation the model made up', $interpretation->sourceReferences);
@@ -89,7 +92,7 @@ final class GeminiInterpretationProviderTest extends TestCase
             'uncertainties' => [],
         ]);
 
-        $interpretation = (new GeminiInterpretationProvider($client))->interpret($context, InterpretationLens::General);
+        $interpretation = (new GeminiInterpretationProvider($client))->interpret($context, InterpretationLens::General, InterpretationProfile::default());
 
         self::assertNull($interpretation->changingLineMeaning);
         self::assertNull($interpretation->transition);
@@ -107,7 +110,7 @@ final class GeminiInterpretationProviderTest extends TestCase
 
         $this->expectException(InterpretationProviderException::class);
 
-        (new GeminiInterpretationProvider($client))->interpret($this->contextWithChangingLine(), InterpretationLens::General);
+        (new GeminiInterpretationProvider($client))->interpret($this->contextWithChangingLine(), InterpretationLens::General, InterpretationProfile::default());
     }
 
     public function testThrowsWhenARequiredFieldIsEmpty(): void
@@ -122,7 +125,7 @@ final class GeminiInterpretationProviderTest extends TestCase
 
         $this->expectException(InterpretationProviderException::class);
 
-        (new GeminiInterpretationProvider($client))->interpret($this->contextWithChangingLine(), InterpretationLens::General);
+        (new GeminiInterpretationProvider($client))->interpret($this->contextWithChangingLine(), InterpretationLens::General, InterpretationProfile::default());
     }
 
     public function testThrowsWhenUncertaintiesIsNotAnArray(): void
@@ -137,7 +140,7 @@ final class GeminiInterpretationProviderTest extends TestCase
 
         $this->expectException(InterpretationProviderException::class);
 
-        (new GeminiInterpretationProvider($client))->interpret($this->contextWithChangingLine(), InterpretationLens::General);
+        (new GeminiInterpretationProvider($client))->interpret($this->contextWithChangingLine(), InterpretationLens::General, InterpretationProfile::default());
     }
 
     public function testPropagatesAClientFailure(): void
@@ -147,7 +150,7 @@ final class GeminiInterpretationProviderTest extends TestCase
         $this->expectException(InterpretationProviderException::class);
         $this->expectExceptionMessage('Gemini API returned HTTP 401: invalid key');
 
-        (new GeminiInterpretationProvider($client))->interpret($this->contextWithChangingLine(), InterpretationLens::General);
+        (new GeminiInterpretationProvider($client))->interpret($this->contextWithChangingLine(), InterpretationLens::General, InterpretationProfile::default());
     }
 
     public function testPromptGroundsOnlyInTheContextsOwnCanonicalText(): void
@@ -161,7 +164,7 @@ final class GeminiInterpretationProviderTest extends TestCase
         ]);
         $context = $this->contextWithChangingLine();
 
-        (new GeminiInterpretationProvider($client))->interpret($context, InterpretationLens::General);
+        (new GeminiInterpretationProvider($client))->interpret($context, InterpretationLens::General, InterpretationProfile::default());
 
         self::assertNotNull($client->lastCall);
         $prompt = $client->lastCall['prompt'];
@@ -181,7 +184,7 @@ final class GeminiInterpretationProviderTest extends TestCase
         ]);
         $context = $this->contextWithChangingLine();
 
-        (new GeminiInterpretationProvider($client))->interpret($context, InterpretationLens::General);
+        (new GeminiInterpretationProvider($client))->interpret($context, InterpretationLens::General, InterpretationProfile::default());
 
         self::assertNotNull($client->lastCall);
         self::assertStringNotContainsString('Focus especially', $client->lastCall['prompt']);
@@ -210,11 +213,11 @@ final class GeminiInterpretationProviderTest extends TestCase
         ]);
         $context = $this->contextWithChangingLine();
 
-        (new GeminiInterpretationProvider($client))->interpret($context, InterpretationLens::General);
+        (new GeminiInterpretationProvider($client))->interpret($context, InterpretationLens::General, InterpretationProfile::default());
         self::assertNotNull($client->lastCall);
         $generalPrompt = $client->lastCall['prompt'];
 
-        (new GeminiInterpretationProvider($client))->interpret($context, $lens);
+        (new GeminiInterpretationProvider($client))->interpret($context, $lens, InterpretationProfile::default());
         self::assertNotNull($client->lastCall);
         $lensPrompt = $client->lastCall['prompt'];
 
@@ -232,7 +235,7 @@ final class GeminiInterpretationProviderTest extends TestCase
         $client = new FakeGeminiClient(['answer' => 'The dragon suggests holding back for now.']);
         $context = $this->contextWithChangingLine();
 
-        $answer = (new GeminiInterpretationProvider($client))->answerFollowUp($context, [], 'What should I avoid?');
+        $answer = (new GeminiInterpretationProvider($client))->answerFollowUp($context, [], 'What should I avoid?', InterpretationProfile::default());
 
         self::assertSame('The dragon suggests holding back for now.', $answer->answer);
         self::assertSame($context->defaultSourceReferences(), $answer->sourceReferences);
@@ -245,7 +248,7 @@ final class GeminiInterpretationProviderTest extends TestCase
 
         $this->expectException(InterpretationProviderException::class);
 
-        (new GeminiInterpretationProvider($client))->answerFollowUp($context, [], 'What should I avoid?');
+        (new GeminiInterpretationProvider($client))->answerFollowUp($context, [], 'What should I avoid?', InterpretationProfile::default());
     }
 
     public function testAnswerFollowUpPromptIncludesContextHistoryAndNewQuestion(): void
@@ -254,7 +257,7 @@ final class GeminiInterpretationProviderTest extends TestCase
         $context = $this->contextWithChangingLine();
         $history = [new ConversationExchange('What does line 1 mean?', 'It means patience.')];
 
-        (new GeminiInterpretationProvider($client))->answerFollowUp($context, $history, 'And the transition?');
+        (new GeminiInterpretationProvider($client))->answerFollowUp($context, $history, 'And the transition?', InterpretationProfile::default());
 
         self::assertNotNull($client->lastCall);
         $prompt = $client->lastCall['prompt'];
@@ -274,6 +277,67 @@ final class GeminiInterpretationProviderTest extends TestCase
         $this->expectException(InterpretationProviderException::class);
         $this->expectExceptionMessage('Gemini API returned HTTP 401: invalid key');
 
-        (new GeminiInterpretationProvider($client))->answerFollowUp($context, [], 'Q?');
+        (new GeminiInterpretationProvider($client))->answerFollowUp($context, [], 'Q?', InterpretationProfile::default());
+    }
+
+    public function testDefaultProfilePromptIsByteIdenticalToNoProfileCase(): void
+    {
+        $client = new FakeGeminiClient([
+            'summary' => 's', 'coreTheme' => 'c', 'situation' => 'si',
+            'practicalReflection' => 'p', 'uncertainties' => [],
+        ]);
+        $context = $this->contextWithChangingLine();
+
+        (new GeminiInterpretationProvider($client))
+            ->interpret($context, InterpretationLens::General, InterpretationProfile::default());
+
+        self::assertNotNull($client->lastCall);
+        self::assertStringNotContainsString('Personal preferences', $client->lastCall['prompt']);
+    }
+
+    public function testNonDefaultProfileAddsExactlyOnePreferencesBlockNamingOnlyChangedFields(): void
+    {
+        $client = new FakeGeminiClient([
+            'summary' => 's', 'coreTheme' => 'c', 'situation' => 'si',
+            'practicalReflection' => 'p', 'uncertainties' => [],
+        ]);
+        $context = $this->contextWithChangingLine();
+        $profile = new InterpretationProfile(Tone::Poetic);
+
+        (new GeminiInterpretationProvider($client))->interpret($context, InterpretationLens::General, $profile);
+
+        self::assertNotNull($client->lastCall);
+        $prompt = $client->lastCall['prompt'];
+
+        self::assertSame(1, substr_count($prompt, 'Personal preferences'));
+        self::assertStringContainsString('poetic', $prompt);
+        self::assertStringNotContainsString('keep the response', $prompt);
+    }
+
+    public function testProfileNotesAppearInThePromptWhenSet(): void
+    {
+        $client = new FakeGeminiClient([
+            'summary' => 's', 'coreTheme' => 'c', 'situation' => 'si',
+            'practicalReflection' => 'p', 'uncertainties' => [],
+        ]);
+        $context = $this->contextWithChangingLine();
+        $profile = new InterpretationProfile(notes: 'I appreciate directness.');
+
+        (new GeminiInterpretationProvider($client))->interpret($context, InterpretationLens::General, $profile);
+
+        self::assertNotNull($client->lastCall);
+        self::assertStringContainsString('I appreciate directness.', $client->lastCall['prompt']);
+    }
+
+    public function testNonDefaultProfileAlsoAppliesToFollowUpPrompts(): void
+    {
+        $client = new FakeGeminiClient(['answer' => 'a']);
+        $context = $this->contextWithChangingLine();
+        $profile = new InterpretationProfile(length: ResponseLength::Brief);
+
+        (new GeminiInterpretationProvider($client))->answerFollowUp($context, [], 'Q?', $profile);
+
+        self::assertNotNull($client->lastCall);
+        self::assertStringContainsString('brief', $client->lastCall['prompt']);
     }
 }

@@ -303,6 +303,33 @@ final class InterpretationControllerTest extends TestCase
         self::assertSame(429, $second->getStatusCode(), 'followup must share create()\'s rate limit budget');
     }
 
+    public function testCreateAppliesTheCurrentlySavedProfile(): void
+    {
+        $primary = self::hexagramFromPattern('111111', changingPositions: [1]);
+        $consultation = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            $primary,
+            new \DateTimeImmutable(),
+        );
+        $this->repository->save($consultation);
+
+        $this->kernel->handle(Request::create(
+            '/api/interpretation-profile',
+            'PATCH',
+            content: json_encode(['tone' => 'formal'], JSON_THROW_ON_ERROR),
+        ));
+
+        $response = $this->kernel->handle(Request::create('/api/interpretations/consult-1', 'POST'));
+        $body = $this->decode($response);
+
+        self::assertStringContainsString(
+            'Active interpretation profile: tone=formal',
+            implode(' ', $body['uncertainties']),
+        );
+    }
+
     /**
      * @return array<mixed>
      */

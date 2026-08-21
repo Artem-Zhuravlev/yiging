@@ -6,7 +6,11 @@ namespace App\AI;
 
 interface InterpretationProvider
 {
-    public function interpret(InterpretationContext $context, InterpretationLens $lens): Interpretation;
+    public function interpret(
+        InterpretationContext $context,
+        InterpretationLens $lens,
+        InterpretationProfile $profile,
+    ): Interpretation;
 
     /**
      * @param list<ConversationExchange> $history
@@ -15,5 +19,6 @@ interface InterpretationProvider
         InterpretationContext $context,
         array $history,
         string $question,
+        InterpretationProfile $profile,
     ): FollowUpAnswer;
 }

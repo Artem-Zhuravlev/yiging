@@ -45,9 +45,12 @@ final class GeminiInterpretationProvider implements InterpretationProvider
     {
     }
 
-    public function interpret(InterpretationContext $context, InterpretationLens $lens): Interpretation
-    {
-        $data = $this->client->generateJson($this->buildPrompt($context, $lens), self::RESPONSE_SCHEMA);
+    public function interpret(
+        InterpretationContext $context,
+        InterpretationLens $lens,
+        InterpretationProfile $profile,
+    ): Interpretation {
+        $data = $this->client->generateJson($this->buildPrompt($context, $lens, $profile), self::RESPONSE_SCHEMA);
 
         foreach (self::REQUIRED_STRING_FIELDS as $field) {
             if (!isset($data[$field]) || !is_string($data[$field]) || trim($data[$field]) === '') {
@@ -76,9 +79,13 @@ final class GeminiInterpretationProvider implements InterpretationProvider
     /**
      * @param list<ConversationExchange> $history
      */
-    public function answerFollowUp(InterpretationContext $context, array $history, string $question): FollowUpAnswer
-    {
-        $prompt = $this->buildFollowUpPrompt($context, $history, $question);
+    public function answerFollowUp(
+        InterpretationContext $context,
+        array $history,
+        string $question,
+        InterpretationProfile $profile,
+    ): FollowUpAnswer {
+        $prompt = $this->buildFollowUpPrompt($context, $history, $question, $profile);
         $data = $this->client->generateJson($prompt, self::FOLLOW_UP_RESPONSE_SCHEMA);
 
         if (!isset($data['answer']) || !is_string($data['answer']) || trim($data['answer']) === '') {
@@ -91,8 +98,12 @@ final class GeminiInterpretationProvider implements InterpretationProvider
     /**
      * @param list<ConversationExchange> $history
      */
-    private function buildFollowUpPrompt(InterpretationContext $context, array $history, string $question): string
-    {
+    private function buildFollowUpPrompt(
+        InterpretationContext $context,
+        array $history,
+        string $question,
+        InterpretationProfile $profile,
+    ): string {
         $lines = $this->contextGroundingLines($context);
 
         if ($history !== []) {
@@ -110,6 +121,8 @@ final class GeminiInterpretationProvider implements InterpretationProvider
         $lines[] = 'Answer the new question in your own words, grounded strictly in the canonical '
             . 'text and conversation above - do not invent classical text, quotes, or hexagram '
             . 'facts beyond what is given here (answer).';
+
+        $this->appendProfileInstruction($lines, $profile);
 
         return implode("\n", $lines);
     }
@@ -178,8 +191,11 @@ final class GeminiInterpretationProvider implements InterpretationProvider
         return $lines;
     }
 
-    private function buildPrompt(InterpretationContext $context, InterpretationLens $lens): string
-    {
+    private function buildPrompt(
+        InterpretationContext $context,
+        InterpretationLens $lens,
+        InterpretationProfile $profile,
+    ): string {
         $hasChangingLines = $context->changingLinePositions !== [];
         $lines = $this->contextGroundingLines($context);
 
@@ -203,6 +219,8 @@ final class GeminiInterpretationProvider implements InterpretationProvider
             $lines[count($lines) - 1] .= ' ' . $lensInstruction;
         }
 
+        $this->appendProfileInstruction($lines, $profile);
+
         return implode("\n", $lines);
     }
 
@@ -221,6 +239,56 @@ final class GeminiInterpretationProvider implements InterpretationProvider
                 . 'dimension of this reading — the imagery, metaphor, and traditional symbolic '
                 . 'associations of the hexagram and lines, and what they represent beyond the '
                 . 'literal.',
+        };
+    }
+
+    /**
+     * Appends one "Personal preferences:" line naming only the non-default aspects of the
+     * profile (SPEC-035) - an all-default profile appends nothing, keeping the prompt
+     * byte-identical to this provider's pre-SPEC-035 form (REQ-PROFILE-003).
+     *
+     * @param list<string> $lines
+     */
+    private function appendProfileInstruction(array &$lines, InterpretationProfile $profile): void
+    {
+        if ($profile->isDefault()) {
+            return;
+        }
+
+        $parts = [];
+
+        if ($profile->tone !== Tone::Neutral) {
+            $parts[] = 'write in a ' . $this->toneDescription($profile->tone) . ' tone';
+        }
+
+        if ($profile->length !== ResponseLength::Standard) {
+            $parts[] = $this->lengthDescription($profile->length);
+        }
+
+        if ($profile->notes !== null) {
+            $parts[] = 'also take into account this personal preference: "' . $profile->notes . '"';
+        }
+
+        $lines[] = '';
+        $lines[] = 'Personal preferences: ' . implode('; ', $parts) . '.';
+    }
+
+    private function toneDescription(Tone $tone): string
+    {
+        return match ($tone) {
+            Tone::Neutral => 'neutral',
+            Tone::Formal => 'formal and precise',
+            Tone::Casual => 'casual and conversational',
+            Tone::Poetic => 'poetic and richly imagistic',
+        };
+    }
+
+    private function lengthDescription(ResponseLength $length): string
+    {
+        return match ($length) {
+            ResponseLength::Standard => 'keep the response at a standard length',
+            ResponseLength::Brief => 'keep the response brief and concise',
+            ResponseLength::Detailed => 'provide a detailed, thorough response',
         };
     }
 }
