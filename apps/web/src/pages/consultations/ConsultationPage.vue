@@ -49,6 +49,8 @@ const noteFormState = ref<FormState>({ status: 'idle' })
 const tagText = ref('')
 const tagFormState = ref<FormState>({ status: 'idle' })
 
+const favoriteFormState = ref<FormState>({ status: 'idle' })
+
 const contextForm = ref(contextFormFrom(null))
 const contextFormState = ref<FormState>({ status: 'idle' })
 
@@ -183,6 +185,28 @@ async function saveOutcome(): Promise<void> {
   }
 }
 
+async function toggleFavorite(): Promise<void> {
+  if (state.value.status !== 'loaded' || favoriteFormState.value.status === 'submitting') {
+    return
+  }
+
+  const loaded = state.value
+  favoriteFormState.value = { status: 'submitting' }
+
+  try {
+    const updated = await updateConsultation(loaded.consultation.id, {
+      favorite: !loaded.consultation.favorite,
+    })
+    state.value = { ...loaded, consultation: updated }
+    favoriteFormState.value = { status: 'idle' }
+  } catch (error) {
+    favoriteFormState.value = {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to update favorite.',
+    }
+  }
+}
+
 async function getInterpretation(): Promise<void> {
   if (interpretationState.value.status === 'loading') {
     return
@@ -250,10 +274,23 @@ onMounted(async () => {
 
     <div v-else class="mt-6 flex flex-col gap-6">
       <div>
-        <h1 class="text-xl font-semibold tracking-tight">{{ state.consultation.question }}</h1>
+        <div class="flex items-start justify-between gap-3">
+          <h1 class="text-xl font-semibold tracking-tight">{{ state.consultation.question }}</h1>
+          <button
+            type="button"
+            :disabled="favoriteFormState.status === 'submitting'"
+            class="shrink-0 text-sm text-neutral-500 hover:text-neutral-900 disabled:opacity-50"
+            @click="toggleFavorite"
+          >
+            {{ state.consultation.favorite ? '★ Favorited' : '☆ Add to Favorites' }}
+          </button>
+        </div>
         <p class="text-sm text-neutral-500">
           {{ state.consultation.method }} &middot;
           {{ new Date(state.consultation.createdAt).toLocaleString() }}
+        </p>
+        <p v-if="favoriteFormState.status === 'error'" class="mt-1 text-sm text-red-600">
+          {{ favoriteFormState.message }}
         </p>
       </div>
 

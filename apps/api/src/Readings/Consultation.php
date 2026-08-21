@@ -32,6 +32,7 @@ final readonly class Consultation
         public ?string $initialInterpretation = null,
         public ?ConsultationOutcome $outcome = null,
         public ?string $followUpToConsultationId = null,
+        public bool $favorite = false,
     ) {
     }
 
@@ -108,6 +109,7 @@ final readonly class Consultation
         ?string $initialInterpretation = null,
         ?ConsultationOutcome $outcome = null,
         ?string $followUpToConsultationId = null,
+        bool $favorite = false,
     ): self {
         return new self(
             $id,
@@ -125,6 +127,7 @@ final readonly class Consultation
             $initialInterpretation,
             $outcome,
             $followUpToConsultationId,
+            $favorite,
         );
     }
 
@@ -146,6 +149,7 @@ final readonly class Consultation
             $this->initialInterpretation,
             $this->outcome,
             $this->followUpToConsultationId,
+            $this->favorite,
         );
     }
 
@@ -171,6 +175,7 @@ final readonly class Consultation
             $this->initialInterpretation,
             $this->outcome,
             $this->followUpToConsultationId,
+            $this->favorite,
         );
     }
 
@@ -203,6 +208,7 @@ final readonly class Consultation
             $initialInterpretation,
             $this->outcome,
             $this->followUpToConsultationId,
+            $this->favorite,
         );
     }
 
@@ -228,6 +234,7 @@ final readonly class Consultation
             $this->initialInterpretation,
             new ConsultationOutcome($whatActuallyHappened, $outcome, $reflection, $recordedAt),
             $this->followUpToConsultationId,
+            $this->favorite,
         );
     }
 
@@ -253,6 +260,29 @@ final readonly class Consultation
             $this->initialInterpretation,
             $this->outcome,
             $followUpToConsultationId,
+            $this->favorite,
+        );
+    }
+
+    public function withFavorite(bool $favorite): self
+    {
+        return new self(
+            $this->id,
+            $this->question,
+            $this->method,
+            $this->primaryHexagram,
+            $this->resultingHexagram,
+            $this->createdAt,
+            $this->notes,
+            $this->tags,
+            $this->context,
+            $this->whatHappenedBefore,
+            $this->whatUserWantsToUnderstand,
+            $this->backgroundInformation,
+            $this->initialInterpretation,
+            $this->outcome,
+            $this->followUpToConsultationId,
+            $favorite,
         );
     }
 

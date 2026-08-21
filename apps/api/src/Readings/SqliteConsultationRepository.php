@@ -67,12 +67,12 @@ final class SqliteConsultationRepository implements ConsultationRepository
                 (id, question, method, primary_king_wen_number, changing_line_positions,
                  resulting_king_wen_number, created_at, context, what_happened_before,
                  what_user_wants_to_understand, background_information, initial_interpretation,
-                 follow_up_to_consultation_id)
+                 follow_up_to_consultation_id, is_favorite)
              VALUES
                 (:id, :question, :method, :primary_king_wen_number, :changing_line_positions,
                  :resulting_king_wen_number, :created_at, :context, :what_happened_before,
                  :what_user_wants_to_understand, :background_information, :initial_interpretation,
-                 :follow_up_to_consultation_id)
+                 :follow_up_to_consultation_id, :is_favorite)
              ON CONFLICT(id) DO UPDATE SET
                 question = excluded.question,
                 method = excluded.method,
@@ -85,7 +85,8 @@ final class SqliteConsultationRepository implements ConsultationRepository
                 what_user_wants_to_understand = excluded.what_user_wants_to_understand,
                 background_information = excluded.background_information,
                 initial_interpretation = excluded.initial_interpretation,
-                follow_up_to_consultation_id = excluded.follow_up_to_consultation_id',
+                follow_up_to_consultation_id = excluded.follow_up_to_consultation_id,
+                is_favorite = excluded.is_favorite',
         );
 
         $statement->execute([
@@ -102,6 +103,7 @@ final class SqliteConsultationRepository implements ConsultationRepository
             'background_information' => $consultation->backgroundInformation,
             'initial_interpretation' => $consultation->initialInterpretation,
             'follow_up_to_consultation_id' => $consultation->followUpToConsultationId,
+            'is_favorite' => $consultation->favorite ? 1 : 0,
         ]);
     }
 
@@ -223,6 +225,7 @@ final class SqliteConsultationRepository implements ConsultationRepository
             followUpToConsultationId: $row['follow_up_to_consultation_id'] === null
                 ? null
                 : (string) $row['follow_up_to_consultation_id'],
+            favorite: (bool) $row['is_favorite'],
         );
     }
 

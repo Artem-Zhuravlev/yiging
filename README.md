@@ -100,6 +100,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-022 | [Consultation Timeline](specs/consultation-timeline/spec.md) | `verified` |
 | SPEC-023 | [Repeated Pattern Detection](specs/repeated-pattern-detection/spec.md) | `verified` |
 | SPEC-024 | [Personal Statistics](specs/personal-statistics/spec.md) | `verified` |
+| SPEC-025 | [Consultation Favorites](specs/consultation-favorites/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -337,7 +338,20 @@ message rather than empty lists. Manually verified against the real running dev 
 seeded history (10 consultations): confirmed `yin + yang = totalConsultations * 6` (24 + 36 = 60)
 and that every section rendered correctly. See [SPEC-024](specs/personal-statistics/spec.md).
 
-Next recommended steps: AI interpretation layering, profiles, source-grounding, and conversation
-(building on the existing `InterpretationContext`/`InterpretationProvider` abstraction), or
-provide a second public-domain I Ching translation source to unblock features 26/27, or verify the
-live Gemini call (see above) whenever an `AI_API_KEY` is available.
+Consultations can now be marked favorite — `consultations` gained a plain `is_favorite` column,
+toggleable via the existing `PATCH /api/consultations/{id}` (a genuine boolean, no null-clear
+semantics the way SPEC-019's optional text fields have) and threaded through every existing wither
+per the by-now-standard checklist. `ConsultationPage` has a "☆ Add to Favorites" / "★ Favorited"
+toggle button; `ConsultationHistoryPage` gained a "★ Favorites only" toggle that composes with
+SPEC-022's tag filter (AND) over the already-fetched list, no new query parameter. Hexagram
+favorites are deliberately deferred — `HexagramController` has zero database access by design
+(SPEC-003), so adding favorites there is a materially separate change, not silently folded in
+here. Manually verified against the real running dev server: favorited a consultation, confirmed
+the history page's toggle narrowed correctly and combined with an active tag filter. See
+[SPEC-025](specs/consultation-favorites/spec.md).
+
+Next recommended steps: hexagram favorites (the deferred half of feature 4, now that consultation
+favorites establish the pattern), AI interpretation layering, profiles, source-grounding, and
+conversation (building on the existing `InterpretationContext`/`InterpretationProvider`
+abstraction), or provide a second public-domain I Ching translation source to unblock features
+26/27, or verify the live Gemini call (see above) whenever an `AI_API_KEY` is available.

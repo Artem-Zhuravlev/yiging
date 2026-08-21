@@ -29,6 +29,7 @@ function sample(id: string, question: string, overrides: Partial<Consultation> =
     outcome: null,
     followUpTo: null,
     followUps: [],
+    favorite: false,
     ...overrides,
   }
 }
@@ -92,7 +93,7 @@ describe('ConsultationHistoryPage', () => {
     const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
     await flushPromises()
 
-    const chips = wrapper.findAll('button[aria-pressed]')
+    const chips = wrapper.findAll('button[aria-pressed]').filter((c) => !c.text().includes('Favorites'))
     expect(chips.map((c) => c.text())).toEqual(['career', 'health'])
   })
 
@@ -106,7 +107,8 @@ describe('ConsultationHistoryPage', () => {
     const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
     await flushPromises()
 
-    const [careerChip, healthChip] = wrapper.findAll('button[aria-pressed]')
+    const tagChips = wrapper.findAll('button[aria-pressed]').filter((c) => !c.text().includes('Favorites'))
+    const [careerChip, healthChip] = tagChips
     await careerChip!.trigger('click')
     expect(wrapper.text()).toContain('Both tags')
     expect(wrapper.text()).toContain('Only career')
@@ -123,6 +125,40 @@ describe('ConsultationHistoryPage', () => {
     expect(wrapper.text()).toContain('Only health')
   })
 
+  it('narrows the list to favorite consultations only, combining with an active tag filter', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValue([
+      sample('1', 'Favorite, tagged', { favorite: true, tags: ['career'] }),
+      sample('2', 'Favorite, untagged', { favorite: true }),
+      sample('3', 'Not favorite, tagged', { favorite: false, tags: ['career'] }),
+    ])
+
+    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
+    await flushPromises()
+
+    const favoritesToggle = wrapper.findAll('button').find((b) => b.text().includes('Favorites only'))!
+    await favoritesToggle.trigger('click')
+
+    expect(wrapper.text()).toContain('Favorite, tagged')
+    expect(wrapper.text()).toContain('Favorite, untagged')
+    expect(wrapper.text()).not.toContain('Not favorite, tagged')
+
+    const careerChip = wrapper.findAll('button[aria-pressed]').find((b) => b.text() === 'career')!
+    await careerChip.trigger('click')
+
+    expect(wrapper.text()).toContain('Favorite, tagged')
+    expect(wrapper.text()).not.toContain('Favorite, untagged')
+    expect(wrapper.text()).not.toContain('Not favorite, tagged')
+  })
+
+  it('shows the "Favorites only" toggle even when nothing is tagged', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValue([sample('1', 'A')])
+
+    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.findAll('button').some((b) => b.text().includes('Favorites only'))).toBe(true)
+  })
+
   it('shows a distinct message when the tag filter matches nothing', async () => {
     vi.mocked(fetchConsultations).mockResolvedValue([
       sample('1', 'Only career', { tags: ['career'] }),
@@ -132,7 +168,8 @@ describe('ConsultationHistoryPage', () => {
     const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
     await flushPromises()
 
-    const [careerChip, healthChip] = wrapper.findAll('button[aria-pressed]')
+    const tagChips = wrapper.findAll('button[aria-pressed]').filter((c) => !c.text().includes('Favorites'))
+    const [careerChip, healthChip] = tagChips
     await careerChip!.trigger('click')
     await healthChip!.trigger('click')
 

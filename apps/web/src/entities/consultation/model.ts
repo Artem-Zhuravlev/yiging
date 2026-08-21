@@ -66,6 +66,7 @@ export interface Consultation extends ConsultationContext {
   outcome: ConsultationOutcome | null
   followUpTo: ConsultationSummary | null
   followUps: ConsultationSummary[]
+  favorite: boolean
 }
 
 /** Other consultations sharing this one's primary hexagram, resulting hexagram, or exact
@@ -95,4 +96,5 @@ export interface ConsultationPatch
   note?: { label: ConsultationNote['label']; text: string }
   tag?: string
   followUpToConsultationId?: string | null
+  favorite?: boolean
 }

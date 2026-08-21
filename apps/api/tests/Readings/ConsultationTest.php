@@ -586,4 +586,65 @@ final class ConsultationTest extends TestCase
 
         new ConsultationNote(NoteLabel::Before, str_repeat('a', 5001), new \DateTimeImmutable());
     }
+
+    public function testANewConsultationIsNotFavoriteByDefault(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        );
+
+        self::assertFalse($consultation->favorite);
+    }
+
+    public function testWithFavoriteSetsAndClearsTheFlag(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        );
+
+        $favorited = $consultation->withFavorite(true);
+        self::assertTrue($favorited->favorite);
+        self::assertFalse($consultation->favorite, 'original instance must not be mutated');
+
+        $unfavorited = $favorited->withFavorite(false);
+        self::assertFalse($unfavorited->favorite);
+    }
+
+    public function testWithAddedNotePreservesAnAlreadySetFavorite(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        )->withFavorite(true);
+
+        $withNote = $consultation->withAddedNote(new ConsultationNote(NoteLabel::After, 'Note.', new \DateTimeImmutable()));
+
+        self::assertTrue($withNote->favorite);
+    }
+
+    public function testWithFollowUpToPreservesAnAlreadySetFavorite(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        )->withFavorite(true);
+
+        $linked = $consultation->withFollowUpTo('other-id');
+
+        self::assertTrue($linked->favorite);
+    }
 }

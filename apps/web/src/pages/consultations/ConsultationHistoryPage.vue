@@ -15,6 +15,7 @@ interface ConsultationGroup {
 
 const state = ref<State>({ status: 'loading' })
 const selectedTags = ref<Set<string>>(new Set())
+const favoritesOnly = ref(false)
 
 onMounted(async () => {
   try {
@@ -35,8 +36,10 @@ const allTags = computed<string[]>(() => {
 
 const filteredConsultations = computed<Consultation[]>(() => {
   if (state.value.status !== 'loaded') return []
-  if (selectedTags.value.size === 0) return state.value.consultations
-  return state.value.consultations.filter((c) => [...selectedTags.value].every((t) => c.tags.includes(t)))
+
+  return state.value.consultations
+    .filter((c) => selectedTags.value.size === 0 || [...selectedTags.value].every((t) => c.tags.includes(t)))
+    .filter((c) => !favoritesOnly.value || c.favorite)
 })
 
 const groupedConsultations = computed<ConsultationGroup[]>(() => {
@@ -74,7 +77,20 @@ function toggleTag(tag: string): void {
     </p>
 
     <template v-else>
-      <div v-if="allTags.length > 0" class="mb-6 flex flex-wrap gap-2">
+      <div class="mb-6 flex flex-wrap gap-2">
+        <button
+          type="button"
+          :aria-pressed="favoritesOnly"
+          class="rounded-full border px-3 py-1 text-sm"
+          :class="
+            favoritesOnly
+              ? 'border-neutral-900 bg-neutral-900 text-white'
+              : 'border-neutral-300 text-neutral-600 hover:border-neutral-400'
+          "
+          @click="favoritesOnly = !favoritesOnly"
+        >
+          ★ Favorites only
+        </button>
         <button
           v-for="tag in allTags"
           :key="tag"

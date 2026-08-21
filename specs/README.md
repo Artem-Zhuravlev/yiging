@@ -100,3 +100,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-022 | [Consultation Timeline](consultation-timeline/spec.md) | `verified` |
 | SPEC-023 | [Repeated Pattern Detection](repeated-pattern-detection/spec.md) | `verified` |
 | SPEC-024 | [Personal Statistics](personal-statistics/spec.md) | `verified` |
+| SPEC-025 | [Consultation Favorites](consultation-favorites/spec.md) | `verified` |

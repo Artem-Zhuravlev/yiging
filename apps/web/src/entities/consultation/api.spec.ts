@@ -20,6 +20,7 @@ const sample: Consultation = {
   outcome: null,
   followUpTo: null,
   followUps: [],
+  favorite: false,
 }
 
 const sampleDetail: ConsultationDetail = {

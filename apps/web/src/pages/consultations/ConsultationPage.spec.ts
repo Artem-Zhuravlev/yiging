@@ -69,6 +69,7 @@ const sampleConsultation: ConsultationDetail = {
   outcome: null,
   followUpTo: null,
   followUps: [],
+  favorite: false,
   repeats: { primaryHexagram: [], resultingHexagram: [], changingLines: [] },
 }
 
@@ -212,6 +213,38 @@ describe('ConsultationPage', () => {
     expect(wrapper.text()).not.toContain('Same primary hexagram before')
     expect(wrapper.text()).not.toContain('Same resulting hexagram before')
     expect(wrapper.text()).not.toContain('Same changing lines before')
+  })
+
+  it('toggles favorite on and off via the toggle button', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    vi.mocked(updateConsultation).mockResolvedValue({ ...sampleConsultation, favorite: true })
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    const button = wrapper.findAll('button').find((b) => b.text().includes('Add to Favorites'))!
+    await button.trigger('click')
+    await flushPromises()
+
+    expect(updateConsultation).toHaveBeenCalledWith('abc-123', { favorite: true })
+    expect(wrapper.text()).toContain('★ Favorited')
+  })
+
+  it('shows an inline error when toggling favorite fails, without disturbing the rest of the page', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    vi.mocked(updateConsultation).mockRejectedValue(new Error('favorite toggle failed'))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    const button = wrapper.findAll('button').find((b) => b.text().includes('Add to Favorites'))!
+    await button.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('favorite toggle failed')
+    expect(wrapper.text()).toContain('Should I take the offer?')
   })
 
   it('pre-fills the context form from the loaded consultation', async () => {

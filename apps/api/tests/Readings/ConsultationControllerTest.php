@@ -751,6 +751,72 @@ final class ConsultationControllerTest extends TestCase
         self::assertSame(['career'], $body['tags']);
     }
 
+    public function testCreatedConsultationIsNotFavoriteByDefault(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'random',
+        ]));
+
+        self::assertFalse($created['favorite']);
+    }
+
+    public function testUpdateSetsAndClearsFavorite(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'random',
+        ]));
+
+        $favorited = $this->decode($this->patchJson('/api/consultations/' . $created['id'], ['favorite' => true]));
+        self::assertTrue($favorited['favorite']);
+
+        $unfavorited = $this->decode(
+            $this->patchJson('/api/consultations/' . $created['id'], ['favorite' => false]),
+        );
+        self::assertFalse($unfavorited['favorite']);
+    }
+
+    public function testUpdateWithANonBooleanFavoriteReturns422(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'random',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], ['favorite' => 'yes']);
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testUpdateWithOnlyFavoriteDoesNotRequireNoteOrTag(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'random',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], ['favorite' => true]);
+
+        self::assertSame(200, $response->getStatusCode());
+    }
+
+    public function testUpdateSettingFavoriteDoesNotDisturbOtherFields(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'random',
+        ]));
+        $this->patchJson('/api/consultations/' . $created['id'], ['tag' => 'career']);
+
+        $updated = $this->decode(
+            $this->patchJson('/api/consultations/' . $created['id'], ['favorite' => true]),
+        );
+
+        self::assertSame(['career'], $updated['tags']);
+        self::assertTrue($updated['favorite']);
+    }
+
     public function testUpdateWithNeitherNoteNorTagReturns422(): void
     {
         $created = $this->decode($this->postJson('/api/consultations', [

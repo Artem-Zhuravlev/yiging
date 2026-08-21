@@ -127,6 +127,7 @@ final class ConsultationController
             'initialInterpretation',
         ];
         $outcomeKeys = ['whatActuallyHappened', 'outcome', 'reflection'];
+        $touchesFavorite = array_key_exists('favorite', $body);
         $touchesAnyContextField = array_filter(
             $contextKeys,
             static fn (string $key): bool => array_key_exists($key, $body),
@@ -143,9 +144,10 @@ final class ConsultationController
             && !$touchesAnyContextField
             && !$touchesAnyOutcomeField
             && !$touchesFollowUp
+            && !$touchesFavorite
         ) {
             return $this->errorResponse(
-                'Provide "note", "tag", a context field, an outcome field, and/or '
+                'Provide "note", "tag", a context field, an outcome field, "favorite", and/or '
                     . '"followUpToConsultationId" to update.',
                 Response::HTTP_UNPROCESSABLE_ENTITY,
             );
@@ -211,6 +213,14 @@ final class ConsultationController
                 );
                 $this->validateFollowUpTargetExists($followUpToConsultationId);
                 $consultation = $consultation->withFollowUpTo($followUpToConsultationId);
+            }
+
+            if ($touchesFavorite) {
+                if (!is_bool($body['favorite'])) {
+                    throw new \InvalidArgumentException('"favorite" must be a boolean.');
+                }
+
+                $consultation = $consultation->withFavorite($body['favorite']);
             }
         } catch (\InvalidArgumentException $e) {
             return $this->errorResponse($e->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -412,6 +422,7 @@ final class ConsultationController
                 ],
                 $this->repository->findFollowUpSummaries($consultation->id),
             ),
+            'favorite' => $consultation->favorite,
         ];
     }
 

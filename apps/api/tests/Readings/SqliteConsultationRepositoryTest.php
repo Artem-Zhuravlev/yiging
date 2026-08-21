@@ -436,6 +436,39 @@ final class SqliteConsultationRepositoryTest extends TestCase
         self::assertSame('consult-2', $matches[0]->id);
     }
 
+    public function testSaveAndFindByIdRoundTripsAFavoriteFlag(): void
+    {
+        $consultation = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        )->withFavorite(true);
+        $this->repository->save($consultation);
+
+        $found = $this->repository->findById('consult-1');
+
+        self::assertNotNull($found);
+        self::assertTrue($found->favorite);
+    }
+
+    public function testAConsultationWithNoFavoriteFlagRoundTripsAsFalse(): void
+    {
+        $this->repository->save(Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        ));
+
+        $found = $this->repository->findById('consult-1');
+
+        self::assertNotNull($found);
+        self::assertFalse($found->favorite);
+    }
+
     public function testFindByIdReturnsNullForAMissingConsultation(): void
     {
         self::assertNull($this->repository->findById('does-not-exist'));
