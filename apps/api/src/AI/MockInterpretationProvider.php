@@ -57,4 +57,20 @@ final class MockInterpretationProvider implements InterpretationProvider
             sourceReferences: $context->defaultSourceReferences(),
         );
     }
+
+    /**
+     * @param list<ConversationExchange> $history
+     */
+    public function answerFollowUp(InterpretationContext $context, array $history, string $question): FollowUpAnswer
+    {
+        return new FollowUpAnswer(
+            answer: sprintf(
+                'This is a placeholder answer from the mock interpretation provider. Your '
+                    . 'question was: "%s" — it does not have real understanding of this '
+                    . 'conversation.',
+                $question,
+            ),
+            sourceReferences: $context->defaultSourceReferences(),
+        );
+    }
 }

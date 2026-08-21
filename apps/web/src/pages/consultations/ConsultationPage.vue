@@ -6,9 +6,13 @@ import type { Consultation, ConsultationRepeats } from '../../entities/consultat
 import { fetchHexagram } from '../../entities/hexagram/api'
 import type { HexagramLine } from '../../entities/hexagram/model'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
-import { requestInterpretation } from '../../entities/interpretation/api'
+import { requestFollowUp, requestInterpretation } from '../../entities/interpretation/api'
 import { INTERPRETATION_LENSES } from '../../entities/interpretation/model'
-import type { Interpretation, InterpretationLens } from '../../entities/interpretation/model'
+import type {
+  ConversationExchange,
+  Interpretation,
+  InterpretationLens,
+} from '../../entities/interpretation/model'
 import { ApiError } from '../../shared/api/http'
 
 type State =
@@ -57,6 +61,16 @@ const interpretationState = computed<InterpretationState>(() => interpretationSt
 // the pattern above for `interpretationState`.
 const repeats = ref<ConsultationRepeats | null>(null)
 const copyLinkState = ref<CopyLinkState>({ status: 'idle' })
+
+const conversations = ref<Record<InterpretationLens, ConversationExchange[]>>({
+  general: [],
+  psychological: [],
+  practical: [],
+  symbolic: [],
+})
+const currentConversation = computed<ConversationExchange[]>(() => conversations.value[selectedLens.value])
+const followUpText = ref('')
+const followUpFormState = ref<FormState>({ status: 'idle' })
 
 const noteLabel = ref<'before' | 'after' | 'later'>('after')
 const noteText = ref('')
@@ -255,6 +269,28 @@ async function getInterpretation(): Promise<void> {
     interpretationStates.value[lens] = {
       status: 'error',
       message: error instanceof Error ? error.message : 'Failed to get interpretation.',
+    }
+  }
+}
+
+async function askFollowUp(): Promise<void> {
+  if (followUpFormState.value.status === 'submitting' || followUpText.value.trim() === '') {
+    return
+  }
+
+  const lens = selectedLens.value
+  const question = followUpText.value
+  followUpFormState.value = { status: 'submitting' }
+
+  try {
+    const { answer } = await requestFollowUp(id.value, question, conversations.value[lens])
+    conversations.value[lens] = [...conversations.value[lens], { question, answer }]
+    followUpText.value = ''
+    followUpFormState.value = { status: 'idle' }
+  } catch (error) {
+    followUpFormState.value = {
+      status: 'error',
+      message: error instanceof Error ? error.message : 'Failed to get an answer.',
     }
   }
 }
@@ -750,6 +786,38 @@ onMounted(async () => {
                 {{ sourceRef }}
               </li>
             </ul>
+          </div>
+
+          <div class="border-t border-neutral-200 pt-3">
+            <h3 class="mb-2 text-xs font-medium text-neutral-500 uppercase">Follow-up questions</h3>
+
+            <ul v-if="currentConversation.length > 0" class="mb-3 flex flex-col gap-3">
+              <li v-for="(exchange, index) in currentConversation" :key="index">
+                <p class="text-sm font-medium">{{ exchange.question }}</p>
+                <p class="text-sm text-neutral-600">{{ exchange.answer }}</p>
+              </li>
+            </ul>
+
+            <form class="print:hidden flex flex-col gap-2" @submit.prevent="askFollowUp">
+              <textarea
+                v-model="followUpText"
+                rows="2"
+                required
+                maxlength="2000"
+                placeholder="Ask a follow-up question…"
+                class="w-full rounded-md border border-neutral-300 p-2 text-sm"
+              />
+              <p v-if="followUpFormState.status === 'error'" class="text-sm text-red-600">
+                {{ followUpFormState.message }}
+              </p>
+              <button
+                type="submit"
+                :disabled="followUpFormState.status === 'submitting'"
+                class="self-start rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+              >
+                {{ followUpFormState.status === 'submitting' ? 'Asking…' : 'Ask' }}
+              </button>
+            </form>
           </div>
         </div>
       </section>

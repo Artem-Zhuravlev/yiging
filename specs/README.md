@@ -109,3 +109,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-031 | [Hexagram Favorites](hexagram-favorites/spec.md) | `verified` |
 | SPEC-032 | [Hexagram of the Day](hexagram-of-the-day/spec.md) | `verified` |
 | SPEC-033 | [Multi-Lens Interpretation](multi-lens-interpretation/spec.md) | `verified` |
+| SPEC-034 | [Interpretation Follow-Up Questions](interpretation-followup/spec.md) | `verified` |

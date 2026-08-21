@@ -18,3 +18,15 @@ export interface Interpretation {
   sourceReferences: string[]
   lens: InterpretationLens
 }
+
+/** One prior round of a follow-up conversation about an interpretation (SPEC-034) — sent back
+ * to the server with each new follow-up request, since conversations aren't persisted. */
+export interface ConversationExchange {
+  question: string
+  answer: string
+}
+
+export interface FollowUpAnswer {
+  answer: string
+  sourceReferences: string[]
+}

@@ -3,7 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import ConsultationPage from './ConsultationPage.vue'
 import { fetchConsultation, updateConsultation } from '../../entities/consultation/api'
 import { fetchHexagram } from '../../entities/hexagram/api'
-import { requestInterpretation } from '../../entities/interpretation/api'
+import { requestFollowUp, requestInterpretation } from '../../entities/interpretation/api'
 import { ApiError } from '../../shared/api/http'
 import type { ConsultationDetail } from '../../entities/consultation/model'
 import type { Hexagram } from '../../entities/hexagram/model'
@@ -20,6 +20,7 @@ vi.mock('../../entities/hexagram/api', () => ({
 
 vi.mock('../../entities/interpretation/api', () => ({
   requestInterpretation: vi.fn(),
+  requestFollowUp: vi.fn(),
 }))
 
 vi.mock('vue-router', () => ({
@@ -90,9 +91,14 @@ function interpretationButton(wrapper: ReturnType<typeof mount>) {
   return wrapper.findAll('button').find((b) => b.text().includes('Get Interpretation'))!
 }
 
+function followUpForm(wrapper: ReturnType<typeof mount>) {
+  return wrapper.findAll('form').find((f) => f.text().includes('Ask'))!
+}
+
 describe('ConsultationPage', () => {
   beforeEach(() => {
     vi.mocked(requestInterpretation).mockClear()
+    vi.mocked(requestFollowUp).mockClear()
     vi.mocked(updateConsultation).mockClear()
   })
 
@@ -598,6 +604,75 @@ describe('ConsultationPage', () => {
     await lensButton('general').trigger('click')
     expect(wrapper.text()).toContain('Summary for general')
     expect(requestInterpretation).toHaveBeenCalledTimes(2)
+  })
+
+  it('asks a follow-up question, appends it to the thread, and clears the form', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    vi.mocked(requestInterpretation).mockResolvedValue(sampleInterpretation)
+    vi.mocked(requestFollowUp).mockResolvedValue({ answer: 'Hold back for now.', sourceReferences: [] })
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+    await interpretationButton(wrapper).trigger('click')
+    await flushPromises()
+
+    await wrapper.find('textarea[placeholder="Ask a follow-up question…"]').setValue('What should I avoid?')
+    await followUpForm(wrapper).trigger('submit')
+    await flushPromises()
+
+    expect(requestFollowUp).toHaveBeenCalledWith('abc-123', 'What should I avoid?', [])
+    expect(wrapper.text()).toContain('What should I avoid?')
+    expect(wrapper.text()).toContain('Hold back for now.')
+    expect(
+      (wrapper.find('textarea[placeholder="Ask a follow-up question…"]').element as HTMLTextAreaElement).value,
+    ).toBe('')
+  })
+
+  it('sends prior exchanges as history on a second follow-up in the same lens', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    vi.mocked(requestInterpretation).mockResolvedValue(sampleInterpretation)
+    vi.mocked(requestFollowUp)
+      .mockResolvedValueOnce({ answer: 'First answer.', sourceReferences: [] })
+      .mockResolvedValueOnce({ answer: 'Second answer.', sourceReferences: [] })
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+    await interpretationButton(wrapper).trigger('click')
+    await flushPromises()
+
+    const textarea = wrapper.find('textarea[placeholder="Ask a follow-up question…"]')
+
+    await textarea.setValue('First question?')
+    await followUpForm(wrapper).trigger('submit')
+    await flushPromises()
+
+    await textarea.setValue('Second question?')
+    await followUpForm(wrapper).trigger('submit')
+    await flushPromises()
+
+    expect(requestFollowUp).toHaveBeenLastCalledWith('abc-123', 'Second question?', [
+      { question: 'First question?', answer: 'First answer.' },
+    ])
+  })
+
+  it('shows an inline error when a follow-up request fails', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    vi.mocked(requestInterpretation).mockResolvedValue(sampleInterpretation)
+    vi.mocked(requestFollowUp).mockRejectedValue(new Error('followup failed'))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+    await interpretationButton(wrapper).trigger('click')
+    await flushPromises()
+
+    await wrapper.find('textarea[placeholder="Ask a follow-up question…"]').setValue('Q?')
+    await followUpForm(wrapper).trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('followup failed')
   })
 
   it('adds a note and clears the form on success', async () => {

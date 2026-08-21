@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\AI;
 
+use App\AI\ConversationExchange;
 use App\AI\GeminiInterpretationProvider;
 use App\AI\InterpretationContext;
 use App\AI\InterpretationLens;
@@ -224,5 +225,55 @@ final class GeminiInterpretationProviderTest extends TestCase
         // present, nothing about the base prompt altered.
         self::assertStringContainsString($context->question, $lensPrompt);
         self::assertGreaterThan(mb_strlen($generalPrompt), mb_strlen($lensPrompt));
+    }
+
+    public function testAnswerFollowUpMapsAWellFormedResponse(): void
+    {
+        $client = new FakeGeminiClient(['answer' => 'The dragon suggests holding back for now.']);
+        $context = $this->contextWithChangingLine();
+
+        $answer = (new GeminiInterpretationProvider($client))->answerFollowUp($context, [], 'What should I avoid?');
+
+        self::assertSame('The dragon suggests holding back for now.', $answer->answer);
+        self::assertSame($context->defaultSourceReferences(), $answer->sourceReferences);
+    }
+
+    public function testAnswerFollowUpThrowsWhenAnswerIsMissing(): void
+    {
+        $client = new FakeGeminiClient([]);
+        $context = $this->contextWithChangingLine();
+
+        $this->expectException(InterpretationProviderException::class);
+
+        (new GeminiInterpretationProvider($client))->answerFollowUp($context, [], 'What should I avoid?');
+    }
+
+    public function testAnswerFollowUpPromptIncludesContextHistoryAndNewQuestion(): void
+    {
+        $client = new FakeGeminiClient(['answer' => 'a']);
+        $context = $this->contextWithChangingLine();
+        $history = [new ConversationExchange('What does line 1 mean?', 'It means patience.')];
+
+        (new GeminiInterpretationProvider($client))->answerFollowUp($context, $history, 'And the transition?');
+
+        self::assertNotNull($client->lastCall);
+        $prompt = $client->lastCall['prompt'];
+
+        self::assertStringContainsString($context->question, $prompt);
+        self::assertStringContainsString($context->primaryHexagram->judgment, $prompt);
+        self::assertStringContainsString('What does line 1 mean?', $prompt);
+        self::assertStringContainsString('It means patience.', $prompt);
+        self::assertStringContainsString('And the transition?', $prompt);
+    }
+
+    public function testAnswerFollowUpPropagatesAClientFailure(): void
+    {
+        $client = new FakeGeminiClient(failureMessage: 'Gemini API returned HTTP 401: invalid key');
+        $context = $this->contextWithChangingLine();
+
+        $this->expectException(InterpretationProviderException::class);
+        $this->expectExceptionMessage('Gemini API returned HTTP 401: invalid key');
+
+        (new GeminiInterpretationProvider($client))->answerFollowUp($context, [], 'Q?');
     }
 }

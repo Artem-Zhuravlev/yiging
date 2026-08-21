@@ -35,4 +35,5 @@ return static function (RouteCollector $r): void {
     $r->addRoute('GET', '/api/journal', [JournalController::class, 'index']);
 
     $r->addRoute('POST', '/api/interpretations/{id}', [InterpretationController::class, 'create']);
+    $r->addRoute('POST', '/api/interpretations/{id}/followup', [InterpretationController::class, 'followUp']);
 };

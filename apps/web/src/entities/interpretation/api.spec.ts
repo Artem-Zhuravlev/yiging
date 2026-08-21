@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { requestInterpretation } from './api'
+import { requestInterpretation, requestFollowUp } from './api'
 import type { Interpretation } from './model'
 
 const sample: Interpretation = {
@@ -48,6 +48,32 @@ describe('requestInterpretation', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/interpretations/abc-123',
       expect.objectContaining({ method: 'POST', body: JSON.stringify({ lens: 'psychological' }) }),
+    )
+  })
+})
+
+describe('requestFollowUp', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('posts the question and history, resolving the answer', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ answer: 'Hold back for now.', sourceReferences: ['x'] }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const history = [{ question: 'What does line 1 mean?', answer: 'Patience.' }]
+    const result = await requestFollowUp('abc-123', 'What should I avoid?', history)
+
+    expect(result).toEqual({ answer: 'Hold back for now.', sourceReferences: ['x'] })
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/interpretations/abc-123/followup',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ question: 'What should I avoid?', history }),
+      }),
     )
   })
 })

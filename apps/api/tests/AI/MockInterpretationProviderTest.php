@@ -137,4 +137,17 @@ final class MockInterpretationProviderTest extends TestCase
             implode(' ', $psychological->uncertainties),
         );
     }
+
+    public function testAnswerFollowUpNamesTheQuestionAndDisclosesItsAMockPlaceholder(): void
+    {
+        $primary = self::hexagramFromPattern('111111');
+        $context = new InterpretationContext('Q?', $primary, [], [], $primary, []);
+
+        $answer = (new MockInterpretationProvider())
+            ->answerFollowUp($context, [], 'What should I avoid doing?');
+
+        self::assertStringContainsString('What should I avoid doing?', $answer->answer);
+        self::assertStringContainsString('mock', strtolower($answer->answer));
+        self::assertSame($context->defaultSourceReferences(), $answer->sourceReferences);
+    }
 }

@@ -33,6 +33,14 @@ final class GeminiInterpretationProvider implements InterpretationProvider
 
     private const REQUIRED_STRING_FIELDS = ['summary', 'coreTheme', 'situation', 'practicalReflection'];
 
+    private const FOLLOW_UP_RESPONSE_SCHEMA = [
+        'type' => 'object',
+        'properties' => [
+            'answer' => ['type' => 'string'],
+        ],
+        'required' => ['answer'],
+    ];
+
     public function __construct(private readonly GeminiClient $client)
     {
     }
@@ -65,17 +73,66 @@ final class GeminiInterpretationProvider implements InterpretationProvider
         );
     }
 
+    /**
+     * @param list<ConversationExchange> $history
+     */
+    public function answerFollowUp(InterpretationContext $context, array $history, string $question): FollowUpAnswer
+    {
+        $prompt = $this->buildFollowUpPrompt($context, $history, $question);
+        $data = $this->client->generateJson($prompt, self::FOLLOW_UP_RESPONSE_SCHEMA);
+
+        if (!isset($data['answer']) || !is_string($data['answer']) || trim($data['answer']) === '') {
+            throw new InterpretationProviderException("Gemini response is missing a valid 'answer' field.");
+        }
+
+        return new FollowUpAnswer($data['answer'], $context->defaultSourceReferences());
+    }
+
+    /**
+     * @param list<ConversationExchange> $history
+     */
+    private function buildFollowUpPrompt(InterpretationContext $context, array $history, string $question): string
+    {
+        $lines = $this->contextGroundingLines($context);
+
+        if ($history !== []) {
+            $lines[] = '';
+            $lines[] = 'Prior conversation about this reading:';
+            foreach ($history as $exchange) {
+                $lines[] = "Q: {$exchange->question}";
+                $lines[] = "A: {$exchange->answer}";
+            }
+        }
+
+        $lines[] = '';
+        $lines[] = "New question: {$question}";
+        $lines[] = '';
+        $lines[] = 'Answer the new question in your own words, grounded strictly in the canonical '
+            . 'text and conversation above - do not invent classical text, quotes, or hexagram '
+            . 'facts beyond what is given here (answer).';
+
+        return implode("\n", $lines);
+    }
+
     private function nullableString(mixed $value): ?string
     {
         return is_string($value) && trim($value) !== '' ? $value : null;
     }
 
-    private function buildPrompt(InterpretationContext $context, InterpretationLens $lens): string
+    /**
+     * The context-grounding block shared by every prompt this provider builds (interpret() and
+     * answerFollowUp()) - factored out so both can never drift apart in what canonical text they
+     * ground on, which would otherwise risk one of the two silently inventing beyond the given
+     * context while the other stays honest.
+     *
+     * @return list<string>
+     */
+    private function contextGroundingLines(InterpretationContext $context): array
     {
         $hasChangingLines = $context->changingLinePositions !== [];
 
         $lines = [
-            'You are assisting with an I Ching (Yijing) consultation. Ground your interpretation '
+            'You are assisting with an I Ching (Yijing) consultation. Ground your response '
                 . 'strictly in the canonical text provided below. Do not invent additional classical '
                 . 'text, quotes, or hexagram facts beyond what is given here.',
             '',
@@ -117,6 +174,14 @@ final class GeminiInterpretationProvider implements InterpretationProvider
                 $lines[] = "- {$note}";
             }
         }
+
+        return $lines;
+    }
+
+    private function buildPrompt(InterpretationContext $context, InterpretationLens $lens): string
+    {
+        $hasChangingLines = $context->changingLinePositions !== [];
+        $lines = $this->contextGroundingLines($context);
 
         $lines[] = '';
         $lines[] = 'Provide, in your own words but grounded in the text above: a one-sentence summary '

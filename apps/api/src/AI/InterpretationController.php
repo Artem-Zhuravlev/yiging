@@ -14,6 +14,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class InterpretationController
 {
+    private const MAX_FOLLOW_UP_QUESTION_LENGTH = 2000;
+
     private readonly ConsultationRepository $repository;
     private readonly InterpretationContextBuilder $contextBuilder;
     private readonly InterpretationProvider $provider;
@@ -84,6 +86,95 @@ final class InterpretationController
         }
 
         return new JsonResponse($this->toJson($interpretation, $lens));
+    }
+
+    /**
+     * @param array<string, string> $vars
+     */
+    public function followUp(Request $request, array $vars): Response
+    {
+        // Same rate-limit-first ordering, same limiter/key as create() - a follow-up is a real
+        // provider call with real cost, sharing the same hourly budget, not a separate one.
+        $rateLimitKey = $request->getClientIp() ?? 'unknown';
+
+        if (!$this->rateLimiter->attempt($rateLimitKey)) {
+            $response = new JsonResponse(
+                ['error' => 'Too many interpretation requests. Please try again later.'],
+                Response::HTTP_TOO_MANY_REQUESTS,
+            );
+            $response->headers->set('Retry-After', (string) $this->rateLimitWindowSeconds);
+
+            return $response;
+        }
+
+        try {
+            $body = $this->decodeJsonBody($request);
+        } catch (\JsonException) {
+            return new JsonResponse(['error' => 'Malformed JSON body.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $question = is_string($body['question'] ?? null) ? $body['question'] : '';
+
+        if (trim($question) === '' || mb_strlen($question) > self::MAX_FOLLOW_UP_QUESTION_LENGTH) {
+            return new JsonResponse(
+                [
+                    'error' => sprintf(
+                        '"question" must be a non-empty string of at most %d characters.',
+                        self::MAX_FOLLOW_UP_QUESTION_LENGTH,
+                    ),
+                ],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        try {
+            $history = $this->parseHistory($body['history'] ?? []);
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $consultation = $this->repository->findById($vars['id']);
+
+        if ($consultation === null) {
+            return new JsonResponse(['error' => 'Not Found'], Response::HTTP_NOT_FOUND);
+        }
+
+        $context = $this->contextBuilder->build($consultation);
+
+        try {
+            $answer = $this->provider->answerFollowUp($context, $history, $question);
+        } catch (InterpretationProviderException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_BAD_GATEWAY);
+        }
+
+        return new JsonResponse([
+            'answer' => $answer->answer,
+            'sourceReferences' => $answer->sourceReferences,
+        ]);
+    }
+
+    /**
+     * @return list<ConversationExchange>
+     */
+    private function parseHistory(mixed $history): array
+    {
+        if (!is_array($history)) {
+            throw new \InvalidArgumentException('"history" must be an array.');
+        }
+
+        return array_map(function (mixed $exchange): ConversationExchange {
+            if (
+                !is_array($exchange)
+                || !is_string($exchange['question'] ?? null)
+                || !is_string($exchange['answer'] ?? null)
+            ) {
+                throw new \InvalidArgumentException(
+                    '"history" entries must each have string "question" and "answer" fields.',
+                );
+            }
+
+            return new ConversationExchange($exchange['question'], $exchange['answer']);
+        }, array_values($history));
     }
 
     /**

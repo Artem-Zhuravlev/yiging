@@ -109,6 +109,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-031 | [Hexagram Favorites](specs/hexagram-favorites/spec.md) | `verified` |
 | SPEC-032 | [Hexagram of the Day](specs/hexagram-of-the-day/spec.md) | `verified` |
 | SPEC-033 | [Multi-Lens Interpretation](specs/multi-lens-interpretation/spec.md) | `verified` |
+| SPEC-034 | [Interpretation Follow-Up Questions](specs/interpretation-followup/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -478,7 +479,24 @@ prose, checkmark appeared, button became "Regenerate"), then confirmed switching
 Psychological → General → Psychological again produced exactly one network request in total —
 the cache held. See [SPEC-033](specs/multi-lens-interpretation/spec.md).
 
-Next recommended steps: interpretation profiles, source-grounding, and conversation (building on
-this same `InterpretationContext`/`InterpretationProvider`/lens foundation, still Gemini-only per
-the user's direction), or authentication (feature 9, deliberately skipped this session — see
-above), or provide a second public-domain I Ching translation source to unblock features 26/27.
+`InterpretationProvider` gained a second capability, `answerFollowUp()` — a free-text clarifying
+question about an already-fetched interpretation, grounded in the same context plus (for a
+second-or-later round) the prior exchange, sent by the client each time since conversations
+aren't persisted server-side. `GeminiInterpretationProvider` and `MockInterpretationProvider`
+share the context-grounding prompt block that `interpret()` already had, factored out so the two
+capabilities can't drift apart in what canonical text they ground on.
+`POST /api/interpretations/{id}/followup` shares the exact same rate limiter and key as the main
+interpretation endpoint — a follow-up is real provider cost, not a separate budget.
+`ConsultationPage`'s AI Interpretation section grew a follow-up question box and a growing
+Q&A thread, scoped per lens (SPEC-033's caching pattern extended one step further). Manually
+verified with two real, chained Gemini calls: a first follow-up ("what should I avoid doing")
+answered correctly grounded in line 1 and the resulting hexagram's judgment, then a second
+follow-up sent with the first as history ("explain that image more") correctly built on it
+without repeating context verbatim — then the same chain reproduced end-to-end through the actual
+UI (typed question, submitted, real answer appeared in the thread). See
+[SPEC-034](specs/interpretation-followup/spec.md).
+
+Next recommended steps: interpretation profiles and source-grounding refinements (building on
+this same `InterpretationContext`/`InterpretationProvider` foundation, still Gemini-only per the
+user's direction), or authentication (feature 9, deliberately skipped this session — see above),
+or provide a second public-domain I Ching translation source to unblock features 26/27.

@@ -7,4 +7,13 @@ namespace App\AI;
 interface InterpretationProvider
 {
     public function interpret(InterpretationContext $context, InterpretationLens $lens): Interpretation;
+
+    /**
+     * @param list<ConversationExchange> $history
+     */
+    public function answerFollowUp(
+        InterpretationContext $context,
+        array $history,
+        string $question,
+    ): FollowUpAnswer;
 }
