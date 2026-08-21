@@ -83,6 +83,55 @@ final class InterpretationControllerTest extends TestCase
         self::assertNotNull($body['changingLineMeaning']);
         self::assertNotNull($body['transition']);
         self::assertNotEmpty($body['sourceReferences']);
+        self::assertSame('general', $body['lens']);
+    }
+
+    public function testAcceptsAnExplicitLensAndEchoesItInTheResponse(): void
+    {
+        $primary = self::hexagramFromPattern('111111', changingPositions: [1]);
+        $consultation = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            $primary,
+            new \DateTimeImmutable(),
+        );
+        $this->repository->save($consultation);
+
+        $response = $this->kernel->handle(Request::create(
+            '/api/interpretations/consult-1',
+            'POST',
+            content: json_encode(['lens' => 'psychological'], JSON_THROW_ON_ERROR),
+        ));
+
+        self::assertSame(200, $response->getStatusCode());
+        $body = $this->decode($response);
+        self::assertSame('psychological', $body['lens']);
+        self::assertStringContainsString('Requested lens: psychological', implode(' ', $body['uncertainties']));
+    }
+
+    public function testRejectsAnInvalidLensWith422BeforeTouchingTheConsultation(): void
+    {
+        $response = $this->kernel->handle(Request::create(
+            '/api/interpretations/does-not-exist',
+            'POST',
+            content: json_encode(['lens' => 'not-a-real-lens'], JSON_THROW_ON_ERROR),
+        ));
+
+        // 422, not 404 - proves lens validation happens before the repository lookup, even
+        // though the id in this test doesn't exist either.
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testRejectsMalformedJsonBodyWith422(): void
+    {
+        $response = $this->kernel->handle(Request::create(
+            '/api/interpretations/does-not-exist',
+            'POST',
+            content: 'not json',
+        ));
+
+        self::assertSame(422, $response->getStatusCode());
     }
 
     public function testReturns404ForAMissingConsultation(): void

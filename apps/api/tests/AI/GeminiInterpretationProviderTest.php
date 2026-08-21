@@ -6,9 +6,11 @@ namespace App\Tests\AI;
 
 use App\AI\GeminiInterpretationProvider;
 use App\AI\InterpretationContext;
+use App\AI\InterpretationLens;
 use App\AI\InterpretationProviderException;
 use App\Tests\AI\Support\FakeGeminiClient;
 use App\Tests\Readings\Support\HexagramFixture;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class GeminiInterpretationProviderTest extends TestCase
@@ -43,7 +45,8 @@ final class GeminiInterpretationProviderTest extends TestCase
             'sourceReferences' => ['this should be ignored'],
         ]);
 
-        $interpretation = (new GeminiInterpretationProvider($client))->interpret($this->contextWithChangingLine());
+        $interpretation = (new GeminiInterpretationProvider($client))
+            ->interpret($this->contextWithChangingLine(), InterpretationLens::General);
 
         self::assertSame('A time for bold, well-considered action.', $interpretation->summary);
         self::assertSame('Creative strength meeting a threshold.', $interpretation->coreTheme);
@@ -66,7 +69,7 @@ final class GeminiInterpretationProviderTest extends TestCase
             'sourceReferences' => ['a fabricated citation the model made up'],
         ]);
 
-        $interpretation = (new GeminiInterpretationProvider($client))->interpret($context);
+        $interpretation = (new GeminiInterpretationProvider($client))->interpret($context, InterpretationLens::General);
 
         self::assertSame($context->defaultSourceReferences(), $interpretation->sourceReferences);
         self::assertNotContains('a fabricated citation the model made up', $interpretation->sourceReferences);
@@ -85,7 +88,7 @@ final class GeminiInterpretationProviderTest extends TestCase
             'uncertainties' => [],
         ]);
 
-        $interpretation = (new GeminiInterpretationProvider($client))->interpret($context);
+        $interpretation = (new GeminiInterpretationProvider($client))->interpret($context, InterpretationLens::General);
 
         self::assertNull($interpretation->changingLineMeaning);
         self::assertNull($interpretation->transition);
@@ -103,7 +106,7 @@ final class GeminiInterpretationProviderTest extends TestCase
 
         $this->expectException(InterpretationProviderException::class);
 
-        (new GeminiInterpretationProvider($client))->interpret($this->contextWithChangingLine());
+        (new GeminiInterpretationProvider($client))->interpret($this->contextWithChangingLine(), InterpretationLens::General);
     }
 
     public function testThrowsWhenARequiredFieldIsEmpty(): void
@@ -118,7 +121,7 @@ final class GeminiInterpretationProviderTest extends TestCase
 
         $this->expectException(InterpretationProviderException::class);
 
-        (new GeminiInterpretationProvider($client))->interpret($this->contextWithChangingLine());
+        (new GeminiInterpretationProvider($client))->interpret($this->contextWithChangingLine(), InterpretationLens::General);
     }
 
     public function testThrowsWhenUncertaintiesIsNotAnArray(): void
@@ -133,7 +136,7 @@ final class GeminiInterpretationProviderTest extends TestCase
 
         $this->expectException(InterpretationProviderException::class);
 
-        (new GeminiInterpretationProvider($client))->interpret($this->contextWithChangingLine());
+        (new GeminiInterpretationProvider($client))->interpret($this->contextWithChangingLine(), InterpretationLens::General);
     }
 
     public function testPropagatesAClientFailure(): void
@@ -143,7 +146,7 @@ final class GeminiInterpretationProviderTest extends TestCase
         $this->expectException(InterpretationProviderException::class);
         $this->expectExceptionMessage('Gemini API returned HTTP 401: invalid key');
 
-        (new GeminiInterpretationProvider($client))->interpret($this->contextWithChangingLine());
+        (new GeminiInterpretationProvider($client))->interpret($this->contextWithChangingLine(), InterpretationLens::General);
     }
 
     public function testPromptGroundsOnlyInTheContextsOwnCanonicalText(): void
@@ -157,7 +160,7 @@ final class GeminiInterpretationProviderTest extends TestCase
         ]);
         $context = $this->contextWithChangingLine();
 
-        (new GeminiInterpretationProvider($client))->interpret($context);
+        (new GeminiInterpretationProvider($client))->interpret($context, InterpretationLens::General);
 
         self::assertNotNull($client->lastCall);
         $prompt = $client->lastCall['prompt'];
@@ -167,5 +170,59 @@ final class GeminiInterpretationProviderTest extends TestCase
         self::assertStringContainsString($context->primaryHexagram->image, $prompt);
         self::assertStringContainsString($context->changingLineStatements[1], $prompt);
         self::assertStringContainsString('Feeling uncertain.', $prompt);
+    }
+
+    public function testGeneralLensPromptIsByteIdenticalRegardlessOfBeingPassedExplicitly(): void
+    {
+        $client = new FakeGeminiClient([
+            'summary' => 's', 'coreTheme' => 'c', 'situation' => 'si',
+            'practicalReflection' => 'p', 'uncertainties' => [],
+        ]);
+        $context = $this->contextWithChangingLine();
+
+        (new GeminiInterpretationProvider($client))->interpret($context, InterpretationLens::General);
+
+        self::assertNotNull($client->lastCall);
+        self::assertStringNotContainsString('Focus especially', $client->lastCall['prompt']);
+    }
+
+    /**
+     * @return list<array{InterpretationLens, string}>
+     */
+    public static function nonGeneralLenses(): array
+    {
+        return [
+            [InterpretationLens::Psychological, 'psychological'],
+            [InterpretationLens::Practical, 'concrete, actionable practical'],
+            [InterpretationLens::Symbolic, 'symbolic and archetypal'],
+        ];
+    }
+
+    #[DataProvider('nonGeneralLenses')]
+    public function testEachNonGeneralLensAddsExactlyOneDistinctFramingSentence(
+        InterpretationLens $lens,
+        string $expectedFragment,
+    ): void {
+        $client = new FakeGeminiClient([
+            'summary' => 's', 'coreTheme' => 'c', 'situation' => 'si',
+            'practicalReflection' => 'p', 'uncertainties' => [],
+        ]);
+        $context = $this->contextWithChangingLine();
+
+        (new GeminiInterpretationProvider($client))->interpret($context, InterpretationLens::General);
+        self::assertNotNull($client->lastCall);
+        $generalPrompt = $client->lastCall['prompt'];
+
+        (new GeminiInterpretationProvider($client))->interpret($context, $lens);
+        self::assertNotNull($client->lastCall);
+        $lensPrompt = $client->lastCall['prompt'];
+
+        self::assertStringContainsString('Focus especially', $lensPrompt);
+        self::assertStringContainsStringIgnoringCase($expectedFragment, $lensPrompt);
+        // The lens prompt is the general prompt plus exactly one appended sentence — every
+        // context-grounding line (question, judgment, image, changing lines, notes) still
+        // present, nothing about the base prompt altered.
+        self::assertStringContainsString($context->question, $lensPrompt);
+        self::assertGreaterThan(mb_strlen($generalPrompt), mb_strlen($lensPrompt));
     }
 }

@@ -108,6 +108,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-030 | [Practice Journal](specs/practice-journal/spec.md) | `verified` |
 | SPEC-031 | [Hexagram Favorites](specs/hexagram-favorites/spec.md) | `verified` |
 | SPEC-032 | [Hexagram of the Day](specs/hexagram-of-the-day/spec.md) | `verified` |
+| SPEC-033 | [Multi-Lens Interpretation](specs/multi-lens-interpretation/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -461,8 +462,23 @@ explicitly named it as the replacement. See
 [SPEC-011](specs/gemini-interpretation-provider/spec.md)'s 2026-08-21 update for the full account.
 The API key lives only in `apps/api/.env` (gitignored, never committed).
 
-Next recommended steps: AI interpretation layering, profiles, source-grounding, and conversation
-(building on the existing `InterpretationContext`/`InterpretationProvider` abstraction, now
-verified live against real Gemini output) — per the user's direction, scoped to Gemini only, no
-multi-provider comparison — or authentication (feature 9, deliberately skipped this session — see
+`InterpretationProvider::interpret()` now takes an `InterpretationLens` (`general`/
+`psychological`/`practical`/`symbolic`) alongside the existing context — `general` (the default,
+absent-in-request-body) reproduces the exact prior prompt byte-for-byte;
+`GeminiInterpretationProvider` appends exactly one framing sentence per non-general lens, nothing
+else about the prompt changes. `MockInterpretationProvider` deliberately does not fabricate
+lens-differentiated content (it has no real understanding to vary by), instead honestly naming
+the requested lens in `uncertainties`. `ConsultationPage`'s AI Interpretation section gained a
+four-way lens selector with a per-lens client-side cache — switching to an already-fetched lens
+shows it instantly, no re-request, so comparing lenses doesn't multiply real API cost or rate-
+limit consumption. Manually verified against the real running dev server with real Gemini calls:
+fetched the `symbolic` lens directly via `curl` (genuinely archetype/imagery-focused prose) and
+the `psychological` lens through the actual UI (genuinely inner-state/self-restraint-focused
+prose, checkmark appeared, button became "Regenerate"), then confirmed switching General →
+Psychological → General → Psychological again produced exactly one network request in total —
+the cache held. See [SPEC-033](specs/multi-lens-interpretation/spec.md).
+
+Next recommended steps: interpretation profiles, source-grounding, and conversation (building on
+this same `InterpretationContext`/`InterpretationProvider`/lens foundation, still Gemini-only per
+the user's direction), or authentication (feature 9, deliberately skipped this session — see
 above), or provide a second public-domain I Ching translation source to unblock features 26/27.

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\AI;
 
 use App\AI\InterpretationContext;
+use App\AI\InterpretationLens;
 use App\AI\MockInterpretationProvider;
 use App\Tests\Readings\Support\HexagramFixture;
 use PHPUnit\Framework\TestCase;
@@ -27,7 +28,7 @@ final class MockInterpretationProviderTest extends TestCase
             [],
         );
 
-        $interpretation = (new MockInterpretationProvider())->interpret($context);
+        $interpretation = (new MockInterpretationProvider())->interpret($context, InterpretationLens::General);
 
         self::assertStringContainsString('Should I take the offer?', $interpretation->summary);
         self::assertStringContainsString((string) $primary->kingWenNumber, $interpretation->summary);
@@ -52,7 +53,7 @@ final class MockInterpretationProviderTest extends TestCase
             [],
         );
 
-        $interpretation = (new MockInterpretationProvider())->interpret($context);
+        $interpretation = (new MockInterpretationProvider())->interpret($context, InterpretationLens::General);
 
         self::assertNull($interpretation->changingLineMeaning);
         self::assertNull($interpretation->transition);
@@ -72,7 +73,7 @@ final class MockInterpretationProviderTest extends TestCase
             [],
         );
 
-        $interpretation = (new MockInterpretationProvider())->interpret($context);
+        $interpretation = (new MockInterpretationProvider())->interpret($context, InterpretationLens::General);
 
         $expected = [
             "Hexagram {$primary->kingWenNumber} judgment (Legge, 1899)",
@@ -91,8 +92,49 @@ final class MockInterpretationProviderTest extends TestCase
 
         $context = new InterpretationContext('Q?', $primary, [], [], $primary, []);
 
-        $interpretation = (new MockInterpretationProvider())->interpret($context);
+        $interpretation = (new MockInterpretationProvider())->interpret($context, InterpretationLens::General);
 
         self::assertCount(2, $interpretation->sourceReferences);
+    }
+
+    public function testGeneralLensAddsNoLensDisclosureToUncertainties(): void
+    {
+        $primary = self::hexagramFromPattern('111111');
+        $context = new InterpretationContext('Q?', $primary, [], [], $primary, []);
+
+        $interpretation = (new MockInterpretationProvider())->interpret($context, InterpretationLens::General);
+
+        foreach ($interpretation->uncertainties as $uncertainty) {
+            self::assertStringNotContainsString('Requested lens', $uncertainty);
+        }
+    }
+
+    public function testNonGeneralLensDisclosesItselfInUncertaintiesWithoutChangingOtherFields(): void
+    {
+        $primary = self::hexagramFromPattern('111111', changingPositions: [1]);
+        $resulting = $primary->getResultingHexagram();
+        $context = new InterpretationContext(
+            'Should I take the offer?',
+            $primary,
+            [1],
+            [1 => $primary->lineStatements[0]],
+            $resulting,
+            [],
+        );
+
+        $general = (new MockInterpretationProvider())->interpret($context, InterpretationLens::General);
+        $psychological = (new MockInterpretationProvider())->interpret($context, InterpretationLens::Psychological);
+
+        self::assertSame($general->summary, $psychological->summary);
+        self::assertSame($general->coreTheme, $psychological->coreTheme);
+        self::assertSame($general->situation, $psychological->situation);
+        self::assertSame($general->changingLineMeaning, $psychological->changingLineMeaning);
+        self::assertSame($general->transition, $psychological->transition);
+        self::assertSame($general->practicalReflection, $psychological->practicalReflection);
+
+        self::assertStringContainsString(
+            'Requested lens: psychological',
+            implode(' ', $psychological->uncertainties),
+        );
     }
 }

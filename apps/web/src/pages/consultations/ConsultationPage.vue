@@ -7,7 +7,8 @@ import { fetchHexagram } from '../../entities/hexagram/api'
 import type { HexagramLine } from '../../entities/hexagram/model'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
 import { requestInterpretation } from '../../entities/interpretation/api'
-import type { Interpretation } from '../../entities/interpretation/model'
+import { INTERPRETATION_LENSES } from '../../entities/interpretation/model'
+import type { Interpretation, InterpretationLens } from '../../entities/interpretation/model'
 import { ApiError } from '../../shared/api/http'
 
 type State =
@@ -39,7 +40,18 @@ const route = useRoute()
 const id = computed(() => String(route.params.id))
 const shareUrl = computed(() => `${location.origin}/share/consultations/${id.value}`)
 const state = ref<State>({ status: 'loading' })
-const interpretationState = ref<InterpretationState>({ status: 'idle' })
+const selectedLens = ref<InterpretationLens>('general')
+const interpretationStates = ref<Record<InterpretationLens, InterpretationState>>({
+  general: { status: 'idle' },
+  psychological: { status: 'idle' },
+  practical: { status: 'idle' },
+  symbolic: { status: 'idle' },
+})
+// Read-only view of the currently-selected lens's state — every existing template binding
+// below keeps working unchanged; only getInterpretation() writes, and it writes into
+// interpretationStates keyed by whichever lens was selected at request time (SPEC-033), not
+// necessarily whatever's selected once the request resolves.
+const interpretationState = computed<InterpretationState>(() => interpretationStates.value[selectedLens.value])
 // Independent of `state`: repeats are computed once at load and never change when notes, tags,
 // context, or outcome are edited via PATCH (the hexagrams/changing lines never change), matching
 // the pattern above for `interpretationState`.
@@ -228,17 +240,19 @@ async function toggleFavorite(): Promise<void> {
 }
 
 async function getInterpretation(): Promise<void> {
-  if (interpretationState.value.status === 'loading') {
+  const lens = selectedLens.value
+
+  if (interpretationStates.value[lens].status === 'loading') {
     return
   }
 
-  interpretationState.value = { status: 'loading' }
+  interpretationStates.value[lens] = { status: 'loading' }
 
   try {
-    const interpretation = await requestInterpretation(id.value)
-    interpretationState.value = { status: 'loaded', interpretation }
+    const interpretation = await requestInterpretation(id.value, lens)
+    interpretationStates.value[lens] = { status: 'loaded', interpretation }
   } catch (error) {
-    interpretationState.value = {
+    interpretationStates.value[lens] = {
       status: 'error',
       message: error instanceof Error ? error.message : 'Failed to get interpretation.',
     }
@@ -651,13 +665,38 @@ onMounted(async () => {
       >
         <h2 class="mb-3 text-sm font-medium text-neutral-500">AI Interpretation</h2>
 
+        <div class="print:hidden mb-3 flex flex-wrap gap-2">
+          <button
+            v-for="lens in INTERPRETATION_LENSES"
+            :key="lens"
+            type="button"
+            :aria-pressed="selectedLens === lens"
+            class="rounded-full border px-3 py-1 text-sm capitalize"
+            :class="
+              selectedLens === lens
+                ? 'border-neutral-900 bg-neutral-900 text-white'
+                : 'border-neutral-300 text-neutral-600 hover:border-neutral-400'
+            "
+            @click="selectedLens = lens"
+          >
+            {{ lens }}
+            <span v-if="interpretationStates[lens].status === 'loaded'" aria-hidden="true">✓</span>
+          </button>
+        </div>
+
         <button
           type="button"
           :disabled="interpretationState.status === 'loading'"
           class="print:hidden rounded-md bg-neutral-800 px-4 py-2 text-sm text-white disabled:opacity-50"
           @click="getInterpretation"
         >
-          {{ interpretationState.status === 'loading' ? 'Interpreting…' : 'Get Interpretation' }}
+          {{
+            interpretationState.status === 'loading'
+              ? 'Interpreting…'
+              : interpretationState.status === 'loaded'
+                ? 'Regenerate'
+                : 'Get Interpretation'
+          }}
         </button>
 
         <p v-if="interpretationState.status === 'error'" class="mt-3 text-red-600">

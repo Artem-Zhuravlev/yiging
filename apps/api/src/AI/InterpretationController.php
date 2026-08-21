@@ -53,6 +53,22 @@ final class InterpretationController
             return $response;
         }
 
+        try {
+            $body = $this->decodeJsonBody($request);
+        } catch (\JsonException) {
+            return new JsonResponse(['error' => 'Malformed JSON body.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $lensValue = is_string($body['lens'] ?? null) ? $body['lens'] : InterpretationLens::General->value;
+        $lens = InterpretationLens::tryFrom($lensValue);
+
+        if ($lens === null) {
+            return new JsonResponse(
+                ['error' => "Invalid 'lens'. Expected one of: general, psychological, practical, symbolic."],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
         $consultation = $this->repository->findById($vars['id']);
 
         if ($consultation === null) {
@@ -62,12 +78,12 @@ final class InterpretationController
         $context = $this->contextBuilder->build($consultation);
 
         try {
-            $interpretation = $this->provider->interpret($context);
+            $interpretation = $this->provider->interpret($context, $lens);
         } catch (InterpretationProviderException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_BAD_GATEWAY);
         }
 
-        return new JsonResponse($this->toJson($interpretation));
+        return new JsonResponse($this->toJson($interpretation, $lens));
     }
 
     /**
@@ -107,7 +123,28 @@ final class InterpretationController
     /**
      * @return array<string, mixed>
      */
-    private function toJson(Interpretation $interpretation): array
+    private function decodeJsonBody(Request $request): array
+    {
+        $content = $request->getContent();
+
+        if ($content === '') {
+            return [];
+        }
+
+        $decoded = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+
+        if (!is_array($decoded)) {
+            throw new \JsonException('Request body must be a JSON object.');
+        }
+
+        /** @var array<string, mixed> $decoded */
+        return $decoded;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function toJson(Interpretation $interpretation, InterpretationLens $lens): array
     {
         return [
             'summary' => $interpretation->summary,
@@ -118,6 +155,7 @@ final class InterpretationController
             'practicalReflection' => $interpretation->practicalReflection,
             'uncertainties' => $interpretation->uncertainties,
             'sourceReferences' => $interpretation->sourceReferences,
+            'lens' => $lens->value,
         ];
     }
 }

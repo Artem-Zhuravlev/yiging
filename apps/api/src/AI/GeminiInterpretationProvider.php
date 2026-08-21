@@ -37,9 +37,9 @@ final class GeminiInterpretationProvider implements InterpretationProvider
     {
     }
 
-    public function interpret(InterpretationContext $context): Interpretation
+    public function interpret(InterpretationContext $context, InterpretationLens $lens): Interpretation
     {
-        $data = $this->client->generateJson($this->buildPrompt($context), self::RESPONSE_SCHEMA);
+        $data = $this->client->generateJson($this->buildPrompt($context, $lens), self::RESPONSE_SCHEMA);
 
         foreach (self::REQUIRED_STRING_FIELDS as $field) {
             if (!isset($data[$field]) || !is_string($data[$field]) || trim($data[$field]) === '') {
@@ -70,7 +70,7 @@ final class GeminiInterpretationProvider implements InterpretationProvider
         return is_string($value) && trim($value) !== '' ? $value : null;
     }
 
-    private function buildPrompt(InterpretationContext $context): string
+    private function buildPrompt(InterpretationContext $context, InterpretationLens $lens): string
     {
         $hasChangingLines = $context->changingLinePositions !== [];
 
@@ -132,6 +132,30 @@ final class GeminiInterpretationProvider implements InterpretationProvider
             . 'rather than authoritative, that personal judgment still matters), not a generic '
             . 'disclaimer.';
 
+        $lensInstruction = $this->lensInstruction($lens);
+
+        if ($lensInstruction !== null) {
+            $lines[count($lines) - 1] .= ' ' . $lensInstruction;
+        }
+
         return implode("\n", $lines);
+    }
+
+    private function lensInstruction(InterpretationLens $lens): ?string
+    {
+        return match ($lens) {
+            // General adds nothing — the prompt for this case must stay byte-identical to
+            // this provider's pre-SPEC-033 behavior.
+            InterpretationLens::General => null,
+            InterpretationLens::Psychological => 'Focus especially on the psychological and '
+                . 'internal dimension of this reading — emotions, mindset, inner conflict, and '
+                . 'self-perception relevant to the question.',
+            InterpretationLens::Practical => 'Focus especially on concrete, actionable practical '
+                . 'guidance — what to actually do, in the real world, in response to the question.',
+            InterpretationLens::Symbolic => 'Focus especially on the symbolic and archetypal '
+                . 'dimension of this reading — the imagery, metaphor, and traditional symbolic '
+                . 'associations of the hexagram and lines, and what they represent beyond the '
+                . 'literal.',
+        };
     }
 }

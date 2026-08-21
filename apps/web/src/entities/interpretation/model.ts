@@ -1,3 +1,12 @@
+export type InterpretationLens = 'general' | 'psychological' | 'practical' | 'symbolic'
+
+export const INTERPRETATION_LENSES: InterpretationLens[] = [
+  'general',
+  'psychological',
+  'practical',
+  'symbolic',
+]
+
 export interface Interpretation {
   summary: string
   coreTheme: string
@@ -7,4 +16,5 @@ export interface Interpretation {
   practicalReflection: string
   uncertainties: string[]
   sourceReferences: string[]
+  lens: InterpretationLens
 }

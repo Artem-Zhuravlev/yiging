@@ -6,5 +6,5 @@ namespace App\AI;
 
 interface InterpretationProvider
 {
-    public function interpret(InterpretationContext $context): Interpretation;
+    public function interpret(InterpretationContext $context, InterpretationLens $lens): Interpretation;
 }
