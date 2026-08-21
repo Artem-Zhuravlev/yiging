@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\AI\InterpretationController;
 use App\Core\HealthController;
 use App\Hexagrams\HexagramController;
+use App\Journal\JournalController;
 use App\Readings\ConsultationController;
 use App\Readings\StatisticsController;
 use App\Trigrams\TrigramController;
@@ -27,6 +28,9 @@ return static function (RouteCollector $r): void {
     $r->addRoute('GET', '/api/trigrams', [TrigramController::class, 'index']);
 
     $r->addRoute('GET', '/api/statistics', [StatisticsController::class, 'index']);
+
+    $r->addRoute('POST', '/api/journal', [JournalController::class, 'create']);
+    $r->addRoute('GET', '/api/journal', [JournalController::class, 'index']);
 
     $r->addRoute('POST', '/api/interpretations/{id}', [InterpretationController::class, 'create']);
 };

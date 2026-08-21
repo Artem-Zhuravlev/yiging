@@ -105,6 +105,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-027 | [Consultation Print / PDF Export](specs/consultation-print-export/spec.md) | `verified` |
 | SPEC-028 | [Consultation History Backup](specs/history-backup/spec.md) | `verified` |
 | SPEC-029 | [Consultation Public Share Link](specs/consultation-public-share/spec.md) | `verified` |
+| SPEC-030 | [Practice Journal](specs/practice-journal/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -403,8 +404,22 @@ running dev server: the share page for a consultation with real follow-up and re
 data showed none of it, and the nav rendered as bare "Yijing" text with zero links.
 See [SPEC-029](specs/consultation-public-share/spec.md).
 
+`App\Journal` is now a real module — the first thing in the `apps/api/src/Journal` directory that
+had sat empty since the project's early scaffolding. `journal_entries` (`id`, `text`,
+`created_at`, no foreign key to anything) holds free-form entries independent of any consultation;
+`POST`/`GET /api/journal` follow the same validate-then-persist shape every other write endpoint
+in this app already uses. `/journal` (new nav link) adds an entry via a form and lists existing
+ones date-grouped, reusing `ConsultationHistoryPage`'s exact grouping logic so journal and history
+read consistently. Authentication (feature 9) was intentionally skipped this session at the user's
+explicit direction — it's a materially different kind of change (protects every existing endpoint,
+interacts with SPEC-029's just-shipped public share route) warranting its own dedicated pass
+rather than being folded into this batch. Manually verified against the real running dev server:
+added a real entry via the form, confirmed it appeared immediately under today's date heading.
+See [SPEC-030](specs/practice-journal/spec.md).
+
 Next recommended steps: hexagram favorites (the deferred half of feature 4), AI interpretation
 layering, profiles, source-grounding, and conversation (building on the existing
-`InterpretationContext`/`InterpretationProvider` abstraction), or provide a second public-domain
-I Ching translation source to unblock features 26/27, or verify the live Gemini call (see above)
-whenever an `AI_API_KEY` is available.
+`InterpretationContext`/`InterpretationProvider` abstraction), authentication (feature 9,
+deliberately skipped this session — see above), or provide a second public-domain I Ching
+translation source to unblock features 26/27, or verify the live Gemini call (see above) whenever
+an `AI_API_KEY` is available.
