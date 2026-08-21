@@ -161,14 +161,18 @@ final class SqliteConsultationRepository implements ConsultationRepository
 
         $statement = $this->pdo->prepare(
             'INSERT INTO consultation_outcomes
-                (consultation_id, what_actually_happened, outcome, reflection, recorded_at)
+                (consultation_id, what_actually_happened, outcome, reflection, recorded_at,
+                 interpretation_lens, interpretation_summary)
              VALUES
-                (:consultation_id, :what_actually_happened, :outcome, :reflection, :recorded_at)
+                (:consultation_id, :what_actually_happened, :outcome, :reflection, :recorded_at,
+                 :interpretation_lens, :interpretation_summary)
              ON CONFLICT(consultation_id) DO UPDATE SET
                 what_actually_happened = excluded.what_actually_happened,
                 outcome = excluded.outcome,
                 reflection = excluded.reflection,
-                recorded_at = excluded.recorded_at',
+                recorded_at = excluded.recorded_at,
+                interpretation_lens = excluded.interpretation_lens,
+                interpretation_summary = excluded.interpretation_summary',
         );
 
         $statement->execute([
@@ -177,6 +181,8 @@ final class SqliteConsultationRepository implements ConsultationRepository
             'outcome' => $consultation->outcome->outcome,
             'reflection' => $consultation->outcome->reflection,
             'recorded_at' => $consultation->outcome->recordedAt->format(DATE_ATOM),
+            'interpretation_lens' => $consultation->outcome->interpretationLens,
+            'interpretation_summary' => $consultation->outcome->interpretationSummary,
         ]);
     }
 
@@ -415,7 +421,8 @@ final class SqliteConsultationRepository implements ConsultationRepository
     private function loadOutcome(string $consultationId): ?ConsultationOutcome
     {
         $statement = $this->pdo->prepare(
-            'SELECT what_actually_happened, outcome, reflection, recorded_at
+            'SELECT what_actually_happened, outcome, reflection, recorded_at,
+                    interpretation_lens, interpretation_summary
              FROM consultation_outcomes WHERE consultation_id = :id',
         );
         $statement->execute(['id' => $consultationId]);
@@ -430,6 +437,8 @@ final class SqliteConsultationRepository implements ConsultationRepository
             $row['outcome'] === null ? null : (string) $row['outcome'],
             $row['reflection'] === null ? null : (string) $row['reflection'],
             new \DateTimeImmutable((string) $row['recorded_at']),
+            $row['interpretation_lens'] === null ? null : (string) $row['interpretation_lens'],
+            $row['interpretation_summary'] === null ? null : (string) $row['interpretation_summary'],
         );
     }
 

@@ -102,7 +102,26 @@ function outcomeFormFrom(consultation: Consultation | null) {
     whatActuallyHappened: consultation?.outcome?.whatActuallyHappened ?? '',
     outcome: consultation?.outcome?.outcome ?? '',
     reflection: consultation?.outcome?.reflection ?? '',
+    interpretationLens: consultation?.outcome?.interpretationLens ?? null,
+    interpretationSummary: consultation?.outcome?.interpretationSummary ?? null,
   }
+}
+
+// Populates the (unsaved) outcome form's link fields from whichever lens is currently loaded
+// (SPEC-036) — nothing is persisted until the existing "Save Outcome" button is clicked, matching
+// how every other outcome field already works.
+function linkInterpretationToOutcome(): void {
+  if (interpretationState.value.status !== 'loaded') {
+    return
+  }
+
+  outcomeForm.value.interpretationLens = selectedLens.value
+  outcomeForm.value.interpretationSummary = interpretationState.value.interpretation.summary
+}
+
+function unlinkInterpretationFromOutcome(): void {
+  outcomeForm.value.interpretationLens = null
+  outcomeForm.value.interpretationSummary = null
 }
 
 async function addNote(): Promise<void> {
@@ -203,6 +222,8 @@ async function saveOutcome(): Promise<void> {
         outcomeForm.value.whatActuallyHappened.trim() === '' ? null : outcomeForm.value.whatActuallyHappened,
       outcome: outcomeForm.value.outcome.trim() === '' ? null : outcomeForm.value.outcome,
       reflection: outcomeForm.value.reflection.trim() === '' ? null : outcomeForm.value.reflection,
+      interpretationLens: outcomeForm.value.interpretationLens,
+      interpretationSummary: outcomeForm.value.interpretationSummary,
     })
     state.value = { ...loaded, consultation: updated }
     outcomeForm.value = outcomeFormFrom(updated)
@@ -682,6 +703,21 @@ onMounted(async () => {
               class="w-full rounded-md border border-neutral-300 p-2 text-sm"
             />
           </div>
+          <div
+            v-if="outcomeForm.interpretationLens"
+            class="flex items-start justify-between gap-3 rounded-md bg-neutral-100 p-2 text-sm"
+          >
+            <p class="capitalize">
+              Linked: {{ outcomeForm.interpretationLens }} — {{ outcomeForm.interpretationSummary }}
+            </p>
+            <button
+              type="button"
+              class="print:hidden shrink-0 text-neutral-500 underline hover:text-neutral-700"
+              @click="unlinkInterpretationFromOutcome"
+            >
+              Unlink
+            </button>
+          </div>
           <p v-if="outcomeFormState.status === 'error'" class="text-sm text-red-600">
             {{ outcomeFormState.message }}
           </p>
@@ -741,6 +777,14 @@ onMounted(async () => {
 
         <div v-else-if="interpretationState.status === 'loaded'" class="mt-4 flex flex-col gap-3">
           <p>{{ interpretationState.interpretation.summary }}</p>
+
+          <button
+            type="button"
+            class="print:hidden self-start rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:border-neutral-400"
+            @click="linkInterpretationToOutcome"
+          >
+            Link to Outcome
+          </button>
 
           <div>
             <h3 class="text-xs font-medium text-neutral-500 uppercase">Core theme</h3>

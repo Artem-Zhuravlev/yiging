@@ -172,7 +172,13 @@ final class ConsultationController
             'backgroundInformation',
             'initialInterpretation',
         ];
-        $outcomeKeys = ['whatActuallyHappened', 'outcome', 'reflection'];
+        $outcomeKeys = [
+            'whatActuallyHappened',
+            'outcome',
+            'reflection',
+            'interpretationLens',
+            'interpretationSummary',
+        ];
         $touchesFavorite = array_key_exists('favorite', $body);
         $touchesAnyContextField = array_filter(
             $contextKeys,
@@ -248,6 +254,16 @@ final class ConsultationController
                         $consultation->outcome?->reflection,
                     ),
                     recordedAt: $this->clock->now(),
+                    interpretationLens: $this->resolveContextField(
+                        $body,
+                        'interpretationLens',
+                        $consultation->outcome?->interpretationLens,
+                    ),
+                    interpretationSummary: $this->resolveContextField(
+                        $body,
+                        'interpretationSummary',
+                        $consultation->outcome?->interpretationSummary,
+                    ),
                 );
             }
 
@@ -624,6 +640,8 @@ final class ConsultationController
                 'outcome' => $consultation->outcome->outcome,
                 'reflection' => $consultation->outcome->reflection,
                 'recordedAt' => $consultation->outcome->recordedAt->format(DATE_ATOM),
+                'interpretationLens' => $consultation->outcome->interpretationLens,
+                'interpretationSummary' => $consultation->outcome->interpretationSummary,
             ],
             'followUpTo' => $this->resolveFollowUpToSummary($consultation),
             'followUps' => array_map(

@@ -399,6 +399,8 @@ describe('ConsultationPage', () => {
         outcome: 'Going well.',
         reflection: null,
         recordedAt: '2026-08-20T09:00:00+00:00',
+        interpretationLens: null,
+        interpretationSummary: null,
       },
     })
     vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
@@ -435,6 +437,8 @@ describe('ConsultationPage', () => {
         outcome: null,
         reflection: null,
         recordedAt: '2026-08-20T09:00:00+00:00',
+        interpretationLens: null,
+        interpretationSummary: null,
       },
     })
 
@@ -450,6 +454,8 @@ describe('ConsultationPage', () => {
       whatActuallyHappened: 'Took the offer.',
       outcome: null,
       reflection: null,
+      interpretationLens: null,
+      interpretationSummary: null,
     })
     expect(wrapper.text()).toContain('Last recorded')
   })
@@ -527,6 +533,72 @@ describe('ConsultationPage', () => {
     expect(wrapper.text()).toContain('Khien represents what is great and originating.')
     expect(wrapper.text()).toContain('The dragon lying hid in the deep.')
     expect(wrapper.text()).toContain('Hexagram 1 judgment (Legge, 1899)')
+  })
+
+  it('links an interpretation to the (unsaved) outcome form, and persists it on save', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    vi.mocked(requestInterpretation).mockResolvedValue(sampleInterpretation)
+    vi.mocked(updateConsultation).mockResolvedValue({
+      ...sampleConsultation,
+      outcome: {
+        whatActuallyHappened: null,
+        outcome: null,
+        reflection: null,
+        recordedAt: '2026-08-21T09:00:00+00:00',
+        interpretationLens: 'general',
+        interpretationSummary: sampleInterpretation.summary,
+      },
+    })
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+    await interpretationButton(wrapper).trigger('click')
+    await flushPromises()
+
+    const linkButton = wrapper.findAll('button').find((b) => b.text() === 'Link to Outcome')!
+    await linkButton.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain(`Linked: general — ${sampleInterpretation.summary}`)
+
+    const outcomeForm = wrapper.findAll('form')[3]!
+    await outcomeForm.trigger('submit')
+    await flushPromises()
+
+    expect(updateConsultation).toHaveBeenCalledWith('abc-123', {
+      whatActuallyHappened: null,
+      outcome: null,
+      reflection: null,
+      interpretationLens: 'general',
+      interpretationSummary: sampleInterpretation.summary,
+    })
+  })
+
+  it('unlinks an interpretation from the (unsaved) outcome form', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue({
+      ...sampleConsultation,
+      outcome: {
+        whatActuallyHappened: 'Took the offer.',
+        outcome: null,
+        reflection: null,
+        recordedAt: '2026-08-20T09:00:00+00:00',
+        interpretationLens: 'practical',
+        interpretationSummary: 'A previously linked summary.',
+      },
+    })
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Linked: practical — A previously linked summary.')
+
+    const unlinkButton = wrapper.findAll('button').find((b) => b.text() === 'Unlink')!
+    await unlinkButton.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Linked:')
   })
 
   it('omits changingLineMeaning/transition rows when they are null', async () => {

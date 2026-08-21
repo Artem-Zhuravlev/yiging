@@ -182,6 +182,37 @@ final class SqliteConsultationRepositoryTest extends TestCase
             '2026-08-20T09:00:00+00:00',
             $found->outcome->recordedAt->format(DATE_ATOM),
         );
+        self::assertNull($found->outcome->interpretationLens);
+        self::assertNull($found->outcome->interpretationSummary);
+    }
+
+    public function testSaveAndFindByIdRoundTripsAnOutcomeLinkedToAnInterpretation(): void
+    {
+        $consultation = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        )->withUpdatedOutcome(
+            'Took the offer.',
+            'Started two weeks later, going well.',
+            'Glad I trusted the reading.',
+            new \DateTimeImmutable('2026-08-20T09:00:00+00:00'),
+            'practical',
+            'The reading pointed toward decisive, grounded action.',
+        );
+
+        $this->repository->save($consultation);
+        $found = $this->repository->findById('consult-1');
+
+        self::assertNotNull($found);
+        self::assertNotNull($found->outcome);
+        self::assertSame('practical', $found->outcome->interpretationLens);
+        self::assertSame(
+            'The reading pointed toward decisive, grounded action.',
+            $found->outcome->interpretationSummary,
+        );
     }
 
     public function testSaveUpsertsAnExistingOutcomeRatherThanDuplicatingTheRow(): void

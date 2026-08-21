@@ -217,6 +217,8 @@ final readonly class Consultation
         ?string $outcome,
         ?string $reflection,
         \DateTimeImmutable $recordedAt,
+        ?string $interpretationLens = null,
+        ?string $interpretationSummary = null,
     ): self {
         return new self(
             $this->id,
@@ -232,7 +234,14 @@ final readonly class Consultation
             $this->whatUserWantsToUnderstand,
             $this->backgroundInformation,
             $this->initialInterpretation,
-            new ConsultationOutcome($whatActuallyHappened, $outcome, $reflection, $recordedAt),
+            new ConsultationOutcome(
+                $whatActuallyHappened,
+                $outcome,
+                $reflection,
+                $recordedAt,
+                $interpretationLens,
+                $interpretationSummary,
+            ),
             $this->followUpToConsultationId,
             $this->favorite,
         );

@@ -349,6 +349,65 @@ final class ConsultationTest extends TestCase
         $consultation->withUpdatedOutcome(str_repeat('a', 5001), null, null, new \DateTimeImmutable());
     }
 
+    public function testWithUpdatedOutcomeCanLinkAnInterpretationLensAndSummary(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        );
+
+        $withOutcome = $consultation->withUpdatedOutcome(
+            'Took the offer.',
+            null,
+            null,
+            new \DateTimeImmutable(),
+            'practical',
+            'The reading pointed toward decisive, grounded action.',
+        );
+
+        self::assertNotNull($withOutcome->outcome);
+        self::assertSame('practical', $withOutcome->outcome->interpretationLens);
+        self::assertSame(
+            'The reading pointed toward decisive, grounded action.',
+            $withOutcome->outcome->interpretationSummary,
+        );
+    }
+
+    public function testWithUpdatedOutcomeLeavesTheInterpretationLinkNullByDefault(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        );
+
+        $withOutcome = $consultation->withUpdatedOutcome('Took the offer.', null, null, new \DateTimeImmutable());
+
+        self::assertNotNull($withOutcome->outcome);
+        self::assertNull($withOutcome->outcome->interpretationLens);
+        self::assertNull($withOutcome->outcome->interpretationSummary);
+    }
+
+    public function testWithUpdatedOutcomeRejectsAnInvalidInterpretationLens(): void
+    {
+        $consultation = Consultation::create(
+            'id-1',
+            'Should I take the offer?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable(),
+        );
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $consultation->withUpdatedOutcome('Took the offer.', null, null, new \DateTimeImmutable(), 'not-a-lens');
+    }
+
     public function testWithAddedNotePreservesAnAlreadySetOutcome(): void
     {
         $consultation = Consultation::create(

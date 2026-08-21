@@ -111,6 +111,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-033 | [Multi-Lens Interpretation](specs/multi-lens-interpretation/spec.md) | `verified` |
 | SPEC-034 | [Interpretation Follow-Up Questions](specs/interpretation-followup/spec.md) | `verified` |
 | SPEC-035 | [Interpretation Profile](specs/interpretation-profile/spec.md) | `verified` |
+| SPEC-036 | [Outcome-Interpretation Link](specs/outcome-interpretation-link/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -512,9 +513,23 @@ waters, your repeat check B calls for silent restraint...") — an unmistakable,
 actual model output, not a scripted variation. See
 [SPEC-035](specs/interpretation-profile/spec.md).
 
-This closes out the AI feature block for this session (features 6, 7, 9 — feature 8, multi-
-provider comparison, was explicitly excluded per the user's Gemini-only direction; feature 10,
-outcome-linking, remains).
+`ConsultationOutcome` gained two optional fields, `interpretationLens`/`interpretationSummary` —
+a small, explicit exception to "AI output is never persisted"
+([SPEC-008](specs/ai-interpretation/spec.md)): while an interpretation is loaded, a "Link to
+Outcome" button copies its lens and one-sentence `summary` (not the full seven-field
+interpretation) into the Outcome form's unsaved state; "Save Outcome" persists it same as every
+other outcome field, "Unlink" clears it the same way. `App\Readings` still doesn't import from
+`App\AI` — the lens is validated as a plain string against the four known values, matching this
+codebase's established no-cross-module-domain-imports convention. Manually verified end to end
+against the real running app: requested a real Gemini interpretation for hexagram 21→51 ("Should I
+take the new job offer?"), clicked Link to Outcome, saved an outcome, reloaded the page — the
+outcome still showed "Linked: General — While Hexagram 21 indicates..." even though the
+interpretation itself was gone (never persisted, as designed) — then clicked Unlink and saved
+again, confirming both fields cleared while `whatActuallyHappened` stayed untouched. See
+[SPEC-036](specs/outcome-interpretation-link/spec.md).
+
+This closes out the AI feature block for this session (features 6, 7, 9, 10 — feature 8, multi-
+provider comparison, was the only one explicitly excluded, per the user's Gemini-only direction).
 
 Next recommended steps: explicit interpretation-to-outcome linking (feature 10, the one AI
 feature not yet done), authentication (feature 9 of the *original* numbering — deliberately

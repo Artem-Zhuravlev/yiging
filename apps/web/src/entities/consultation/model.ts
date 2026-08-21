@@ -1,4 +1,5 @@
 import type { LinePolarity } from '../hexagram/model'
+import type { InterpretationLens } from '../interpretation/model'
 
 /** Methods a user may choose from the New Consultation form. Deliberately excludes
  * 'random' — SPEC-004 documents it as non-traditional dev/test tooling, never something a
@@ -44,6 +45,11 @@ export interface ConsultationOutcome {
   outcome: string | null
   reflection: string | null
   recordedAt: string
+  /** Links this outcome to the AI interpretation the user consulted before it happened
+   * (SPEC-036) — a small `{lens, summary}` snapshot, never the full Interpretation, matching
+   * the "AI output is never persisted" stance except for this narrow, explicit exception. */
+  interpretationLens: InterpretationLens | null
+  interpretationSummary: string | null
 }
 
 /** A minimal display shape for a linked consultation (SPEC-021) — deliberately not a full

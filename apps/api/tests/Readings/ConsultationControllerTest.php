@@ -506,6 +506,68 @@ final class ConsultationControllerTest extends TestCase
         self::assertSame('Started two weeks later, going well.', $outcome['outcome']);
         self::assertSame('Glad I trusted the reading.', $outcome['reflection']);
         self::assertNotEmpty($outcome['recordedAt']);
+        self::assertNull($outcome['interpretationLens']);
+        self::assertNull($outcome['interpretationSummary']);
+    }
+
+    public function testUpdateCanLinkAnOutcomeToAnInterpretation(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'whatActuallyHappened' => 'Took the offer.',
+            'interpretationLens' => 'practical',
+            'interpretationSummary' => 'The reading pointed toward decisive, grounded action.',
+        ]);
+
+        self::assertSame(200, $response->getStatusCode());
+        $outcome = $this->decode($response)['outcome'];
+        self::assertSame('practical', $outcome['interpretationLens']);
+        self::assertSame(
+            'The reading pointed toward decisive, grounded action.',
+            $outcome['interpretationSummary'],
+        );
+    }
+
+    public function testUpdateCanUnlinkAnOutcomeFromAnInterpretation(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+        $this->patchJson('/api/consultations/' . $created['id'], [
+            'whatActuallyHappened' => 'Took the offer.',
+            'interpretationLens' => 'practical',
+            'interpretationSummary' => 'A summary.',
+        ]);
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'interpretationLens' => null,
+            'interpretationSummary' => null,
+        ]);
+
+        self::assertSame(200, $response->getStatusCode());
+        $outcome = $this->decode($response)['outcome'];
+        self::assertSame('Took the offer.', $outcome['whatActuallyHappened'], 'unrelated field must be preserved');
+        self::assertNull($outcome['interpretationLens']);
+        self::assertNull($outcome['interpretationSummary']);
+    }
+
+    public function testUpdateWithAnInvalidInterpretationLensReturns422(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Should I take the offer?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->patchJson('/api/consultations/' . $created['id'], [
+            'interpretationLens' => 'not-a-lens',
+        ]);
+
+        self::assertSame(422, $response->getStatusCode());
     }
 
     public function testUpdateTouchingOneOutcomeFieldPreservesTheOthers(): void
