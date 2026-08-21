@@ -68,6 +68,21 @@ export interface Consultation extends ConsultationContext {
   followUps: ConsultationSummary[]
 }
 
+/** Other consultations sharing this one's primary hexagram, resulting hexagram, or exact
+ * changing-line set (SPEC-023) — only present on the single-consultation detail response, never
+ * on the list/create/update responses (see ConsultationDetail). */
+export interface ConsultationRepeats {
+  primaryHexagram: ConsultationSummary[]
+  resultingHexagram: ConsultationSummary[]
+  changingLines: ConsultationSummary[]
+}
+
+/** The shape `GET /api/consultations/{id}` returns — a `Consultation` plus `repeats`, computed
+ * only for the single-detail endpoint (SPEC-023). */
+export interface ConsultationDetail extends Consultation {
+  repeats: ConsultationRepeats
+}
+
 export type NewConsultationRequest = (
   | { question: string; method: 'three_coins' }
   | { question: string; method: 'manual'; lines: ManualLine[] }

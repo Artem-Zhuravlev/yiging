@@ -5,7 +5,7 @@ import { fetchConsultation, updateConsultation } from '../../entities/consultati
 import { fetchHexagram } from '../../entities/hexagram/api'
 import { requestInterpretation } from '../../entities/interpretation/api'
 import { ApiError } from '../../shared/api/http'
-import type { Consultation } from '../../entities/consultation/model'
+import type { ConsultationDetail } from '../../entities/consultation/model'
 import type { Hexagram } from '../../entities/hexagram/model'
 import type { Interpretation } from '../../entities/interpretation/model'
 
@@ -51,7 +51,7 @@ function sampleHexagram(kingWenNumber: number): Hexagram {
   }
 }
 
-const sampleConsultation: Consultation = {
+const sampleConsultation: ConsultationDetail = {
   id: 'abc-123',
   question: 'Should I take the offer?',
   method: 'three_coins',
@@ -69,6 +69,7 @@ const sampleConsultation: Consultation = {
   outcome: null,
   followUpTo: null,
   followUps: [],
+  repeats: { primaryHexagram: [], resultingHexagram: [], changingLines: [] },
 }
 
 const sampleInterpretation: Interpretation = {
@@ -173,6 +174,44 @@ describe('ConsultationPage', () => {
     const secondLink = wrapper.findAll('a').find((a) => a.text() === 'Second follow-up?')
     expect(firstLink!.attributes('to')).toBe('/consultations/follow-up-1')
     expect(secondLink!.attributes('to')).toBe('/consultations/follow-up-2')
+  })
+
+  it('renders each non-empty repeats category as a distinctly labeled linked list', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue({
+      ...sampleConsultation,
+      repeats: {
+        primaryHexagram: [{ id: 'p-1', question: 'Same primary before?' }],
+        resultingHexagram: [{ id: 'r-1', question: 'Same resulting before?' }],
+        changingLines: [{ id: 'c-1', question: 'Same changing lines before?' }],
+      },
+    })
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Same primary hexagram before')
+    expect(wrapper.text()).toContain('Same resulting hexagram before')
+    expect(wrapper.text()).toContain('Same changing lines before')
+
+    const primaryLink = wrapper.findAll('a').find((a) => a.text() === 'Same primary before?')
+    const resultingLink = wrapper.findAll('a').find((a) => a.text() === 'Same resulting before?')
+    const changingLink = wrapper.findAll('a').find((a) => a.text() === 'Same changing lines before?')
+    expect(primaryLink!.attributes('to')).toBe('/consultations/p-1')
+    expect(resultingLink!.attributes('to')).toBe('/consultations/r-1')
+    expect(changingLink!.attributes('to')).toBe('/consultations/c-1')
+  })
+
+  it('shows no repeats section at all when all three categories are empty', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Same primary hexagram before')
+    expect(wrapper.text()).not.toContain('Same resulting hexagram before')
+    expect(wrapper.text()).not.toContain('Same changing lines before')
   })
 
   it('pre-fills the context form from the loaded consultation', async () => {

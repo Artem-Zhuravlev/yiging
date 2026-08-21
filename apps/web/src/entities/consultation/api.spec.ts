@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { createConsultation, fetchConsultations, fetchConsultation, updateConsultation } from './api'
-import type { Consultation } from './model'
+import type { Consultation, ConsultationDetail } from './model'
 
 const sample: Consultation = {
   id: 'abc-123',
@@ -20,6 +20,11 @@ const sample: Consultation = {
   outcome: null,
   followUpTo: null,
   followUps: [],
+}
+
+const sampleDetail: ConsultationDetail = {
+  ...sample,
+  repeats: { primaryHexagram: [], resultingHexagram: [], changingLines: [] },
 }
 
 describe('entities/consultation api', () => {
@@ -60,13 +65,13 @@ describe('entities/consultation api', () => {
   it('fetchConsultation gets /consultations/{id}', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve(sample),
+      json: () => Promise.resolve(sampleDetail),
     })
     vi.stubGlobal('fetch', fetchMock)
 
     const result = await fetchConsultation('abc-123')
 
-    expect(result).toEqual(sample)
+    expect(result).toEqual(sampleDetail)
     expect(fetchMock).toHaveBeenCalledWith('/api/consultations/abc-123')
   })
 

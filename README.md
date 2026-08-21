@@ -98,6 +98,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-020 | [Consultation Outcome](specs/consultation-outcome/spec.md) | `verified` |
 | SPEC-021 | [Follow-up Consultations](specs/consultation-follow-ups/spec.md) | `verified` |
 | SPEC-022 | [Consultation Timeline](specs/consultation-timeline/spec.md) | `verified` |
+| SPEC-023 | [Repeated Pattern Detection](specs/repeated-pattern-detection/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -310,9 +311,22 @@ two new tagged consultations, confirmed date grouping against the existing multi
 confirmed AND-filtering narrows correctly, and confirmed the zero-match message renders when two
 non-overlapping tags are both selected. See [SPEC-022](specs/consultation-timeline/spec.md).
 
-Next recommended steps: continue the plan's batch with repeated-hexagram/changing-line detection
-and personal statistics (both domain/UI work on data already in hand, same family as the timeline
-just shipped), or AI interpretation layering, profiles, source-grounding, and conversation
-(building on the existing `InterpretationContext`/`InterpretationProvider` abstraction), or
-provide a second public-domain I Ching translation source to unblock features 26/27, or verify the
-live Gemini call (see above) whenever an `AI_API_KEY` is available.
+`GET /api/consultations/{id}` (the single-consultation endpoint only — deliberately not the list,
+create, or update responses, to keep the O(n²)-shaped changing-lines comparison off any code path
+that runs per-row across the whole history) now returns a `repeats` object: every other
+consultation sharing this one's primary hexagram, resulting hexagram, or exact changing-line set,
+each as its own newest-first list of `{id, question}` links. Matching reuses
+`changing_line_positions`' existing canonical (always ascending-by-position) JSON encoding for a
+plain SQL string-equality check — no per-row PHP decode/compare needed. `ConsultationPage` renders
+up to three distinctly labeled sections ("Same primary hexagram before" / "Same resulting hexagram
+before" / "Same changing lines before"), each only when non-empty, nothing at all when a
+consultation has no repeats. Manually verified against the real running dev server: cast two
+consultations with an identical hexagram/changing-line pattern via the manual method, confirmed
+all three sections linked correctly between them. See
+[SPEC-023](specs/repeated-pattern-detection/spec.md).
+
+Next recommended steps: continue the plan's batch with personal statistics (same data-already-in-
+hand family as the last two features), or AI interpretation layering, profiles, source-grounding,
+and conversation (building on the existing `InterpretationContext`/`InterpretationProvider`
+abstraction), or provide a second public-domain I Ching translation source to unblock features
+26/27, or verify the live Gemini call (see above) whenever an `AI_API_KEY` is available.

@@ -97,7 +97,7 @@ final class ConsultationController
             return $this->errorResponse('Not Found', Response::HTTP_NOT_FOUND);
         }
 
-        return new JsonResponse($this->toJson($consultation));
+        return new JsonResponse($this->toJsonWithRepeats($consultation));
     }
 
     /**
@@ -413,6 +413,47 @@ final class ConsultationController
                 $this->repository->findFollowUpSummaries($consultation->id),
             ),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function toJsonWithRepeats(Consultation $consultation): array
+    {
+        $changingLinePositions = $consultation->changingLinePositions();
+
+        return $this->toJson($consultation) + [
+            'repeats' => [
+                'primaryHexagram' => $this->summariesToJson(
+                    $this->repository->findByPrimaryHexagramNumber(
+                        $consultation->primaryHexagram->kingWenNumber,
+                        $consultation->id,
+                    ),
+                ),
+                'resultingHexagram' => $this->summariesToJson(
+                    $this->repository->findByResultingHexagramNumber(
+                        $consultation->resultingHexagram->kingWenNumber,
+                        $consultation->id,
+                    ),
+                ),
+                'changingLines' => $changingLinePositions === [] ? [] : $this->summariesToJson(
+                    $this->repository->findByChangingLinePositions($changingLinePositions, $consultation->id),
+                ),
+            ],
+        ];
+    }
+
+    /**
+     * @param list<ConsultationSummary> $summaries
+     *
+     * @return list<array{id: string, question: string}>
+     */
+    private function summariesToJson(array $summaries): array
+    {
+        return array_map(
+            static fn (ConsultationSummary $summary): array => ['id' => $summary->id, 'question' => $summary->question],
+            $summaries,
+        );
     }
 
     /**

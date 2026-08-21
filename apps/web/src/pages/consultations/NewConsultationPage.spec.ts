@@ -112,7 +112,12 @@ describe('NewConsultationPage', () => {
 
   it('shows the target question and submits the link when ?followUpTo= is present', async () => {
     route.query = { followUpTo: 'original-id' }
-    vi.mocked(fetchConsultation).mockResolvedValue({ ...sample, id: 'original-id', question: 'Original?' })
+    vi.mocked(fetchConsultation).mockResolvedValue({
+      ...sample,
+      id: 'original-id',
+      question: 'Original?',
+      repeats: { primaryHexagram: [], resultingHexagram: [], changingLines: [] },
+    })
     vi.mocked(createConsultation).mockResolvedValue(sample)
 
     const wrapper = mount(NewConsultationPage)

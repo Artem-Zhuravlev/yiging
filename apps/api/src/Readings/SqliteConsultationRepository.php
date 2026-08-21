@@ -259,6 +259,67 @@ final class SqliteConsultationRepository implements ConsultationRepository
     }
 
     /**
+     * @return list<ConsultationSummary>
+     */
+    public function findByPrimaryHexagramNumber(int $kingWenNumber, string $excludeId): array
+    {
+        return $this->findSummariesWhere(
+            'primary_king_wen_number = :value',
+            $kingWenNumber,
+            $excludeId,
+        );
+    }
+
+    /**
+     * @return list<ConsultationSummary>
+     */
+    public function findByResultingHexagramNumber(int $kingWenNumber, string $excludeId): array
+    {
+        return $this->findSummariesWhere(
+            'resulting_king_wen_number = :value',
+            $kingWenNumber,
+            $excludeId,
+        );
+    }
+
+    /**
+     * @param list<int> $positions
+     *
+     * @return list<ConsultationSummary>
+     */
+    public function findByChangingLinePositions(array $positions, string $excludeId): array
+    {
+        // Safe as an exact string comparison: changing_line_positions is always stored
+        // ascending-by-position (Consultation::changingLinePositions() derives it from the
+        // hexagram's own position-ordered lines), so two equal sets always encode identically.
+        return $this->findSummariesWhere(
+            'changing_line_positions = :value',
+            json_encode($positions, JSON_THROW_ON_ERROR),
+            $excludeId,
+        );
+    }
+
+    /**
+     * @return list<ConsultationSummary>
+     */
+    private function findSummariesWhere(string $condition, int|string $value, string $excludeId): array
+    {
+        $statement = $this->pdo->prepare(
+            "SELECT id, question FROM consultations
+             WHERE {$condition} AND id != :exclude_id
+             ORDER BY created_at DESC, rowid DESC",
+        );
+        $statement->execute(['value' => $value, 'exclude_id' => $excludeId]);
+
+        $summaries = [];
+        while (is_array($row = $statement->fetch())) {
+            $summaries[] = new ConsultationSummary((string) $row['id'], (string) $row['question']);
+        }
+
+        return $summaries;
+    }
+
+    /**
      * @return list<ConsultationNote>
      */
     private function loadNotes(string $consultationId): array

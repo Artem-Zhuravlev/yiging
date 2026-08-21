@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { fetchConsultation, updateConsultation } from '../../entities/consultation/api'
-import type { Consultation } from '../../entities/consultation/model'
+import type { Consultation, ConsultationRepeats } from '../../entities/consultation/model'
 import { fetchHexagram } from '../../entities/hexagram/api'
 import type { HexagramLine } from '../../entities/hexagram/model'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
@@ -37,6 +37,10 @@ const route = useRoute()
 const id = computed(() => String(route.params.id))
 const state = ref<State>({ status: 'loading' })
 const interpretationState = ref<InterpretationState>({ status: 'idle' })
+// Independent of `state`: repeats are computed once at load and never change when notes, tags,
+// context, or outcome are edited via PATCH (the hexagrams/changing lines never change), matching
+// the pattern above for `interpretationState`.
+const repeats = ref<ConsultationRepeats | null>(null)
 
 const noteLabel = ref<'before' | 'after' | 'later'>('after')
 const noteText = ref('')
@@ -216,6 +220,7 @@ onMounted(async () => {
       primaryLines,
       resultingLines: resultingHexagram.lines,
     }
+    repeats.value = consultation.repeats
     contextForm.value = contextFormFrom(consultation)
     outcomeForm.value = outcomeFormFrom(consultation)
   } catch (error) {
@@ -315,6 +320,49 @@ onMounted(async () => {
         >
           Create Follow-up
         </router-link>
+      </div>
+
+      <div
+        v-if="
+          repeats &&
+          (repeats.primaryHexagram.length > 0 ||
+            repeats.resultingHexagram.length > 0 ||
+            repeats.changingLines.length > 0)
+        "
+        class="flex flex-col gap-3"
+      >
+        <div v-if="repeats.primaryHexagram.length > 0">
+          <h2 class="text-sm font-medium text-neutral-500">Same primary hexagram before</h2>
+          <ul class="mt-1 flex flex-col gap-1">
+            <li v-for="match in repeats.primaryHexagram" :key="match.id">
+              <router-link :to="`/consultations/${match.id}`" class="text-sm underline hover:no-underline">
+                {{ match.question }}
+              </router-link>
+            </li>
+          </ul>
+        </div>
+
+        <div v-if="repeats.resultingHexagram.length > 0">
+          <h2 class="text-sm font-medium text-neutral-500">Same resulting hexagram before</h2>
+          <ul class="mt-1 flex flex-col gap-1">
+            <li v-for="match in repeats.resultingHexagram" :key="match.id">
+              <router-link :to="`/consultations/${match.id}`" class="text-sm underline hover:no-underline">
+                {{ match.question }}
+              </router-link>
+            </li>
+          </ul>
+        </div>
+
+        <div v-if="repeats.changingLines.length > 0">
+          <h2 class="text-sm font-medium text-neutral-500">Same changing lines before</h2>
+          <ul class="mt-1 flex flex-col gap-1">
+            <li v-for="match in repeats.changingLines" :key="match.id">
+              <router-link :to="`/consultations/${match.id}`" class="text-sm underline hover:no-underline">
+                {{ match.question }}
+              </router-link>
+            </li>
+          </ul>
+        </div>
       </div>
 
       <div>

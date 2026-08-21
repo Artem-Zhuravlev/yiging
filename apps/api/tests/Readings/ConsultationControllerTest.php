@@ -237,6 +237,81 @@ final class ConsultationControllerTest extends TestCase
         self::assertSame(['error' => 'Not Found'], $this->decode($response));
     }
 
+    public function testShowIncludesRepeatsForSharedPrimaryResultingAndChangingLines(): void
+    {
+        $allYang = array_fill(0, 6, ['polarity' => 'yang', 'changing' => false]);
+        $allYangLineOneChanging = $allYang;
+        $allYangLineOneChanging[0] = ['polarity' => 'yang', 'changing' => true];
+
+        $first = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'First?',
+            'method' => 'manual',
+            'lines' => $allYangLineOneChanging,
+        ]));
+        $second = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Same primary, resulting, and changing lines?',
+            'method' => 'manual',
+            'lines' => $allYangLineOneChanging,
+        ]));
+        // Different pattern entirely — must not show up in any repeats list for $first.
+        $this->postJson('/api/consultations', [
+            'question' => 'Unrelated?',
+            'method' => 'manual',
+            'lines' => array_fill(0, 6, ['polarity' => 'yin', 'changing' => false]),
+        ]);
+
+        $response = $this->kernel->handle(Request::create('/api/consultations/' . $first['id'], 'GET'));
+        $body = $this->decode($response);
+
+        self::assertSame(
+            [$second['id']],
+            array_column($body['repeats']['primaryHexagram'], 'id'),
+        );
+        self::assertSame(
+            [$second['id']],
+            array_column($body['repeats']['resultingHexagram'], 'id'),
+        );
+        self::assertSame(
+            [$second['id']],
+            array_column($body['repeats']['changingLines'], 'id'),
+        );
+    }
+
+    public function testShowReturnsEmptyChangingLinesRepeatsWithoutMatchingOtherEmptySets(): void
+    {
+        $noChanging = array_fill(0, 6, ['polarity' => 'yang', 'changing' => false]);
+
+        $first = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'First, no changing lines?',
+            'method' => 'manual',
+            'lines' => $noChanging,
+        ]));
+        $this->postJson('/api/consultations', [
+            'question' => 'Second, also no changing lines?',
+            'method' => 'manual',
+            'lines' => $noChanging,
+        ]);
+
+        $body = $this->decode($this->kernel->handle(Request::create('/api/consultations/' . $first['id'], 'GET')));
+
+        self::assertSame([], $body['repeats']['changingLines']);
+    }
+
+    public function testIndexAndUpdateResponsesDoNotIncludeRepeats(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'No repeats here?',
+            'method' => 'random',
+        ]));
+        self::assertArrayNotHasKey('repeats', $created);
+
+        $indexBody = $this->decode($this->kernel->handle(Request::create('/api/consultations', 'GET')));
+        self::assertArrayNotHasKey('repeats', $indexBody[0]);
+
+        $updated = $this->decode($this->patchJson('/api/consultations/' . $created['id'], ['tag' => 'x']));
+        self::assertArrayNotHasKey('repeats', $updated);
+    }
+
     public function testUpdateAddsANote(): void
     {
         $created = $this->decode($this->postJson('/api/consultations', [

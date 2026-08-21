@@ -22,4 +22,24 @@ interface ConsultationRepository
      *     points at $consultationId, ordered oldest-first (createdAt ascending)
      */
     public function findFollowUpSummaries(string $consultationId): array;
+
+    /**
+     * @return list<ConsultationSummary> other consultations (excluding $excludeId) sharing this
+     *     primary hexagram, ordered newest-first (createdAt descending)
+     */
+    public function findByPrimaryHexagramNumber(int $kingWenNumber, string $excludeId): array;
+
+    /**
+     * @return list<ConsultationSummary> other consultations (excluding $excludeId) sharing this
+     *     resulting hexagram, ordered newest-first (createdAt descending)
+     */
+    public function findByResultingHexagramNumber(int $kingWenNumber, string $excludeId): array;
+
+    /**
+     * @param list<int> $positions
+     *
+     * @return list<ConsultationSummary> other consultations (excluding $excludeId) whose changing
+     *     line positions are exactly this set, ordered newest-first (createdAt descending)
+     */
+    public function findByChangingLinePositions(array $positions, string $excludeId): array;
 }

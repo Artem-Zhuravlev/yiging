@@ -345,6 +345,97 @@ final class SqliteConsultationRepositoryTest extends TestCase
         self::assertSame([], $this->repository->findFollowUpSummaries('consult-1'));
     }
 
+    public function testFindByPrimaryHexagramNumberListsOtherMatchesNewestFirstExcludingSelf(): void
+    {
+        $this->repository->save(Consultation::create(
+            'consult-1',
+            'First?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        ));
+        $this->repository->save(Consultation::create(
+            'consult-2',
+            'Second, same primary hexagram?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-16T10:00:00+00:00'),
+        ));
+        $this->repository->save(Consultation::create(
+            'consult-3',
+            'Third, different primary hexagram?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('000000'),
+            new \DateTimeImmutable('2026-08-17T10:00:00+00:00'),
+        ));
+
+        $matches = $this->repository->findByPrimaryHexagramNumber(1, 'consult-1');
+
+        self::assertCount(1, $matches);
+        self::assertSame('consult-2', $matches[0]->id);
+    }
+
+    public function testFindByResultingHexagramNumberListsOtherMatches(): void
+    {
+        $this->repository->save(Consultation::create(
+            'consult-1',
+            'First?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111', [1]),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        ));
+        $this->repository->save(Consultation::create(
+            'consult-2',
+            'Second, same resulting hexagram?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111', [1]),
+            new \DateTimeImmutable('2026-08-15T10:00:00+00:00'),
+        ));
+
+        $resultingKingWenNumber = Consultation::create(
+            'probe',
+            'probe',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111', [1]),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        )->resultingHexagram->kingWenNumber;
+
+        $matches = $this->repository->findByResultingHexagramNumber($resultingKingWenNumber, 'consult-1');
+
+        self::assertCount(1, $matches);
+        self::assertSame('consult-2', $matches[0]->id);
+    }
+
+    public function testFindByChangingLinePositionsMatchesTheExactSetOnly(): void
+    {
+        $this->repository->save(Consultation::create(
+            'consult-1',
+            'First?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111', [1, 4]),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        ));
+        $this->repository->save(Consultation::create(
+            'consult-2',
+            'Second, same changing lines?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('000000', [1, 4]),
+            new \DateTimeImmutable('2026-08-15T10:00:00+00:00'),
+        ));
+        $this->repository->save(Consultation::create(
+            'consult-3',
+            'Third, different changing lines?',
+            CastingMethodName::ThreeCoins,
+            self::hexagramFromPattern('111111', [2]),
+            new \DateTimeImmutable('2026-08-16T10:00:00+00:00'),
+        ));
+
+        $matches = $this->repository->findByChangingLinePositions([1, 4], 'consult-1');
+
+        self::assertCount(1, $matches);
+        self::assertSame('consult-2', $matches[0]->id);
+    }
+
     public function testFindByIdReturnsNullForAMissingConsultation(): void
     {
         self::assertNull($this->repository->findById('does-not-exist'));
