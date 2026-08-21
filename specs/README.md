@@ -99,3 +99,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-021 | [Follow-up Consultations](consultation-follow-ups/spec.md) | `verified` |
 | SPEC-022 | [Consultation Timeline](consultation-timeline/spec.md) | `verified` |
 | SPEC-023 | [Repeated Pattern Detection](repeated-pattern-detection/spec.md) | `verified` |
+| SPEC-024 | [Personal Statistics](personal-statistics/spec.md) | `verified` |

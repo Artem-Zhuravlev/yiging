@@ -6,6 +6,7 @@ use App\AI\InterpretationController;
 use App\Core\HealthController;
 use App\Hexagrams\HexagramController;
 use App\Readings\ConsultationController;
+use App\Readings\StatisticsController;
 use App\Trigrams\TrigramController;
 use FastRoute\RouteCollector;
 
@@ -23,6 +24,8 @@ return static function (RouteCollector $r): void {
     $r->addRoute('GET', '/api/hexagrams/{id}', [HexagramController::class, 'show']);
 
     $r->addRoute('GET', '/api/trigrams', [TrigramController::class, 'index']);
+
+    $r->addRoute('GET', '/api/statistics', [StatisticsController::class, 'index']);
 
     $r->addRoute('POST', '/api/interpretations/{id}', [InterpretationController::class, 'create']);
 };

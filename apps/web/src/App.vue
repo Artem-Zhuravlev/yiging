@@ -7,6 +7,7 @@
       <router-link to="/hexagrams" class="hover:underline">Hexagrams</router-link>
       <router-link to="/consultations/new" class="hover:underline">New Consultation</router-link>
       <router-link to="/consultations" class="hover:underline">History</router-link>
+      <router-link to="/statistics" class="hover:underline">Statistics</router-link>
     </div>
   </nav>
   <router-view />

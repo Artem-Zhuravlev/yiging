@@ -99,6 +99,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-021 | [Follow-up Consultations](specs/consultation-follow-ups/spec.md) | `verified` |
 | SPEC-022 | [Consultation Timeline](specs/consultation-timeline/spec.md) | `verified` |
 | SPEC-023 | [Repeated Pattern Detection](specs/repeated-pattern-detection/spec.md) | `verified` |
+| SPEC-024 | [Personal Statistics](specs/personal-statistics/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -325,8 +326,18 @@ consultations with an identical hexagram/changing-line pattern via the manual me
 all three sections linked correctly between them. See
 [SPEC-023](specs/repeated-pattern-detection/spec.md).
 
-Next recommended steps: continue the plan's batch with personal statistics (same data-already-in-
-hand family as the last two features), or AI interpretation layering, profiles, source-grounding,
-and conversation (building on the existing `InterpretationContext`/`InterpretationProvider`
-abstraction), or provide a second public-domain I Ching translation source to unblock features
-26/27, or verify the live Gemini call (see above) whenever an `AI_API_KEY` is available.
+`GET /api/statistics` (new) aggregates across the entire consultation history — total count,
+per-hexagram cast frequency, an aggregate yin/yang line ratio, and per-tag frequency — computed
+via SQL `GROUP BY` for the two purely-relational aggregates, with only the yin/yang tally (King
+Wen line-polarity is `yijing-core` domain logic, not a stored column) looping in PHP over a single
+narrow column, never a full `Consultation` hydration. Both hexagram and yin/yang aggregates use
+each consultation's primary (as-cast) hexagram consistently, not the resulting one. `/statistics`
+(linked from the main nav) renders all four; a zero-consultation history shows a distinct empty
+message rather than empty lists. Manually verified against the real running dev server's genuine
+seeded history (10 consultations): confirmed `yin + yang = totalConsultations * 6` (24 + 36 = 60)
+and that every section rendered correctly. See [SPEC-024](specs/personal-statistics/spec.md).
+
+Next recommended steps: AI interpretation layering, profiles, source-grounding, and conversation
+(building on the existing `InterpretationContext`/`InterpretationProvider` abstraction), or
+provide a second public-domain I Ching translation source to unblock features 26/27, or verify the
+live Gemini call (see above) whenever an `AI_API_KEY` is available.
