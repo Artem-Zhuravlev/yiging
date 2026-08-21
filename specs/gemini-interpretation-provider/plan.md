@@ -18,14 +18,16 @@ apps/api/src/Core/
 └── Kernel.php                            + try/catch around handle()
 ```
 
-- **API contract** (confirmed against Google's current primary API reference,
-  `ai.google.dev/api`, and cross-checked across 3 independent fetches — not from memory, since
-  Gemini's API surface has changed since this session's training data): `POST
-  https://generativelanguage.googleapis.com/v1beta/interactions`, header `x-goog-api-key:
-  {key}`, body `{"model": "...", "input": "...", "response_format": {"type": "text",
-  "mime_type": "application/json", "schema": {...standard JSON Schema, lowercase types...}}}`,
-  response `{"output_text": "...json string..."}`. This (not the older `generateContent`
-  endpoint) is Google's actively-recommended current endpoint.
+- **API contract — live-verified 2026-08-21 against a real API key and a real response**
+  (superseding an earlier, research-only contract that turned out wrong — see spec.md's
+  "2026-08-21 update"): `POST
+  https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`, header
+  `x-goog-api-key: {key}`, body `{"contents": [{"parts": [{"text": "..."}]}],
+  "generationConfig": {"responseMimeType": "application/json", "responseSchema": {...Gemini's
+  own OpenAPI-subset schema — nullable fields as `type: "string", nullable: true`, NOT JSON
+  Schema's `type: [x, "null"]` array form, which Gemini's `400` response confirmed it rejects}}}`,
+  response text at `candidates[0].content.parts[0].text` (itself a JSON string, `json_decode`d a
+  second time to get the structured `Interpretation` fields).
 - `GeminiClient` interface: `generateJson(string $prompt, array $schema): array` — returns the
   already-`json_decode`d structured response. Keeps `GeminiInterpretationProvider` free of any
   HTTP/JSON-transport detail, and makes it fully testable with a fake.
@@ -73,15 +75,13 @@ apps/api/src/Core/
   exists to prevent. Computing it in code, once, shared by every provider (via
   `InterpretationContext::defaultSourceReferences()`), makes REQ-AI-004 true by construction
   instead of by hoping the model behaves.
-- **`generateContent`-family endpoint chosen over the newer "Interactions API" only after
-  research, not by default-to-familiar.** Google's own reference page states the Interactions
-  API is now recommended for "agentic workflows, server-side state management, and complex
-  multi-modal, multi-turn conversations" — none of which this use case needs (each
-  interpretation request is a single, stateless, single-turn generation). The same reference
-  describes standard `generateContent`-style calls as best for exactly this "non-interactive
-  task" shape. Combined with getting a consistent, corroborated contract across independent
-  fetches for the endpoint this plan actually uses, this was a reasoned fit-for-purpose choice,
-  not inertia.
+- **`generateContent` is the real, live-verified endpoint.** An earlier version of this plan
+  chose a `/v1beta/interactions` endpoint instead, reasoned from documentation research
+  (corroborated across 3 fetches) rather than a real call — that endpoint turned out to not
+  respond at all (confirmed directly with `curl` once a real key was available, 2026-08-21), not
+  merely to have a different contract than expected. `generateContent` is Google's actual,
+  responding, documented-and-empirically-confirmed endpoint for this single-turn, stateless
+  generation use case.
 - **No new Composer dependency for the HTTP call.** `ext-openssl` is already required
   (`composer.json`); PHP's stream-wrapper HTTPS support needs nothing more. Matches this
   project's established pattern (SPEC-005's hand-rolled UUIDv4) of not reaching for a package
@@ -121,12 +121,12 @@ None.
 
 ## Risks / open questions
 
-- **This session cannot obtain or verify a real `AI_API_KEY`.** Everything is built and tested
-  against a fake `GeminiClient`; the actual live HTTP contract with Google's API is verified by
-  research (3 corroborating fetches), not by a real call. If Google's actual behavior differs
-  in some detail this research didn't surface, the first live call will fail with a `502` whose
-  message should make the mismatch diagnosable (REQ-GEM-007's descriptive-error requirement
-  exists partly for this reason) — but it is a real, named risk, not a guarantee.
+- **Resolved 2026-08-21:** the user provided a real `AI_API_KEY`. Live verification found and
+  fixed two real bugs in the research-only original implementation (wrong endpoint entirely;
+  wrong nullable-schema syntax) — see spec.md's "2026-08-21 update." Unit tests still exercise
+  only a fake `GeminiClient` (REQ-GEM-009), matching this project's no-real-network-call-in-tests
+  posture; the live contract itself is now confirmed by an actual successful end-to-end call, not
+  by research alone.
 - **Model name churn.** Gemini model availability changes on a timescale of months. `AI_MODEL`
   is fully configurable specifically because of this; the shipped default is a best-effort
   based on research at implementation time, documented in `.env.example` as something to verify

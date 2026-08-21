@@ -19,8 +19,12 @@ final class GeminiInterpretationProvider implements InterpretationProvider
             'summary' => ['type' => 'string'],
             'coreTheme' => ['type' => 'string'],
             'situation' => ['type' => 'string'],
-            'changingLineMeaning' => ['type' => ['string', 'null']],
-            'transition' => ['type' => ['string', 'null']],
+            // Gemini's response_schema is a Protobuf-backed OpenAPI subset, not plain JSON
+            // Schema: a nullable field is `nullable: true` alongside one `type`, not JSON
+            // Schema's `type: [x, "null"]` array form (confirmed via a real 400 response before
+            // this fix — "Proto field is not repeating, cannot start list").
+            'changingLineMeaning' => ['type' => 'string', 'nullable' => true],
+            'transition' => ['type' => 'string', 'nullable' => true],
             'practicalReflection' => ['type' => 'string'],
             'uncertainties' => ['type' => 'array', 'items' => ['type' => 'string']],
         ],

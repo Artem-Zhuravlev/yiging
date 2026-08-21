@@ -5,19 +5,20 @@ declare(strict_types=1);
 namespace App\AI;
 
 /**
- * Real GeminiClient implementation, calling Google's Interactions API
- * (https://ai.google.dev/api) via PHP's built-in HTTP stream wrapper - no HTTP client
- * dependency needed beyond the ext-openssl this project already requires.
+ * Real GeminiClient implementation, calling Google's Generative Language API
+ * (`POST /v1beta/models/{model}:generateContent`) via PHP's built-in HTTP stream wrapper - no
+ * HTTP client dependency needed beyond the ext-openssl this project already requires.
  *
- * Deliberately uses the Interactions API (POST /v1beta/interactions) rather than the older
- * generateContent endpoint: it is Google's current, actively-recommended endpoint as of this
- * writing. See specs/gemini-interpretation-provider/plan.md for the research behind this
- * choice and an explicit caveat that it has not been exercised against a real API key from
- * this environment.
+ * This exact endpoint/request/response shape was verified against a real API key and a real
+ * response during this session (see specs/gemini-interpretation-provider/spec.md's live-
+ * verification note) - superseding an earlier, unverified implementation that targeted a
+ * `/v1beta/interactions` endpoint researched from documentation but never actually called; that
+ * endpoint does not respond (hangs rather than erroring), confirmed directly with curl before
+ * this fix.
  */
 final class HttpGeminiClient implements GeminiClient
 {
-    private const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions';
+    private const ENDPOINT_TEMPLATE = 'https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent';
     private const TIMEOUT_SECONDS = 30;
 
     public function __construct(
@@ -29,12 +30,12 @@ final class HttpGeminiClient implements GeminiClient
     public function generateJson(string $prompt, array $schema): array
     {
         $requestBody = json_encode([
-            'model' => $this->model,
-            'input' => $prompt,
-            'response_format' => [
-                'type' => 'text',
-                'mime_type' => 'application/json',
-                'schema' => $schema,
+            'contents' => [
+                ['parts' => [['text' => $prompt]]],
+            ],
+            'generationConfig' => [
+                'responseMimeType' => 'application/json',
+                'responseSchema' => $schema,
             ],
         ], JSON_THROW_ON_ERROR);
 
@@ -51,7 +52,8 @@ final class HttpGeminiClient implements GeminiClient
             ],
         ]);
 
-        $rawResponse = @file_get_contents(self::ENDPOINT, false, $context);
+        $endpoint = sprintf(self::ENDPOINT_TEMPLATE, $this->model);
+        $rawResponse = @file_get_contents($endpoint, false, $context);
 
         if ($rawResponse === false) {
             throw new InterpretationProviderException('Could not reach the Gemini API.');
@@ -66,24 +68,35 @@ final class HttpGeminiClient implements GeminiClient
         }
 
         $decoded = json_decode($rawResponse, true);
+        $text = is_array($decoded) ? $this->extractText($decoded) : null;
 
-        if (!is_array($decoded) || !isset($decoded['output_text']) || !is_string($decoded['output_text'])) {
+        if ($text === null) {
             throw new InterpretationProviderException(
-                'Gemini API response did not include the expected "output_text" field: '
-                    . $this->truncate($rawResponse),
+                'Gemini API response did not include the expected candidates[0].content.parts[0].text '
+                    . 'field: ' . $this->truncate($rawResponse),
             );
         }
 
-        $structured = json_decode($decoded['output_text'], true);
+        $structured = json_decode($text, true);
 
         if (!is_array($structured)) {
             throw new InterpretationProviderException(
-                'Gemini API "output_text" was not valid JSON: ' . $this->truncate($decoded['output_text']),
+                'Gemini API response text was not valid JSON: ' . $this->truncate($text),
             );
         }
 
         /** @var array<string, mixed> $structured */
         return $structured;
+    }
+
+    /**
+     * @param array<mixed> $decoded
+     */
+    private function extractText(array $decoded): ?string
+    {
+        $text = $decoded['candidates'][0]['content']['parts'][0]['text'] ?? null;
+
+        return is_string($text) && $text !== '' ? $text : null;
     }
 
     /**

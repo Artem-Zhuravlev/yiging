@@ -86,7 +86,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-009 | [Consultation Flow UI](specs/consultation-flow-ui/spec.md) | `verified` |
 | SPEC-008 | [AI Interpretation](specs/ai-interpretation/spec.md) | `verified` |
 | SPEC-010 | [Interpretation UI](specs/interpretation-ui/spec.md) | `verified` |
-| SPEC-011 | [Gemini Interpretation Provider](specs/gemini-interpretation-provider/spec.md) | `verified` (code); live call unverified |
+| SPEC-011 | [Gemini Interpretation Provider](specs/gemini-interpretation-provider/spec.md) | `verified` |
 | SPEC-012 | [AI Endpoint Rate Limiting](specs/ai-rate-limiting/spec.md) | `verified` |
 | SPEC-013 | [Consultation Notes & Tags Editing](specs/consultation-editing/spec.md) | `verified` |
 | SPEC-014 | [Complete Hexagram Relationships](specs/hexagram-relationships/spec.md) | `verified` |
@@ -442,8 +442,27 @@ visitor; a different local calendar day yields a different one over a 64-day cyc
 verified against the real running dev server: today (2026-08-21) shows hexagram 15 (謙, Qiān),
 linking correctly to its detail page. See [SPEC-032](specs/hexagram-of-the-day/spec.md).
 
+**The live Gemini call is now verified — and it found two real bugs.** The user provided a real
+`AI_API_KEY`. SPEC-011's originally-implemented contract (`POST /v1beta/interactions`, built from
+documentation research, never actually called) turned out to target an endpoint that doesn't
+respond at all — confirmed directly with `curl`, not just inferred from the app's own timeout.
+The real, live-verified contract is `POST
+/v1beta/models/{model}:generateContent` with `contents`/`generationConfig.responseSchema`, response
+text at `candidates[0].content.parts[0].text` — `HttpGeminiClient` is corrected to match. Fixing
+that surfaced a second bug once the endpoint actually responded: Gemini's `response_schema` is a
+Protobuf-backed OpenAPI subset, not JSON Schema — `changingLineMeaning`/`transition`'s `type: [x,
+"null"]` nullable syntax got a real `400 INVALID_ARGUMENT`; corrected to Gemini's own `type:
+"string", nullable: true` form. With both fixed, a real end-to-end `POST
+/api/interpretations/{id}` call against a real consultation, through the actual running dev
+server, returned a genuine Gemini-generated interpretation — grounded, contextually coherent
+prose, correctly-computed `sourceReferences`. `AI_MODEL=gemini-3.6-flash` (the `.env.example`
+default) is confirmed current: Google's own error for the previously-common `gemini-2.0-flash`
+explicitly named it as the replacement. See
+[SPEC-011](specs/gemini-interpretation-provider/spec.md)'s 2026-08-21 update for the full account.
+The API key lives only in `apps/api/.env` (gitignored, never committed).
+
 Next recommended steps: AI interpretation layering, profiles, source-grounding, and conversation
-(building on the existing `InterpretationContext`/`InterpretationProvider` abstraction),
-authentication (feature 9, deliberately skipped this session — see above), or provide a second
-public-domain I Ching translation source to unblock features 26/27, or verify the live Gemini call
-(see above) whenever an `AI_API_KEY` is available.
+(building on the existing `InterpretationContext`/`InterpretationProvider` abstraction, now
+verified live against real Gemini output) — per the user's direction, scoped to Gemini only, no
+multi-provider comparison — or authentication (feature 9, deliberately skipped this session — see
+above), or provide a second public-domain I Ching translation source to unblock features 26/27.

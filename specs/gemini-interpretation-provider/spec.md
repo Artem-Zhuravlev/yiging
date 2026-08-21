@@ -1,6 +1,6 @@
 # SPEC-011 — Gemini Interpretation Provider
 
-**Status:** verified (code); live Gemini call unverified — see final acceptance criterion
+**Status:** verified
 **Owner:** unassigned
 **Last updated:** 2026-08-14
 
@@ -151,6 +151,10 @@ same status codes, plus the new `502` case (only reachable when `AI_PROVIDER=gem
   preserved (helps diagnose "wrong model name" specifically, without needing new code for it).
 - `AI_PROVIDER` set to something other than `mock`/`gemini` (typo) → constructor-time error,
   same as the missing-key case — a config problem, not a per-request one.
+- A nullable schema field expressed in plain JSON Schema's `type: [x, "null"]` array form →
+  Gemini's `response_schema` rejects it (`400 INVALID_ARGUMENT`); this spec's schema uses
+  Gemini's own `type: "string", nullable: true` form instead (found and fixed via live
+  verification, see below).
 
 ## Acceptance criteria
 
@@ -170,9 +174,15 @@ same status codes, plus the new `502` case (only reachable when `AI_PROVIDER=gem
 - [x] `MockInterpretationProvider` still passes all its existing SPEC-008 tests unchanged after
       the `defaultSourceReferences()` refactor.
 - [x] `npm run verify` passes end to end.
-- [ ] **Live verification against the real Gemini API is the user's to perform** (needs a real
-      `AI_API_KEY` this session cannot obtain or safely handle) — everything else on this list
-      is verified without one; this item is explicitly not blocking "done" for the code itself.
+- [x] **Live verification against the real Gemini API**, performed 2026-08-21 with a real
+      `AI_API_KEY` the user provided: confirmed the true contract (`POST
+      /v1beta/models/{model}:generateContent`, `contents`/`generationConfig.responseSchema`
+      request shape, `candidates[0].content.parts[0].text` response field) directly with `curl`,
+      found the originally-implemented `/v1beta/interactions` endpoint does not respond at all
+      (hangs rather than erroring — confirmed independently, not just inferred from the app's own
+      timeout), fixed `HttpGeminiClient` to the verified contract, and confirmed a real
+      end-to-end `POST /api/interpretations/{id}` call against a real consultation returns a
+      genuine Gemini-generated `Interpretation`.
 
 `apps/api/src/AI` gained `GeminiClient`/`HttpGeminiClient`/`GeminiInterpretationProvider`/
 `InterpretationProviderException`; `InterpretationContext::defaultSourceReferences()` now
@@ -182,12 +192,29 @@ provider failures to `502`; `Kernel::handle()` gained a catch-all for uncaught e
 unaffected). `npm run verify` passes end to end. The default (`mock`) provider was
 smoke-tested against the live dev server post-refactor to confirm no regression.
 
-**What was and wasn't verified live:** the exact Gemini API contract (`POST
-/v1beta/interactions`, `x-goog-api-key` header, `response_format.schema`, `output_text`
-response field) was corroborated across 3 independent research fetches against Google's
-current documentation, not from training-data memory — Gemini's API surface has changed since
-then. It was **not** exercised against a real API key from this session, since none was
-available and API keys are not something this assistant handles directly (see the `.env.example`
-setup steps and `docs/deployment.md`). If Google's actual behavior differs from what the
-research surfaced, the first live call will fail with a `502` carrying Gemini's own error
-message (REQ-GEM-007), which should make any mismatch directly diagnosable.
+**2026-08-21 update — live-verified and corrected:** the user provided a real `AI_API_KEY` this
+session. The originally-implemented contract (`POST /v1beta/interactions`,
+`response_format.schema` request field, `output_text` response field — corroborated at the time
+across 3 independent research fetches, not verified against a real call) turned out wrong:
+`curl` against that exact endpoint with the real key hangs indefinitely rather than returning an
+error, which is why the first live app call failed as a `500` (PHP's `max_execution_time`,
+30s) rather than the clean `502` REQ-GEM-007 anticipated for a *responding-but-wrong* endpoint —
+a genuinely non-responding endpoint wasn't a scenario that requirement's design considered.
+Empirically confirmed via direct `curl` the real, current contract: `POST
+/v1beta/models/{model}:generateContent`, request body `{"contents": [{"parts": [{"text":
+prompt}]}], "generationConfig": {"responseMimeType": "application/json", "responseSchema":
+schema}}`, response text at `candidates[0].content.parts[0].text`. `HttpGeminiClient` was
+corrected to this verified contract (`AI_MODEL=gemini-3.6-flash`, the `.env.example` default,
+confirmed current and correct — Google's own 404 error for the previously-common
+`gemini-2.0-flash` explicitly pointed at it as the replacement).
+
+That fix alone surfaced a second, independent bug once the endpoint actually responded: Gemini's
+`response_schema` is a Protobuf-backed OpenAPI subset, not plain JSON Schema — a real `400
+INVALID_ARGUMENT` ("Proto field is not repeating, cannot start list") revealed that
+`GeminiInterpretationProvider::RESPONSE_SCHEMA`'s `changingLineMeaning`/`transition` fields used
+JSON Schema's `type: [x, "null"]` array form for nullability, which Gemini rejects outright —
+corrected to Gemini's actual `type: "string", nullable: true` shape. With both fixes applied, a
+real end-to-end `POST /api/interpretations/{id}` call against a real consultation, through the
+actual running dev server, returned a genuine Gemini-generated `Interpretation` (`200`, real
+grounded prose, correctly-computed `sourceReferences`) — not a fake client, not a mock, the real
+request path in full, confirmed by directly reading the response body.
