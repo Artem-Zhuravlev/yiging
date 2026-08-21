@@ -185,6 +185,10 @@ async function saveOutcome(): Promise<void> {
   }
 }
 
+function printPage(): void {
+  window.print()
+}
+
 async function toggleFavorite(): Promise<void> {
   if (state.value.status !== 'loaded' || favoriteFormState.value.status === 'submitting') {
     return
@@ -262,7 +266,7 @@ onMounted(async () => {
 
 <template>
   <main class="mx-auto max-w-2xl px-6 py-10">
-    <router-link to="/consultations" class="text-sm text-neutral-500 hover:underline">
+    <router-link to="/consultations" class="print:hidden text-sm text-neutral-500 hover:underline">
       &larr; History
     </router-link>
 
@@ -276,14 +280,23 @@ onMounted(async () => {
       <div>
         <div class="flex items-start justify-between gap-3">
           <h1 class="text-xl font-semibold tracking-tight">{{ state.consultation.question }}</h1>
-          <button
-            type="button"
-            :disabled="favoriteFormState.status === 'submitting'"
-            class="shrink-0 text-sm text-neutral-500 hover:text-neutral-900 disabled:opacity-50"
-            @click="toggleFavorite"
-          >
-            {{ state.consultation.favorite ? '★ Favorited' : '☆ Add to Favorites' }}
-          </button>
+          <div class="print:hidden flex shrink-0 gap-3">
+            <button
+              type="button"
+              :disabled="favoriteFormState.status === 'submitting'"
+              class="text-sm text-neutral-500 hover:text-neutral-900 disabled:opacity-50"
+              @click="toggleFavorite"
+            >
+              {{ state.consultation.favorite ? '★ Favorited' : '☆ Add to Favorites' }}
+            </button>
+            <button
+              type="button"
+              class="text-sm text-neutral-500 hover:text-neutral-900"
+              @click="printPage"
+            >
+              Print / Export
+            </button>
+          </div>
         </div>
         <p class="text-sm text-neutral-500">
           {{ state.consultation.method }} &middot;
@@ -314,7 +327,7 @@ onMounted(async () => {
 
       <router-link
         :to="`/hexagrams/compare?a=${state.consultation.primaryHexagram.kingWenNumber}&b=${state.consultation.resultingHexagram.kingWenNumber}`"
-        class="self-start text-sm underline hover:no-underline"
+        class="print:hidden self-start text-sm underline hover:no-underline"
       >
         Compare hexagrams
       </router-link>
@@ -353,7 +366,7 @@ onMounted(async () => {
 
         <router-link
           :to="`/consultations/new?followUpTo=${state.consultation.id}`"
-          class="mt-1 inline-block text-sm underline hover:no-underline"
+          class="print:hidden mt-1 inline-block text-sm underline hover:no-underline"
         >
           Create Follow-up
         </router-link>
@@ -411,7 +424,7 @@ onMounted(async () => {
           </li>
         </ul>
 
-        <form class="flex flex-col gap-2" @submit.prevent="addNote">
+        <form class="print:hidden flex flex-col gap-2" @submit.prevent="addNote">
           <div class="flex gap-2">
             <select v-model="noteLabel" class="rounded-md border border-neutral-300 p-2 text-sm">
               <option value="before">Before</option>
@@ -451,7 +464,7 @@ onMounted(async () => {
           </span>
         </div>
 
-        <form class="flex flex-col gap-2" @submit.prevent="addTag">
+        <form class="print:hidden flex flex-col gap-2" @submit.prevent="addTag">
           <div class="flex gap-2">
             <input
               v-model="tagText"
@@ -541,7 +554,7 @@ onMounted(async () => {
           <button
             type="submit"
             :disabled="contextFormState.status === 'submitting'"
-            class="self-start rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+            class="print:hidden self-start rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-white disabled:opacity-50"
           >
             {{ contextFormState.status === 'submitting' ? 'Saving…' : 'Save Context' }}
           </button>
@@ -592,20 +605,23 @@ onMounted(async () => {
           <button
             type="submit"
             :disabled="outcomeFormState.status === 'submitting'"
-            class="self-start rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+            class="print:hidden self-start rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-white disabled:opacity-50"
           >
             {{ outcomeFormState.status === 'submitting' ? 'Saving…' : 'Save Outcome' }}
           </button>
         </form>
       </div>
 
-      <section class="rounded-lg border-2 border-dashed border-neutral-300 p-4">
+      <section
+        class="rounded-lg border-2 border-dashed border-neutral-300 p-4"
+        :class="{ 'print:hidden': interpretationState.status !== 'loaded' }"
+      >
         <h2 class="mb-3 text-sm font-medium text-neutral-500">AI Interpretation</h2>
 
         <button
           type="button"
           :disabled="interpretationState.status === 'loading'"
-          class="rounded-md bg-neutral-800 px-4 py-2 text-sm text-white disabled:opacity-50"
+          class="print:hidden rounded-md bg-neutral-800 px-4 py-2 text-sm text-white disabled:opacity-50"
           @click="getInterpretation"
         >
           {{ interpretationState.status === 'loading' ? 'Interpreting…' : 'Get Interpretation' }}

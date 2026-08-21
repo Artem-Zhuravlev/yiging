@@ -102,6 +102,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-024 | [Personal Statistics](specs/personal-statistics/spec.md) | `verified` |
 | SPEC-025 | [Consultation Favorites](specs/consultation-favorites/spec.md) | `verified` |
 | SPEC-026 | [Full-Text Search](specs/full-text-search/spec.md) | `verified` |
+| SPEC-027 | [Consultation Print / PDF Export](specs/consultation-print-export/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -360,8 +361,19 @@ Manually verified against the real running dev server: searched "heaven" on `/he
 `/consultations` (narrowed to exactly the two consultations created earlier this session with
 "Repeat check" in their questions). See [SPEC-026](specs/full-text-search/spec.md).
 
-Next recommended steps: hexagram favorites (the deferred half of feature 4, now that consultation
-favorites establish the pattern), AI interpretation layering, profiles, source-grounding, and
-conversation (building on the existing `InterpretationContext`/`InterpretationProvider`
-abstraction), or provide a second public-domain I Ching translation source to unblock features
-26/27, or verify the live Gemini call (see above) whenever an `AI_API_KEY` is available.
+`ConsultationPage` now has a "Print / Export" button (`window.print()`) with a print stylesheet
+(Tailwind's `print:` variant) hiding nav, back-link, favorite toggle, "Compare hexagrams"/"Create
+Follow-up" links, the note/tag-adding forms, and the Save Context/Save Outcome/Get Interpretation
+buttons — deliberately no server-side PDF library, since the browser's own Save-as-PDF already
+does this for free and a new PHP PDF dependency would cut against SPEC-001's minimal-runtime-
+dependency posture. The AI Interpretation section itself is print-hidden unless an interpretation
+has actually been fetched, avoiding an empty dashed box in the printout. Manually verified: read
+the generated stylesheet directly (`@media print { .print\:hidden { display: none; } }`) confirms
+Tailwind emitted the rule correctly; the button and all thirteen hidden elements pass their own
+component tests. See [SPEC-027](specs/consultation-print-export/spec.md).
+
+Next recommended steps: hexagram favorites (the deferred half of feature 4), AI interpretation
+layering, profiles, source-grounding, and conversation (building on the existing
+`InterpretationContext`/`InterpretationProvider` abstraction), or provide a second public-domain
+I Ching translation source to unblock features 26/27, or verify the live Gemini call (see above)
+whenever an `AI_API_KEY` is available.

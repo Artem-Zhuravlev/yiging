@@ -247,6 +247,38 @@ describe('ConsultationPage', () => {
     expect(wrapper.text()).toContain('Should I take the offer?')
   })
 
+  it('renders a working Print / Export button that calls window.print()', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {})
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    const button = wrapper.findAll('button').find((b) => b.text() === 'Print / Export')!
+    await button.trigger('click')
+
+    expect(printSpy).toHaveBeenCalledOnce()
+    printSpy.mockRestore()
+  })
+
+  it('marks the AI Interpretation section print-hidden until an interpretation has loaded', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    vi.mocked(requestInterpretation).mockResolvedValue(sampleInterpretation)
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    const section = wrapper.findAll('section').find((s) => s.text().includes('AI Interpretation'))!
+    expect(section.classes()).toContain('print:hidden')
+
+    await interpretationButton(wrapper).trigger('click')
+    await flushPromises()
+
+    expect(section.classes()).not.toContain('print:hidden')
+  })
+
   it('pre-fills the context form from the loaded consultation', async () => {
     vi.mocked(fetchConsultation).mockResolvedValue({
       ...sampleConsultation,
