@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import Button from 'primevue/button'
+import Message from 'primevue/message'
 import {
   fetchHexagram,
   markHexagramFavorite,
@@ -91,69 +93,60 @@ watch(
 </script>
 
 <template>
-  <main class="mx-auto max-w-2xl px-6 py-10">
-    <router-link to="/hexagrams" class="text-sm text-neutral-500 hover:underline">
-      &larr; Hexagrams
-    </router-link>
+  <main class="max-w-screen-sm mx-auto p-4">
+    <router-link to="/hexagrams" class="text-sm text-color-secondary">&larr; Hexagrams</router-link>
 
-    <p v-if="state.status === 'loading'" class="mt-6 text-neutral-500">Loading…</p>
-    <p v-else-if="state.status === 'not-found'" class="mt-6 text-neutral-600">
-      Hexagram not found.
-    </p>
-    <p v-else-if="state.status === 'error'" class="mt-6 text-red-600">{{ state.message }}</p>
+    <p v-if="state.status === 'loading'" class="mt-4 text-color-secondary">Loading…</p>
+    <p v-else-if="state.status === 'not-found'" class="mt-4 text-color-secondary">Hexagram not found.</p>
+    <Message v-else-if="state.status === 'error'" severity="error" class="mt-4">{{ state.message }}</Message>
 
-    <div v-else class="mt-6 flex flex-col gap-6">
-      <div class="flex items-start justify-between gap-6">
-        <div class="flex items-center gap-6">
+    <div v-else class="mt-4 flex flex-column gap-5">
+      <div class="flex align-items-start justify-content-between gap-4">
+        <div class="flex align-items-center gap-4">
           <HexagramLines :lines="state.hexagram.lines" />
           <div>
-            <h1 class="text-2xl font-semibold tracking-tight">
-              <span class="mr-1 text-3xl" aria-hidden="true">{{ state.hexagram.symbol }}</span>
+            <h1 class="text-2xl font-semibold m-0">
+              <span class="mr-2 text-3xl" aria-hidden="true">{{ state.hexagram.symbol }}</span>
               {{ state.hexagram.kingWenNumber }}. {{ state.hexagram.chineseName }}
             </h1>
-            <p class="text-neutral-500">{{ state.hexagram.pinyin }}</p>
+            <p class="text-color-secondary m-0">{{ state.hexagram.pinyin }}</p>
           </div>
         </div>
-        <div class="shrink-0">
-          <button
-            type="button"
+        <div class="flex-shrink-0">
+          <Button
+            text
+            size="small"
             :disabled="favoriteFormState.status === 'submitting'"
-            class="text-sm text-neutral-500 hover:text-neutral-900 disabled:opacity-50"
+            :label="state.hexagram.favorite ? '★ Favorited' : '☆ Add to Favorites'"
             @click="toggleFavorite"
-          >
-            {{ state.hexagram.favorite ? '★ Favorited' : '☆ Add to Favorites' }}
-          </button>
-          <p v-if="favoriteFormState.status === 'error'" class="mt-1 text-sm text-red-600">
+          />
+          <Message v-if="favoriteFormState.status === 'error'" severity="error" class="mt-1">
             {{ favoriteFormState.message }}
-          </p>
+          </Message>
         </div>
       </div>
 
-      <dl class="grid grid-cols-2 gap-4">
-        <div>
-          <dt class="text-sm text-neutral-500">Upper trigram</dt>
-          <dd>{{ state.hexagram.upperTrigram.symbol }} {{ state.hexagram.upperTrigram.name }}</dd>
+      <dl class="grid m-0">
+        <div class="col-6">
+          <dt class="text-sm text-color-secondary">Upper trigram</dt>
+          <dd class="m-0">{{ state.hexagram.upperTrigram.symbol }} {{ state.hexagram.upperTrigram.name }}</dd>
         </div>
-        <div>
-          <dt class="text-sm text-neutral-500">Lower trigram</dt>
-          <dd>{{ state.hexagram.lowerTrigram.symbol }} {{ state.hexagram.lowerTrigram.name }}</dd>
+        <div class="col-6">
+          <dt class="text-sm text-color-secondary">Lower trigram</dt>
+          <dd class="m-0">{{ state.hexagram.lowerTrigram.symbol }} {{ state.hexagram.lowerTrigram.name }}</dd>
         </div>
       </dl>
 
       <div>
-        <h2 class="mb-2 text-sm font-medium text-neutral-500">Related Hexagrams</h2>
-        <dl class="grid grid-cols-3 gap-4">
-          <div v-for="related in relatedHexagrams" :key="related.label">
-            <dt class="text-xs text-neutral-400 uppercase">{{ related.label }}</dt>
-            <dd>
+        <h2 class="mb-2 text-sm font-medium text-color-secondary">Related Hexagrams</h2>
+        <dl class="grid m-0">
+          <div v-for="related in relatedHexagrams" :key="related.label" class="col-4">
+            <dt class="text-xs text-color-secondary uppercase">{{ related.label }}</dt>
+            <dd class="m-0">
               <span v-if="related.isSelf">
                 {{ related.summary.kingWenNumber }}. {{ related.summary.chineseName }} (self)
               </span>
-              <router-link
-                v-else
-                :to="`/hexagrams/${related.summary.kingWenNumber}`"
-                class="underline hover:no-underline"
-              >
+              <router-link v-else :to="`/hexagrams/${related.summary.kingWenNumber}`">
                 {{ related.summary.kingWenNumber }}. {{ related.summary.chineseName }}
               </router-link>
             </dd>
@@ -162,29 +155,29 @@ watch(
       </div>
 
       <div>
-        <h2 class="text-sm font-medium text-neutral-500">Judgment</h2>
-        <p>{{ state.hexagram.judgment ?? NOT_AVAILABLE }}</p>
+        <h2 class="text-sm font-medium text-color-secondary mb-1">Judgment</h2>
+        <p class="mt-0">{{ state.hexagram.judgment ?? NOT_AVAILABLE }}</p>
       </div>
 
       <div>
-        <h2 class="text-sm font-medium text-neutral-500">Image</h2>
-        <p>{{ state.hexagram.image ?? NOT_AVAILABLE }}</p>
+        <h2 class="text-sm font-medium text-color-secondary mb-1">Image</h2>
+        <p class="mt-0">{{ state.hexagram.image ?? NOT_AVAILABLE }}</p>
       </div>
 
       <div>
-        <h2 class="mb-2 text-sm font-medium text-neutral-500">Line Texts</h2>
-        <p v-if="state.hexagram.lineStatements === null">{{ NOT_AVAILABLE }}</p>
-        <ol v-else class="flex flex-col gap-2">
-          <li v-for="(text, index) in [...state.hexagram.lineStatements].reverse()" :key="index">
-            <span class="text-xs tracking-wide text-neutral-400 uppercase">
+        <h2 class="mb-2 text-sm font-medium text-color-secondary">Line Texts</h2>
+        <p v-if="state.hexagram.lineStatements === null" class="mt-0">{{ NOT_AVAILABLE }}</p>
+        <ol v-else class="flex flex-column gap-2 p-0 m-0">
+          <li v-for="(text, index) in [...state.hexagram.lineStatements].reverse()" :key="index" class="list-none">
+            <span class="text-xs tracking-wide text-color-secondary uppercase">
               Line {{ state.hexagram.lineStatements!.length - index }}
             </span>
-            <p>{{ text }}</p>
+            <p class="mt-1 mb-0">{{ text }}</p>
           </li>
         </ol>
       </div>
 
-      <p class="text-xs text-neutral-400">
+      <p class="text-xs text-color-secondary">
         Source: James Legge's <em>The I Ching</em> (1899), public domain.
       </p>
     </div>

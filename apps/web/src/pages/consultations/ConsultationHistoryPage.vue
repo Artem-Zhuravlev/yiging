@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
+import Message from 'primevue/message'
 import {
   exportConsultationsBackup,
   fetchConsultations,
@@ -125,101 +128,90 @@ async function handleImportFile(event: Event): Promise<void> {
 </script>
 
 <template>
-  <main class="mx-auto max-w-2xl px-6 py-10">
-    <div class="mb-6 flex items-center justify-between gap-3">
-      <h1 class="text-2xl font-semibold tracking-tight">History</h1>
-      <div class="flex items-center gap-3">
-        <button
-          type="button"
-          class="text-sm text-neutral-500 hover:text-neutral-900"
+  <main class="max-w-screen-sm mx-auto p-4">
+    <div class="mb-4 flex align-items-center justify-content-between gap-3">
+      <h1 class="text-2xl font-semibold m-0">History</h1>
+      <div class="flex align-items-center gap-3">
+        <Button
+          text
+          size="small"
+          label="Export Backup (JSON)"
           :disabled="state.status !== 'loaded'"
           @click="exportBackup"
-        >
-          Export Backup (JSON)
-        </button>
-        <label class="cursor-pointer text-sm text-neutral-500 hover:text-neutral-900">
+        />
+        <label class="cursor-pointer text-sm p-button p-button-text p-button-sm">
           Import Backup (JSON)
-          <input type="file" accept="application/json" class="hidden" @change="handleImportFile" />
+          <input type="file" accept="application/json" class="hidden-input" @change="handleImportFile" />
         </label>
       </div>
     </div>
 
-    <p v-if="importState.status === 'success'" class="mb-4 text-sm text-green-700">
+    <Message v-if="importState.status === 'success'" severity="success" class="mb-4">
       Imported {{ importState.imported }} consultation{{ importState.imported === 1 ? '' : 's' }}.
-    </p>
-    <p v-else-if="importState.status === 'error'" class="mb-4 text-sm text-red-600">
+    </Message>
+    <Message v-else-if="importState.status === 'error'" severity="error" class="mb-4">
       {{ importState.message }}
-    </p>
+    </Message>
 
-    <p v-if="state.status === 'loading'" class="text-neutral-500">Loading…</p>
-    <p v-else-if="state.status === 'error'" class="text-red-600">{{ state.message }}</p>
+    <p v-if="state.status === 'loading'" class="text-color-secondary">Loading…</p>
+    <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
 
-    <p v-else-if="state.consultations.length === 0" class="text-neutral-500">
+    <p v-else-if="state.consultations.length === 0" class="text-color-secondary">
       No consultations yet —
-      <router-link to="/consultations/new" class="underline">cast your first one</router-link>.
+      <router-link to="/consultations/new">cast your first one</router-link>.
     </p>
 
     <template v-else>
-      <input
+      <InputText
         v-model="searchQuery"
         type="search"
         placeholder="Search questions and notes…"
-        class="mb-4 w-full rounded-md border border-neutral-300 p-2 text-sm"
+        class="mb-4 w-full"
       />
 
-      <div class="mb-6 flex flex-wrap gap-2">
-        <button
-          type="button"
+      <div class="mb-5 flex flex-wrap gap-2">
+        <Button
           :aria-pressed="favoritesOnly"
-          class="rounded-full border px-3 py-1 text-sm"
-          :class="
-            favoritesOnly
-              ? 'border-neutral-900 bg-neutral-900 text-white'
-              : 'border-neutral-300 text-neutral-600 hover:border-neutral-400'
-          "
+          label="★ Favorites only"
+          rounded
+          size="small"
+          :outlined="!favoritesOnly"
           @click="favoritesOnly = !favoritesOnly"
-        >
-          ★ Favorites only
-        </button>
-        <button
+        />
+        <Button
           v-for="tag in allTags"
           :key="tag"
-          type="button"
           :aria-pressed="selectedTags.has(tag)"
-          class="rounded-full border px-3 py-1 text-sm"
-          :class="
-            selectedTags.has(tag)
-              ? 'border-neutral-900 bg-neutral-900 text-white'
-              : 'border-neutral-300 text-neutral-600 hover:border-neutral-400'
-          "
+          :label="tag"
+          rounded
+          size="small"
+          :outlined="!selectedTags.has(tag)"
           @click="toggleTag(tag)"
-        >
-          {{ tag }}
-        </button>
+        />
       </div>
 
-      <p v-if="groupedConsultations.length === 0" class="text-neutral-500">
+      <p v-if="groupedConsultations.length === 0" class="text-color-secondary">
         No consultations match the selected tags.
       </p>
 
-      <div v-else class="flex flex-col gap-6">
+      <div v-else class="flex flex-column gap-5">
         <section v-for="group in groupedConsultations" :key="group.dateLabel">
-          <h2 class="mb-3 text-sm font-medium text-neutral-500">{{ group.dateLabel }}</h2>
-          <ul class="flex flex-col gap-3">
+          <h2 class="mb-2 text-sm font-medium text-color-secondary">{{ group.dateLabel }}</h2>
+          <ul class="flex flex-column gap-3 list-none p-0 m-0">
             <li v-for="consultation in group.consultations" :key="consultation.id">
               <router-link
                 :to="`/consultations/${consultation.id}`"
-                class="flex flex-col gap-1 rounded-lg border border-neutral-200 p-4 hover:border-neutral-400"
+                class="flex flex-column gap-1 border-round border-1 surface-border p-3 no-underline text-color history-card"
               >
                 <span class="font-medium">{{ consultation.question }}</span>
-                <span class="text-sm text-neutral-500">
+                <span class="text-sm text-color-secondary">
                   {{ consultation.primaryHexagram.kingWenNumber }}.
                   {{ consultation.primaryHexagram.chineseName }}
                   &rarr;
                   {{ consultation.resultingHexagram.kingWenNumber }}.
                   {{ consultation.resultingHexagram.chineseName }}
                 </span>
-                <span class="text-xs text-neutral-400">
+                <span class="text-xs text-color-secondary">
                   {{ new Date(consultation.createdAt).toLocaleString() }}
                 </span>
               </router-link>
@@ -230,3 +222,13 @@ async function handleImportFile(event: Event): Promise<void> {
     </template>
   </main>
 </template>
+
+<style scoped>
+.hidden-input {
+  display: none;
+}
+
+.history-card:hover {
+  border-color: var(--p-primary-color);
+}
+</style>

@@ -1,1 +1,29 @@
-@import 'tailwindcss';
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--p-content-background);
+  color: var(--p-text-color);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+}
+
+a {
+  color: var(--p-primary-color);
+}
+
+/* PrimeFlex has no print-variant utilities; controls that shouldn't appear on a printed page
+   opt in via this class instead (replaces the old Tailwind `print:hidden`). */
+@media print {
+  .print-hidden {
+    display: none !important;
+  }
+}

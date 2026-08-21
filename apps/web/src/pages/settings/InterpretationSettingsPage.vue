@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import Select from 'primevue/select'
+import Textarea from 'primevue/textarea'
+import Button from 'primevue/button'
+import Message from 'primevue/message'
 import { fetchInterpretationProfile, updateInterpretationProfile } from '../../entities/interpretation-profile/api'
 import { TONES, RESPONSE_LENGTHS } from '../../entities/interpretation-profile/model'
 import type { InterpretationProfile } from '../../entities/interpretation-profile/model'
@@ -51,53 +55,47 @@ async function save(): Promise<void> {
 </script>
 
 <template>
-  <main class="mx-auto max-w-2xl px-6 py-10">
-    <h1 class="mb-6 text-2xl font-semibold tracking-tight">Settings</h1>
+  <main class="max-w-screen-sm mx-auto p-4">
+    <h1 class="text-2xl font-semibold mb-4">Settings</h1>
 
-    <p v-if="state.status === 'loading'" class="text-neutral-500">Loading…</p>
-    <p v-else-if="state.status === 'error'" class="text-red-600">{{ state.message }}</p>
+    <p v-if="state.status === 'loading'" class="text-color-secondary">Loading…</p>
+    <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
 
-    <form v-else class="flex flex-col gap-4" @submit.prevent="save">
-      <h2 class="text-sm font-medium text-neutral-500">Interpretation Profile</h2>
-      <p class="text-sm text-neutral-500">
+    <form v-else class="flex flex-column gap-4" @submit.prevent="save">
+      <h2 class="text-sm font-medium text-color-secondary m-0">Interpretation Profile</h2>
+      <p class="text-sm text-color-secondary m-0">
         Shapes every AI interpretation and follow-up answer from now on.
       </p>
 
-      <div>
-        <label for="tone" class="mb-1 block text-xs text-neutral-500">Tone</label>
-        <select id="tone" v-model="form.tone" class="rounded-md border border-neutral-300 p-2 text-sm capitalize">
-          <option v-for="tone in TONES" :key="tone" :value="tone">{{ tone }}</option>
-        </select>
+      <div class="flex flex-column gap-2">
+        <label for="tone" class="text-xs text-color-secondary">Tone</label>
+        <Select id="tone" v-model="form.tone" :options="[...TONES]" class="capitalize w-15rem" />
       </div>
 
-      <div>
-        <label for="length" class="mb-1 block text-xs text-neutral-500">Length</label>
-        <select id="length" v-model="form.length" class="rounded-md border border-neutral-300 p-2 text-sm capitalize">
-          <option v-for="length in RESPONSE_LENGTHS" :key="length" :value="length">{{ length }}</option>
-        </select>
+      <div class="flex flex-column gap-2">
+        <label for="length" class="text-xs text-color-secondary">Length</label>
+        <Select id="length" v-model="form.length" :options="[...RESPONSE_LENGTHS]" class="capitalize w-15rem" />
       </div>
 
-      <div>
-        <label for="notes" class="mb-1 block text-xs text-neutral-500">Notes</label>
-        <textarea
+      <div class="flex flex-column gap-2">
+        <label for="notes" class="text-xs text-color-secondary">Notes</label>
+        <Textarea
           id="notes"
           v-model="form.notes"
           rows="3"
           maxlength="1000"
           placeholder="Anything else the interpretation should take into account…"
-          class="w-full rounded-md border border-neutral-300 p-2 text-sm"
         />
       </div>
 
-      <p v-if="formState.status === 'error'" class="text-sm text-red-600">{{ formState.message }}</p>
+      <Message v-if="formState.status === 'error'" severity="error">{{ formState.message }}</Message>
 
-      <button
+      <Button
         type="submit"
         :disabled="formState.status === 'submitting'"
-        class="self-start rounded-md bg-neutral-800 px-4 py-2 text-sm text-white disabled:opacity-50"
-      >
-        {{ formState.status === 'submitting' ? 'Saving…' : 'Save' }}
-      </button>
+        :label="formState.status === 'submitting' ? 'Saving…' : 'Save'"
+        class="align-self-start"
+      />
     </form>
   </main>
 </template>

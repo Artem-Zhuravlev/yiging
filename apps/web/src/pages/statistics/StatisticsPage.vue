@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import Panel from 'primevue/panel'
+import ProgressBar from 'primevue/progressbar'
+import Message from 'primevue/message'
+import Tag from 'primevue/tag'
 import { fetchStatistics } from '../../entities/statistics/api'
 import type { Statistics } from '../../entities/statistics/model'
 
@@ -36,54 +40,52 @@ const yangPercent = computed(() => {
 </script>
 
 <template>
-  <main class="mx-auto max-w-2xl px-6 py-10">
-    <h1 class="mb-6 text-2xl font-semibold tracking-tight">Statistics</h1>
+  <main class="max-w-screen-sm mx-auto p-4">
+    <h1 class="text-2xl font-semibold mb-4">Statistics</h1>
 
-    <p v-if="state.status === 'loading'" class="text-neutral-500">Loading…</p>
-    <p v-else-if="state.status === 'error'" class="text-red-600">{{ state.message }}</p>
+    <p v-if="state.status === 'loading'" class="text-color-secondary">Loading…</p>
+    <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
 
-    <p v-else-if="state.statistics.totalConsultations === 0" class="text-neutral-500">
+    <p v-else-if="state.statistics.totalConsultations === 0" class="text-color-secondary">
       No consultations yet — nothing to show statistics for.
     </p>
 
-    <div v-else class="flex flex-col gap-8">
-      <p class="text-neutral-500">{{ state.statistics.totalConsultations }} consultations</p>
+    <div v-else class="flex flex-column gap-4">
+      <p class="text-color-secondary m-0">{{ state.statistics.totalConsultations }} consultations</p>
 
-      <div>
-        <h2 class="mb-3 text-sm font-medium text-neutral-500">Hexagram frequency</h2>
-        <ul class="flex flex-col gap-1">
+      <Panel header="Hexagram frequency">
+        <ul class="flex flex-column gap-2 list-none p-0 m-0">
           <li
             v-for="entry in state.statistics.hexagramFrequency"
             :key="entry.kingWenNumber"
-            class="flex justify-between text-sm"
+            class="flex justify-content-between text-sm"
           >
             <span>{{ entry.kingWenNumber }}. {{ entry.chineseName }} ({{ entry.pinyin }})</span>
-            <span class="text-neutral-500">{{ entry.count }}</span>
+            <Tag :value="String(entry.count)" severity="secondary" />
           </li>
         </ul>
-      </div>
+      </Panel>
 
-      <div>
-        <h2 class="mb-3 text-sm font-medium text-neutral-500">Yin / Yang ratio</h2>
-        <p class="text-sm">
+      <Panel header="Yin / Yang ratio">
+        <p class="text-sm mt-0">
           {{ state.statistics.yinYangRatio.yin }} yin / {{ state.statistics.yinYangRatio.yang }} yang
           ({{ yinPercent }}% / {{ yangPercent }}%)
         </p>
-      </div>
+        <ProgressBar :value="yinPercent" :show-value="false" />
+      </Panel>
 
-      <div v-if="state.statistics.tagFrequency.length > 0">
-        <h2 class="mb-3 text-sm font-medium text-neutral-500">Tag frequency</h2>
-        <ul class="flex flex-col gap-1">
+      <Panel v-if="state.statistics.tagFrequency.length > 0" header="Tag frequency">
+        <ul class="flex flex-column gap-2 list-none p-0 m-0">
           <li
             v-for="entry in state.statistics.tagFrequency"
             :key="entry.name"
-            class="flex justify-between text-sm"
+            class="flex justify-content-between text-sm"
           >
             <span>{{ entry.name }}</span>
-            <span class="text-neutral-500">{{ entry.count }}</span>
+            <Tag :value="String(entry.count)" severity="secondary" />
           </li>
         </ul>
-      </div>
+      </Panel>
     </div>
   </main>
 </template>

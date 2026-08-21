@@ -12,25 +12,47 @@ const topToBottom = computed(() => [...props.lines].reverse())
 </script>
 
 <template>
-  <div class="flex flex-col gap-2" role="img" :aria-label="`Hexagram with ${lines.length} lines`">
+  <div class="flex flex-column gap-2" role="img" :aria-label="`Hexagram with ${lines.length} lines`">
     <div
       v-for="line in topToBottom"
       :key="line.position"
-      class="flex h-2 w-16 items-center gap-2"
+      class="hexagram-line flex align-items-center gap-2"
       :data-position="line.position"
       :data-polarity="line.polarity"
       :data-changing="line.changing ? 'true' : undefined"
     >
-      <span v-if="line.polarity === 'yang'" class="h-full w-full rounded-sm bg-neutral-800" />
+      <span v-if="line.polarity === 'yang'" class="hexagram-line-bar" />
       <template v-else>
-        <span class="h-full w-[45%] rounded-sm bg-neutral-800" />
-        <span class="h-full w-[45%] rounded-sm bg-neutral-800" />
+        <span class="hexagram-line-bar hexagram-line-bar-broken" />
+        <span class="hexagram-line-bar hexagram-line-bar-broken" />
       </template>
-      <span
-        v-if="line.changing"
-        class="h-1.5 w-1.5 shrink-0 rounded-full bg-red-500"
-        title="Changing line"
-      />
+      <span v-if="line.changing" class="hexagram-line-changing-dot" title="Changing line" />
     </div>
   </div>
 </template>
+
+<style scoped>
+.hexagram-line {
+  height: 0.5rem;
+  width: 4rem;
+}
+
+.hexagram-line-bar {
+  height: 100%;
+  width: 100%;
+  border-radius: 2px;
+  background: var(--p-text-color);
+}
+
+.hexagram-line-bar-broken {
+  width: 45%;
+}
+
+.hexagram-line-changing-dot {
+  height: 0.375rem;
+  width: 0.375rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--p-primary-color);
+}
+</style>

@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import Textarea from 'primevue/textarea'
+import Button from 'primevue/button'
+import Message from 'primevue/message'
+import Card from 'primevue/card'
 import { createJournalEntry, fetchJournalEntries } from '../../entities/journal/api'
 import type { JournalEntry } from '../../entities/journal/model'
 
@@ -70,53 +74,41 @@ async function addEntry(): Promise<void> {
 </script>
 
 <template>
-  <main class="mx-auto max-w-2xl px-6 py-10">
-    <h1 class="mb-6 text-2xl font-semibold tracking-tight">Journal</h1>
+  <main class="max-w-screen-sm mx-auto p-4">
+    <h1 class="text-2xl font-semibold mb-4">Journal</h1>
 
-    <p v-if="state.status === 'loading'" class="text-neutral-500">Loading…</p>
-    <p v-else-if="state.status === 'error'" class="text-red-600">{{ state.message }}</p>
+    <p v-if="state.status === 'loading'" class="text-color-secondary">Loading…</p>
+    <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
 
     <template v-else>
-      <form class="mb-8 flex flex-col gap-2" @submit.prevent="addEntry">
-        <textarea
-          v-model="entryText"
-          rows="3"
-          required
-          maxlength="5000"
-          placeholder="Write a reflection…"
-          class="w-full rounded-md border border-neutral-300 p-2 text-sm"
-        />
-        <p v-if="formState.status === 'error'" class="text-sm text-red-600">
-          {{ formState.message }}
-        </p>
-        <button
+      <form class="mb-5 flex flex-column gap-2" @submit.prevent="addEntry">
+        <Textarea v-model="entryText" rows="3" required maxlength="5000" placeholder="Write a reflection…" />
+        <Message v-if="formState.status === 'error'" severity="error">{{ formState.message }}</Message>
+        <Button
           type="submit"
           :disabled="formState.status === 'submitting'"
-          class="self-start rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-        >
-          {{ formState.status === 'submitting' ? 'Adding…' : 'Add Entry' }}
-        </button>
+          :label="formState.status === 'submitting' ? 'Adding…' : 'Add Entry'"
+          class="align-self-start"
+        />
       </form>
 
-      <p v-if="state.entries.length === 0" class="text-neutral-500">
+      <p v-if="state.entries.length === 0" class="text-color-secondary">
         No journal entries yet — write your first one above.
       </p>
 
-      <div v-else class="flex flex-col gap-6">
+      <div v-else class="flex flex-column gap-5">
         <section v-for="group in groupedEntries" :key="group.dateLabel">
-          <h2 class="mb-3 text-sm font-medium text-neutral-500">{{ group.dateLabel }}</h2>
-          <ul class="flex flex-col gap-3">
-            <li
-              v-for="entry in group.entries"
-              :key="entry.id"
-              class="rounded-lg border border-neutral-200 p-4"
-            >
-              <p>{{ entry.text }}</p>
-              <span class="text-xs text-neutral-400">
-                {{ new Date(entry.createdAt).toLocaleString() }}
-              </span>
-            </li>
-          </ul>
+          <h2 class="text-sm font-medium text-color-secondary mb-2">{{ group.dateLabel }}</h2>
+          <div class="flex flex-column gap-3">
+            <Card v-for="entry in group.entries" :key="entry.id">
+              <template #content>
+                <p class="mt-0 mb-2">{{ entry.text }}</p>
+                <span class="text-xs text-color-secondary">
+                  {{ new Date(entry.createdAt).toLocaleString() }}
+                </span>
+              </template>
+            </Card>
+          </div>
         </section>
       </div>
     </template>

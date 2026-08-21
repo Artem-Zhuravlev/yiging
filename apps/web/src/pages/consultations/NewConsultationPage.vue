@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import Textarea from 'primevue/textarea'
+import RadioButton from 'primevue/radiobutton'
+import Checkbox from 'primevue/checkbox'
+import Button from 'primevue/button'
+import Message from 'primevue/message'
+import Panel from 'primevue/panel'
 import { createConsultation, fetchConsultation } from '../../entities/consultation/api'
 import type { ManualLine, NewConsultationRequest, SelectableCastingMethod } from '../../entities/consultation/model'
 import { ApiError } from '../../shared/api/http'
@@ -82,149 +88,103 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="mx-auto max-w-xl px-6 py-10">
-    <h1 class="text-2xl font-semibold tracking-tight">New Consultation</h1>
-    <p v-if="followUpToConsultationId" class="mt-1 text-sm text-neutral-500">
+  <main class="max-w-screen-sm mx-auto p-4">
+    <h1 class="text-2xl font-semibold m-0">New Consultation</h1>
+    <p v-if="followUpToConsultationId" class="mt-1 text-sm text-color-secondary">
       Follow-up to: <span v-if="followUpToQuestion">{{ followUpToQuestion }}</span>
       <span v-else>…</span>
     </p>
 
-    <form class="mt-6 flex flex-col gap-6" @submit.prevent="submit">
+    <form class="mt-4 flex flex-column gap-4" @submit.prevent="submit">
       <div>
-        <label for="question" class="mb-1 block text-sm font-medium text-neutral-700">
-          Question
-        </label>
-        <textarea
-          id="question"
-          v-model="question"
-          rows="3"
-          required
-          maxlength="2000"
-          class="w-full rounded-md border border-neutral-300 p-2"
-        />
+        <label for="question" class="mb-1 block text-sm font-medium">Question</label>
+        <Textarea id="question" v-model="question" rows="3" required maxlength="2000" class="w-full" />
       </div>
 
-      <fieldset>
-        <legend class="mb-1 text-sm font-medium text-neutral-700">Method</legend>
-        <label class="mr-4 inline-flex items-center gap-2">
-          <input v-model="method" type="radio" value="three_coins" />
+      <fieldset class="border-none p-0 m-0">
+        <legend class="mb-2 text-sm font-medium">Method</legend>
+        <label class="mr-4 inline-flex align-items-center gap-2">
+          <RadioButton v-model="method" name="method" value="three_coins" />
           Three Coins
         </label>
-        <label class="inline-flex items-center gap-2">
-          <input v-model="method" type="radio" value="manual" />
+        <label class="inline-flex align-items-center gap-2">
+          <RadioButton v-model="method" name="method" value="manual" />
           Manual
         </label>
       </fieldset>
 
-      <fieldset v-if="method === 'manual'" class="flex flex-col gap-2">
-        <legend class="mb-1 text-sm font-medium text-neutral-700">Lines (top to bottom)</legend>
+      <fieldset v-if="method === 'manual'" class="flex flex-column gap-2 border-none p-0 m-0">
+        <legend class="mb-2 text-sm font-medium">Lines (top to bottom)</legend>
         <div
           v-for="position in [6, 5, 4, 3, 2, 1]"
           :key="position"
-          class="flex items-center gap-4"
+          class="flex align-items-center gap-3"
           :data-position="position"
         >
-          <span class="w-6 text-sm text-neutral-500">{{ position }}</span>
-          <label class="inline-flex items-center gap-1">
-            <input
-              v-model="lines[position - 1]!.polarity"
-              type="radio"
-              :name="`polarity-${position}`"
-              value="yang"
-            />
+          <span class="w-2rem text-sm text-color-secondary">{{ position }}</span>
+          <label class="inline-flex align-items-center gap-2">
+            <RadioButton v-model="lines[position - 1]!.polarity" :name="`polarity-${position}`" value="yang" />
             Yang
           </label>
-          <label class="inline-flex items-center gap-1">
-            <input
-              v-model="lines[position - 1]!.polarity"
-              type="radio"
-              :name="`polarity-${position}`"
-              value="yin"
-            />
+          <label class="inline-flex align-items-center gap-2">
+            <RadioButton v-model="lines[position - 1]!.polarity" :name="`polarity-${position}`" value="yin" />
             Yin
           </label>
-          <label class="inline-flex items-center gap-1">
-            <input v-model="lines[position - 1]!.changing" type="checkbox" />
+          <label class="inline-flex align-items-center gap-2">
+            <Checkbox v-model="lines[position - 1]!.changing" binary />
             Changing
           </label>
         </div>
       </fieldset>
 
-      <details class="rounded-md border border-neutral-200 p-3">
-        <summary class="cursor-pointer text-sm font-medium text-neutral-700">
-          Add more context (optional)
-        </summary>
-        <div class="mt-3 flex flex-col gap-3">
-          <div>
-            <label for="context" class="mb-1 block text-sm text-neutral-700">Context</label>
-            <textarea
-              id="context"
-              v-model="context"
-              rows="2"
-              maxlength="5000"
-              class="w-full rounded-md border border-neutral-300 p-2"
-            />
+      <details>
+        <summary class="cursor-pointer text-sm font-medium">Add more context (optional)</summary>
+        <Panel class="mt-3">
+          <div class="flex flex-column gap-3">
+            <div>
+              <label for="context" class="mb-1 block text-sm">Context</label>
+              <Textarea id="context" v-model="context" rows="2" maxlength="5000" class="w-full" />
+            </div>
+            <div>
+              <label for="what-happened-before" class="mb-1 block text-sm">What happened before</label>
+              <Textarea id="what-happened-before" v-model="whatHappenedBefore" rows="2" maxlength="5000" class="w-full" />
+            </div>
+            <div>
+              <label for="what-to-understand" class="mb-1 block text-sm">What you want to understand</label>
+              <Textarea
+                id="what-to-understand"
+                v-model="whatUserWantsToUnderstand"
+                rows="2"
+                maxlength="5000"
+                class="w-full"
+              />
+            </div>
+            <div>
+              <label for="background" class="mb-1 block text-sm">Background information</label>
+              <Textarea id="background" v-model="backgroundInformation" rows="2" maxlength="5000" class="w-full" />
+            </div>
+            <div>
+              <label for="initial-interpretation" class="mb-1 block text-sm">Your initial interpretation</label>
+              <Textarea
+                id="initial-interpretation"
+                v-model="initialInterpretation"
+                rows="2"
+                maxlength="5000"
+                class="w-full"
+              />
+            </div>
           </div>
-          <div>
-            <label for="what-happened-before" class="mb-1 block text-sm text-neutral-700">
-              What happened before
-            </label>
-            <textarea
-              id="what-happened-before"
-              v-model="whatHappenedBefore"
-              rows="2"
-              maxlength="5000"
-              class="w-full rounded-md border border-neutral-300 p-2"
-            />
-          </div>
-          <div>
-            <label for="what-to-understand" class="mb-1 block text-sm text-neutral-700">
-              What you want to understand
-            </label>
-            <textarea
-              id="what-to-understand"
-              v-model="whatUserWantsToUnderstand"
-              rows="2"
-              maxlength="5000"
-              class="w-full rounded-md border border-neutral-300 p-2"
-            />
-          </div>
-          <div>
-            <label for="background" class="mb-1 block text-sm text-neutral-700">
-              Background information
-            </label>
-            <textarea
-              id="background"
-              v-model="backgroundInformation"
-              rows="2"
-              maxlength="5000"
-              class="w-full rounded-md border border-neutral-300 p-2"
-            />
-          </div>
-          <div>
-            <label for="initial-interpretation" class="mb-1 block text-sm text-neutral-700">
-              Your initial interpretation
-            </label>
-            <textarea
-              id="initial-interpretation"
-              v-model="initialInterpretation"
-              rows="2"
-              maxlength="5000"
-              class="w-full rounded-md border border-neutral-300 p-2"
-            />
-          </div>
-        </div>
+        </Panel>
       </details>
 
-      <p v-if="state.status === 'error'" class="text-red-600">{{ state.message }}</p>
+      <Message v-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
 
-      <button
+      <Button
         type="submit"
         :disabled="state.status === 'submitting'"
-        class="rounded-md bg-neutral-800 px-4 py-2 text-white disabled:opacity-50"
-      >
-        {{ state.status === 'submitting' ? 'Casting…' : 'Cast' }}
-      </button>
+        :label="state.status === 'submitting' ? 'Casting…' : 'Cast'"
+        class="align-self-start"
+      />
     </form>
   </main>
 </template>

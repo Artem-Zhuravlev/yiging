@@ -279,12 +279,12 @@ describe('ConsultationPage', () => {
     await flushPromises()
 
     const section = wrapper.findAll('section').find((s) => s.text().includes('AI Interpretation'))!
-    expect(section.classes()).toContain('print:hidden')
+    expect(section.classes()).toContain('print-hidden')
 
     await interpretationButton(wrapper).trigger('click')
     await flushPromises()
 
-    expect(section.classes()).not.toContain('print:hidden')
+    expect(section.classes()).not.toContain('print-hidden')
   })
 
   it('shows a working "View Public Share Page" link to the share route', async () => {

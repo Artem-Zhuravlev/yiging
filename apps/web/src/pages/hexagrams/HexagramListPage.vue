@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
+import Message from 'primevue/message'
 import {
   fetchHexagrams,
   markHexagramFavorite,
@@ -66,58 +69,58 @@ async function toggleFavorite(hexagram: Hexagram): Promise<void> {
 </script>
 
 <template>
-  <main class="mx-auto max-w-5xl px-6 py-10">
-    <div class="mb-6 flex items-center justify-between">
-      <h1 class="text-2xl font-semibold tracking-tight">Hexagram Explorer</h1>
-      <router-link to="/hexagrams/editor" class="text-sm underline hover:no-underline">
-        Visual Editor
-      </router-link>
+  <main class="max-w-screen-lg mx-auto p-4">
+    <div class="mb-4 flex align-items-center justify-content-between">
+      <h1 class="text-2xl font-semibold m-0">Hexagram Explorer</h1>
+      <router-link to="/hexagrams/editor" class="text-sm">Visual Editor</router-link>
     </div>
 
-    <p v-if="state.status === 'loading'" class="text-neutral-500">Loading hexagrams…</p>
-    <p v-else-if="state.status === 'error'" class="text-red-600">{{ state.message }}</p>
+    <p v-if="state.status === 'loading'" class="text-color-secondary">Loading hexagrams…</p>
+    <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
 
     <template v-else>
-      <div class="mb-6 flex flex-wrap items-center gap-3">
-        <input
+      <div class="mb-4 flex flex-wrap align-items-center gap-3">
+        <InputText
           v-model="searchQuery"
           type="search"
           placeholder="Search name, pinyin, Judgment, Image…"
-          class="w-full max-w-sm rounded-md border border-neutral-300 p-2 text-sm"
+          class="w-full sm:w-25rem"
         />
-        <button
-          type="button"
+        <Button
           :aria-pressed="favoritesOnly"
-          class="rounded-full border px-3 py-1 text-sm"
-          :class="
-            favoritesOnly
-              ? 'border-neutral-900 bg-neutral-900 text-white'
-              : 'border-neutral-300 text-neutral-600 hover:border-neutral-400'
-          "
+          label="★ Favorites only"
+          rounded
+          size="small"
+          :outlined="!favoritesOnly"
           @click="favoritesOnly = !favoritesOnly"
-        >
-          ★ Favorites only
-        </button>
+        />
       </div>
 
-      <p v-if="filteredHexagrams.length === 0" class="text-neutral-500">No hexagrams match your search.</p>
+      <p v-if="filteredHexagrams.length === 0" class="text-color-secondary">
+        No hexagrams match your search.
+      </p>
 
-      <ul v-else class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-        <li v-for="hexagram in filteredHexagrams" :key="hexagram.kingWenNumber" class="relative">
-          <button
-            type="button"
-            class="absolute top-2 right-2 text-lg leading-none"
+      <ul v-else class="grid list-none p-0 m-0">
+        <li
+          v-for="hexagram in filteredHexagrams"
+          :key="hexagram.kingWenNumber"
+          class="col-6 sm:col-4 md:col-3 relative"
+        >
+          <Button
+            class="absolute favorite-star"
+            text
+            rounded
             :aria-label="hexagram.favorite ? 'Remove from favorites' : 'Add to favorites'"
             @click.stop.prevent="toggleFavorite(hexagram)"
           >
             {{ hexagram.favorite ? '★' : '☆' }}
-          </button>
+          </Button>
           <router-link
             :to="`/hexagrams/${hexagram.kingWenNumber}`"
-            class="flex flex-col items-center gap-3 rounded-lg border border-neutral-200 p-4 hover:border-neutral-400"
+            class="flex flex-column align-items-center gap-2 border-round border-1 surface-border p-3 no-underline text-color hexagram-card"
           >
             <HexagramLines :lines="hexagram.lines" />
-            <span class="text-sm text-neutral-500">{{ hexagram.kingWenNumber }}</span>
+            <span class="text-sm text-color-secondary">{{ hexagram.kingWenNumber }}</span>
             <span class="font-medium">{{ hexagram.chineseName }}</span>
           </router-link>
         </li>
@@ -125,3 +128,15 @@ async function toggleFavorite(hexagram: Hexagram): Promise<void> {
     </template>
   </main>
 </template>
+
+<style scoped>
+.favorite-star {
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 1;
+}
+
+.hexagram-card:hover {
+  border-color: var(--p-primary-color);
+}
+</style>

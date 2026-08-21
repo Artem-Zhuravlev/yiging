@@ -112,3 +112,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-034 | [Interpretation Follow-Up Questions](interpretation-followup/spec.md) | `verified` |
 | SPEC-035 | [Interpretation Profile](interpretation-profile/spec.md) | `verified` |
 | SPEC-036 | [Outcome-Interpretation Link](outcome-interpretation-link/spec.md) | `verified` |
+| SPEC-037 | [PrimeVue UI Overhaul](primevue-ui-overhaul/spec.md) | `verified` |

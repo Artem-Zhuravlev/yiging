@@ -112,6 +112,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-034 | [Interpretation Follow-Up Questions](specs/interpretation-followup/spec.md) | `verified` |
 | SPEC-035 | [Interpretation Profile](specs/interpretation-profile/spec.md) | `verified` |
 | SPEC-036 | [Outcome-Interpretation Link](specs/outcome-interpretation-link/spec.md) | `verified` |
+| SPEC-037 | [PrimeVue UI Overhaul](specs/primevue-ui-overhaul/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -530,6 +531,24 @@ again, confirming both fields cleared while `whatActuallyHappened` stayed untouc
 
 This closes out the AI feature block for this session (features 6, 7, 9, 10 — feature 8, multi-
 provider comparison, was the only one explicitly excluded, per the user's Gemini-only direction).
+
+`apps/web`'s entire UI was rebuilt on [PrimeVue](https://primevue.org) (Button, InputText,
+Textarea, Select, RadioButton, Checkbox, Card, Panel, Tag, Message, Toolbar) with
+[PrimeFlex](https://primeflex.org) for layout, replacing the hand-rolled Tailwind utility classes
+across all 14 `.vue` files — a pure presentation-layer re-skin, no `<script setup>` logic, API
+calls, or routes changed. The active theme (`src/theme.ts`) is PrimeVue's Aura preset with
+`semantic.primary` remapped to its built-in `red` palette, per the user's "some nice theme with
+red tones" request. **A licensing surprise mid-implementation**: npm's `latest` `primevue` (5.0.1)
+and its `@primeuix/themes` package turned out to require a paid "PrimeUI" commercial license,
+rendering an "Invalid PrimeUI License" watermark without a key (confirmed live) — pinned instead
+to the last fully MIT-licensed major, `primevue@^4.5.5`/`@primevue/themes@^4.5.4`/
+`primeicons@^7.0.0` (`primeflex` was unaffected). Every existing `id`, button label, and `<a>`
+`to`-attribute that tests keyed on was preserved through the rewrite; the one intentional
+DOM-visible change is the old Tailwind `print:hidden` convention becoming a plain `print-hidden`
+class backed by a real `@media print` rule (PrimeFlex has no print-variant utilities), updated in
+the one test that asserted on the literal class name. Manually verified across every route,
+including a real Gemini interpretation requested, linked to an outcome, and saved through the
+converted `ConsultationPage`. See [SPEC-037](specs/primevue-ui-overhaul/spec.md).
 
 Next recommended steps: explicit interpretation-to-outcome linking (feature 10, the one AI
 feature not yet done), authentication (feature 9 of the *original* numbering — deliberately

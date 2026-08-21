@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import Tag from 'primevue/tag'
+import Message from 'primevue/message'
 import { fetchConsultation } from '../../entities/consultation/api'
 import type { Consultation } from '../../entities/consultation/model'
 import { fetchHexagram } from '../../entities/hexagram/api'
@@ -56,23 +58,23 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="mx-auto max-w-2xl px-6 py-10">
-    <p v-if="state.status === 'loading'" class="text-neutral-500">Loading…</p>
-    <p v-else-if="state.status === 'not-found'" class="text-neutral-600">Consultation not found.</p>
-    <p v-else-if="state.status === 'error'" class="text-red-600">{{ state.message }}</p>
+  <main class="max-w-screen-sm mx-auto p-4">
+    <p v-if="state.status === 'loading'" class="text-color-secondary">Loading…</p>
+    <p v-else-if="state.status === 'not-found'" class="text-color-secondary">Consultation not found.</p>
+    <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
 
-    <div v-else class="flex flex-col gap-6">
+    <div v-else class="flex flex-column gap-5">
       <div>
-        <h1 class="text-xl font-semibold tracking-tight">{{ state.consultation.question }}</h1>
-        <p class="text-sm text-neutral-500">
+        <h1 class="text-xl font-semibold m-0">{{ state.consultation.question }}</h1>
+        <p class="text-sm text-color-secondary">
           {{ state.consultation.method }} &middot;
           {{ new Date(state.consultation.createdAt).toLocaleString() }}
         </p>
       </div>
 
-      <div class="flex flex-wrap items-start gap-10">
+      <div class="flex flex-wrap align-items-start gap-6">
         <div>
-          <h2 class="mb-2 text-sm font-medium text-neutral-500">
+          <h2 class="mb-2 text-sm font-medium text-color-secondary">
             Primary — {{ state.consultation.primaryHexagram.kingWenNumber }}.
             {{ state.consultation.primaryHexagram.chineseName }}
           </h2>
@@ -80,7 +82,7 @@ onMounted(async () => {
         </div>
 
         <div>
-          <h2 class="mb-2 text-sm font-medium text-neutral-500">
+          <h2 class="mb-2 text-sm font-medium text-color-secondary">
             Resulting — {{ state.consultation.resultingHexagram.kingWenNumber }}.
             {{ state.consultation.resultingHexagram.chineseName }}
           </h2>
@@ -88,31 +90,25 @@ onMounted(async () => {
         </div>
       </div>
 
-      <p v-if="state.consultation.changingLinePositions.length === 0" class="text-neutral-500">
+      <p v-if="state.consultation.changingLinePositions.length === 0" class="text-color-secondary">
         No changing lines.
       </p>
-      <p v-else class="text-neutral-500">
+      <p v-else class="text-color-secondary">
         Changing lines: {{ state.consultation.changingLinePositions.join(', ') }}
       </p>
 
       <div v-if="state.consultation.notes.length > 0">
-        <h2 class="mb-2 text-sm font-medium text-neutral-500">Notes</h2>
-        <ul class="flex flex-col gap-2">
+        <h2 class="mb-2 text-sm font-medium text-color-secondary">Notes</h2>
+        <ul class="flex flex-column gap-2 list-none p-0 m-0">
           <li v-for="(note, index) in state.consultation.notes" :key="index">
-            <span class="text-xs tracking-wide text-neutral-400 uppercase">{{ note.label }}</span>
-            <p>{{ note.text }}</p>
+            <span class="text-xs tracking-wide text-color-secondary uppercase">{{ note.label }}</span>
+            <p class="mt-1 mb-0">{{ note.text }}</p>
           </li>
         </ul>
       </div>
 
-      <div v-if="state.consultation.tags.length > 0" class="flex gap-2">
-        <span
-          v-for="tag in state.consultation.tags"
-          :key="tag"
-          class="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-600"
-        >
-          {{ tag }}
-        </span>
+      <div v-if="state.consultation.tags.length > 0" class="flex gap-2 flex-wrap">
+        <Tag v-for="tag in state.consultation.tags" :key="tag" :value="tag" severity="secondary" rounded />
       </div>
 
       <div
@@ -123,44 +119,44 @@ onMounted(async () => {
           state.consultation.backgroundInformation ||
           state.consultation.initialInterpretation
         "
-        class="flex flex-col gap-3"
+        class="flex flex-column gap-3"
       >
-        <h2 class="text-sm font-medium text-neutral-500">Context</h2>
+        <h2 class="text-sm font-medium text-color-secondary m-0">Context</h2>
         <div v-if="state.consultation.context">
-          <h3 class="text-xs text-neutral-400">Context</h3>
-          <p>{{ state.consultation.context }}</p>
+          <h3 class="text-xs text-color-secondary m-0">Context</h3>
+          <p class="mt-1 mb-0">{{ state.consultation.context }}</p>
         </div>
         <div v-if="state.consultation.whatHappenedBefore">
-          <h3 class="text-xs text-neutral-400">What happened before</h3>
-          <p>{{ state.consultation.whatHappenedBefore }}</p>
+          <h3 class="text-xs text-color-secondary m-0">What happened before</h3>
+          <p class="mt-1 mb-0">{{ state.consultation.whatHappenedBefore }}</p>
         </div>
         <div v-if="state.consultation.whatUserWantsToUnderstand">
-          <h3 class="text-xs text-neutral-400">What you want to understand</h3>
-          <p>{{ state.consultation.whatUserWantsToUnderstand }}</p>
+          <h3 class="text-xs text-color-secondary m-0">What you want to understand</h3>
+          <p class="mt-1 mb-0">{{ state.consultation.whatUserWantsToUnderstand }}</p>
         </div>
         <div v-if="state.consultation.backgroundInformation">
-          <h3 class="text-xs text-neutral-400">Background information</h3>
-          <p>{{ state.consultation.backgroundInformation }}</p>
+          <h3 class="text-xs text-color-secondary m-0">Background information</h3>
+          <p class="mt-1 mb-0">{{ state.consultation.backgroundInformation }}</p>
         </div>
         <div v-if="state.consultation.initialInterpretation">
-          <h3 class="text-xs text-neutral-400">Initial interpretation</h3>
-          <p>{{ state.consultation.initialInterpretation }}</p>
+          <h3 class="text-xs text-color-secondary m-0">Initial interpretation</h3>
+          <p class="mt-1 mb-0">{{ state.consultation.initialInterpretation }}</p>
         </div>
       </div>
 
       <div v-if="state.consultation.outcome">
-        <h2 class="mb-2 text-sm font-medium text-neutral-500">Outcome</h2>
+        <h2 class="mb-2 text-sm font-medium text-color-secondary">Outcome</h2>
         <div v-if="state.consultation.outcome.whatActuallyHappened">
-          <h3 class="text-xs text-neutral-400">What actually happened</h3>
-          <p>{{ state.consultation.outcome.whatActuallyHappened }}</p>
+          <h3 class="text-xs text-color-secondary m-0">What actually happened</h3>
+          <p class="mt-1 mb-0">{{ state.consultation.outcome.whatActuallyHappened }}</p>
         </div>
         <div v-if="state.consultation.outcome.outcome">
-          <h3 class="text-xs text-neutral-400">Outcome</h3>
-          <p>{{ state.consultation.outcome.outcome }}</p>
+          <h3 class="text-xs text-color-secondary m-0">Outcome</h3>
+          <p class="mt-1 mb-0">{{ state.consultation.outcome.outcome }}</p>
         </div>
         <div v-if="state.consultation.outcome.reflection">
-          <h3 class="text-xs text-neutral-400">Reflection</h3>
-          <p>{{ state.consultation.outcome.reflection }}</p>
+          <h3 class="text-xs text-color-secondary m-0">Reflection</h3>
+          <p class="mt-1 mb-0">{{ state.consultation.outcome.reflection }}</p>
         </div>
       </div>
     </div>

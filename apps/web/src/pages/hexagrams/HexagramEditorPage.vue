@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import RadioButton from 'primevue/radiobutton'
+import Message from 'primevue/message'
 import { computeHexagramFromLines } from '../../entities/hexagram/api'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
 import type { Hexagram, LinePolarity } from '../../entities/hexagram/model'
@@ -34,94 +36,79 @@ watch(
 </script>
 
 <template>
-  <main class="mx-auto max-w-2xl px-6 py-10">
-    <router-link to="/hexagrams" class="text-sm text-neutral-500 hover:underline">
-      &larr; Hexagrams
-    </router-link>
+  <main class="max-w-screen-sm mx-auto p-4">
+    <router-link to="/hexagrams" class="text-sm text-color-secondary">&larr; Hexagrams</router-link>
 
-    <h1 class="mt-4 mb-6 text-2xl font-semibold tracking-tight">Visual Hexagram Editor</h1>
+    <h1 class="mt-3 mb-4 text-2xl font-semibold">Visual Hexagram Editor</h1>
 
-    <div class="flex flex-wrap items-start gap-10">
-      <fieldset class="flex flex-col gap-2">
-        <legend class="mb-1 text-sm font-medium text-neutral-700">Lines (top to bottom)</legend>
+    <div class="flex flex-wrap align-items-start gap-6">
+      <fieldset class="flex flex-column gap-2 border-none p-0 m-0">
+        <legend class="mb-2 text-sm font-medium">Lines (top to bottom)</legend>
         <div
           v-for="position in [6, 5, 4, 3, 2, 1]"
           :key="position"
-          class="flex items-center gap-4"
+          class="flex align-items-center gap-3"
           :data-position="position"
         >
-          <span class="w-6 text-sm text-neutral-500">{{ position }}</span>
-          <label class="inline-flex items-center gap-1">
-            <input
-              v-model="lines[position - 1]"
-              type="radio"
-              :name="`polarity-${position}`"
-              value="yang"
-            />
+          <span class="w-2rem text-sm text-color-secondary">{{ position }}</span>
+          <label class="inline-flex align-items-center gap-2">
+            <RadioButton v-model="lines[position - 1]" :name="`polarity-${position}`" value="yang" />
             Yang
           </label>
-          <label class="inline-flex items-center gap-1">
-            <input
-              v-model="lines[position - 1]"
-              type="radio"
-              :name="`polarity-${position}`"
-              value="yin"
-            />
+          <label class="inline-flex align-items-center gap-2">
+            <RadioButton v-model="lines[position - 1]" :name="`polarity-${position}`" value="yin" />
             Yin
           </label>
         </div>
       </fieldset>
 
       <div>
-        <p v-if="state.status === 'loading'" class="text-neutral-500">Computing…</p>
-        <p v-else-if="state.status === 'error'" class="text-red-600">{{ state.message }}</p>
+        <p v-if="state.status === 'loading'" class="text-color-secondary">Computing…</p>
+        <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
 
-        <div v-else class="flex flex-col gap-4">
-          <div class="flex items-center gap-6">
+        <div v-else class="flex flex-column gap-4">
+          <div class="flex align-items-center gap-4">
             <HexagramLines :lines="state.hexagram.lines" />
             <div>
-              <h2 class="text-xl font-semibold tracking-tight">
+              <h2 class="text-xl font-semibold m-0">
                 {{ state.hexagram.kingWenNumber }}. {{ state.hexagram.chineseName }}
               </h2>
-              <p class="text-neutral-500">{{ state.hexagram.pinyin }}</p>
-              <router-link
-                :to="`/hexagrams/${state.hexagram.kingWenNumber}`"
-                class="text-sm underline hover:no-underline"
-              >
+              <p class="text-color-secondary my-1">{{ state.hexagram.pinyin }}</p>
+              <router-link :to="`/hexagrams/${state.hexagram.kingWenNumber}`" class="text-sm">
                 View full page
               </router-link>
             </div>
           </div>
 
-          <dl class="grid grid-cols-2 gap-4">
-            <div>
-              <dt class="text-sm text-neutral-500">Upper trigram</dt>
-              <dd>{{ state.hexagram.upperTrigram.symbol }} {{ state.hexagram.upperTrigram.name }}</dd>
+          <dl class="grid m-0">
+            <div class="col-6">
+              <dt class="text-sm text-color-secondary">Upper trigram</dt>
+              <dd class="m-0">{{ state.hexagram.upperTrigram.symbol }} {{ state.hexagram.upperTrigram.name }}</dd>
             </div>
-            <div>
-              <dt class="text-sm text-neutral-500">Lower trigram</dt>
-              <dd>{{ state.hexagram.lowerTrigram.symbol }} {{ state.hexagram.lowerTrigram.name }}</dd>
+            <div class="col-6">
+              <dt class="text-sm text-color-secondary">Lower trigram</dt>
+              <dd class="m-0">{{ state.hexagram.lowerTrigram.symbol }} {{ state.hexagram.lowerTrigram.name }}</dd>
             </div>
           </dl>
 
-          <dl class="grid grid-cols-3 gap-4">
-            <div>
-              <dt class="text-xs text-neutral-400 uppercase">Nuclear</dt>
-              <dd>
+          <dl class="grid m-0">
+            <div class="col-4">
+              <dt class="text-xs text-color-secondary uppercase">Nuclear</dt>
+              <dd class="m-0">
                 {{ state.hexagram.relationships.nuclear.kingWenNumber }}.
                 {{ state.hexagram.relationships.nuclear.chineseName }}
               </dd>
             </div>
-            <div>
-              <dt class="text-xs text-neutral-400 uppercase">Reversed</dt>
-              <dd>
+            <div class="col-4">
+              <dt class="text-xs text-color-secondary uppercase">Reversed</dt>
+              <dd class="m-0">
                 {{ state.hexagram.relationships.reversed.kingWenNumber }}.
                 {{ state.hexagram.relationships.reversed.chineseName }}
               </dd>
             </div>
-            <div>
-              <dt class="text-xs text-neutral-400 uppercase">Complement</dt>
-              <dd>
+            <div class="col-4">
+              <dt class="text-xs text-color-secondary uppercase">Complement</dt>
+              <dd class="m-0">
                 {{ state.hexagram.relationships.complement.kingWenNumber }}.
                 {{ state.hexagram.relationships.complement.chineseName }}
               </dd>

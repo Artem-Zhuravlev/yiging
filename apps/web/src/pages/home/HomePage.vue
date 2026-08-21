@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import Button from 'primevue/button'
+import Card from 'primevue/card'
+import Message from 'primevue/message'
+import ProgressSpinner from 'primevue/progressspinner'
 import { fetchHexagram } from '../../entities/hexagram/api'
 import { hexagramOfTheDayNumber } from '../../entities/hexagram/hexagramOfTheDay'
 import type { Hexagram } from '../../entities/hexagram/model'
@@ -26,41 +30,36 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main
-    class="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center gap-6 px-6 text-center"
-  >
-    <h1 class="text-3xl font-semibold tracking-tight">Yijing</h1>
-    <p class="text-neutral-500">Digital I Ching study &amp; practice platform.</p>
-    <div class="flex gap-4">
-      <router-link
-        to="/consultations/new"
-        class="rounded-md bg-neutral-800 px-4 py-2 text-white hover:bg-neutral-700"
-      >
-        Cast a new consultation
-      </router-link>
-      <router-link
-        to="/consultations"
-        class="rounded-md border border-neutral-300 px-4 py-2 hover:border-neutral-400"
-      >
-        View history
-      </router-link>
+  <main class="flex flex-column align-items-center justify-content-center gap-4 text-center p-4">
+    <h1 class="text-4xl font-semibold m-0">Yijing</h1>
+    <p class="text-color-secondary m-0">Digital I Ching study &amp; practice platform.</p>
+    <div class="flex gap-3">
+      <Button as="router-link" to="/consultations/new" label="Cast a new consultation" />
+      <Button as="router-link" to="/consultations" label="View history" severity="secondary" outlined />
     </div>
 
     <router-link
       v-if="state.status === 'loaded'"
       :to="`/hexagrams/${state.hexagram.kingWenNumber}`"
-      class="mt-4 flex flex-col items-center gap-3 rounded-lg border border-neutral-200 p-6 hover:border-neutral-400"
+      class="mt-3 no-underline text-color"
     >
-      <h2 class="text-sm font-medium text-neutral-500">Hexagram of the Day</h2>
-      <HexagramLines :lines="state.hexagram.lines" />
-      <p>
-        {{ state.hexagram.kingWenNumber }}. {{ state.hexagram.chineseName }}
-        <span class="text-neutral-500">({{ state.hexagram.pinyin }})</span>
-      </p>
+      <Card>
+        <template #content>
+          <div class="flex flex-column align-items-center gap-3">
+            <h2 class="text-sm font-medium text-color-secondary m-0 uppercase">Hexagram of the Day</h2>
+            <HexagramLines :lines="state.hexagram.lines" />
+            <p class="m-0">
+              {{ state.hexagram.kingWenNumber }}. {{ state.hexagram.chineseName }}
+              <span class="text-color-secondary">({{ state.hexagram.pinyin }})</span>
+            </p>
+          </div>
+        </template>
+      </Card>
     </router-link>
-    <p v-else-if="state.status === 'loading'" class="mt-4 text-sm text-neutral-400">
-      Loading hexagram of the day…
-    </p>
-    <p v-else-if="state.status === 'error'" class="mt-4 text-sm text-red-600">{{ state.message }}</p>
+    <div v-else-if="state.status === 'loading'" class="mt-3 flex align-items-center gap-2">
+      <ProgressSpinner style="width: 1.5rem; height: 1.5rem" stroke-width="6" />
+      <span class="text-sm text-color-secondary">Loading hexagram of the day…</span>
+    </div>
+    <Message v-else-if="state.status === 'error'" severity="error" class="mt-3">{{ state.message }}</Message>
   </main>
 </template>

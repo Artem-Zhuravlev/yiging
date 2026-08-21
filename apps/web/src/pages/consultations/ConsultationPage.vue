@@ -14,6 +14,12 @@ import type {
   InterpretationLens,
 } from '../../entities/interpretation/model'
 import { ApiError } from '../../shared/api/http'
+import Button from 'primevue/button'
+import Textarea from 'primevue/textarea'
+import InputText from 'primevue/inputtext'
+import Select from 'primevue/select'
+import Tag from 'primevue/tag'
+import Message from 'primevue/message'
 
 type State =
   | { status: 'loading' }
@@ -73,6 +79,11 @@ const followUpText = ref('')
 const followUpFormState = ref<FormState>({ status: 'idle' })
 
 const noteLabel = ref<'before' | 'after' | 'later'>('after')
+const noteLabelOptions = [
+  { label: 'Before', value: 'before' },
+  { label: 'After', value: 'after' },
+  { label: 'Later', value: 'later' },
+]
 const noteText = ref('')
 const noteFormState = ref<FormState>({ status: 'idle' })
 
@@ -352,68 +363,54 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="mx-auto max-w-2xl px-6 py-10">
-    <router-link to="/consultations" class="print:hidden text-sm text-neutral-500 hover:underline">
+  <main class="max-w-screen-sm mx-auto p-4">
+    <router-link to="/consultations" class="print-hidden text-sm text-color-secondary">
       &larr; History
     </router-link>
 
-    <p v-if="state.status === 'loading'" class="mt-6 text-neutral-500">Loading…</p>
-    <p v-else-if="state.status === 'not-found'" class="mt-6 text-neutral-600">
-      Consultation not found.
-    </p>
-    <p v-else-if="state.status === 'error'" class="mt-6 text-red-600">{{ state.message }}</p>
+    <p v-if="state.status === 'loading'" class="mt-4 text-color-secondary">Loading…</p>
+    <p v-else-if="state.status === 'not-found'" class="mt-4 text-color-secondary">Consultation not found.</p>
+    <Message v-else-if="state.status === 'error'" severity="error" class="mt-4">{{ state.message }}</Message>
 
-    <div v-else class="mt-6 flex flex-col gap-6">
+    <div v-else class="mt-4 flex flex-column gap-5">
       <div>
-        <div class="flex items-start justify-between gap-3">
-          <h1 class="text-xl font-semibold tracking-tight">{{ state.consultation.question }}</h1>
-          <div class="print:hidden flex shrink-0 gap-3">
-            <button
-              type="button"
+        <div class="flex align-items-start justify-content-between gap-3">
+          <h1 class="text-xl font-semibold m-0">{{ state.consultation.question }}</h1>
+          <div class="print-hidden flex flex-shrink-0 gap-3 flex-wrap">
+            <Button
+              text
+              size="small"
               :disabled="favoriteFormState.status === 'submitting'"
-              class="text-sm text-neutral-500 hover:text-neutral-900 disabled:opacity-50"
+              :label="state.consultation.favorite ? '★ Favorited' : '☆ Add to Favorites'"
               @click="toggleFavorite"
-            >
-              {{ state.consultation.favorite ? '★ Favorited' : '☆ Add to Favorites' }}
-            </button>
-            <button
-              type="button"
-              class="text-sm text-neutral-500 hover:text-neutral-900"
-              @click="printPage"
-            >
-              Print / Export
-            </button>
-            <button
-              type="button"
-              class="text-sm text-neutral-500 hover:text-neutral-900"
+            />
+            <Button text size="small" label="Print / Export" @click="printPage" />
+            <Button
+              text
+              size="small"
+              :label="copyLinkState.status === 'copied' ? 'Link Copied' : 'Copy Share Link'"
               @click="copyShareLink"
-            >
-              {{ copyLinkState.status === 'copied' ? 'Link Copied' : 'Copy Share Link' }}
-            </button>
-            <router-link
-              :to="`/share/consultations/${id}`"
-              target="_blank"
-              class="text-sm text-neutral-500 hover:text-neutral-900"
-            >
+            />
+            <router-link :to="`/share/consultations/${id}`" target="_blank" class="text-sm text-color-secondary">
               View Public Share Page
             </router-link>
           </div>
         </div>
-        <p class="text-sm text-neutral-500">
+        <p class="text-sm text-color-secondary">
           {{ state.consultation.method }} &middot;
           {{ new Date(state.consultation.createdAt).toLocaleString() }}
         </p>
-        <p v-if="favoriteFormState.status === 'error'" class="mt-1 text-sm text-red-600">
+        <Message v-if="favoriteFormState.status === 'error'" severity="error" class="mt-1">
           {{ favoriteFormState.message }}
-        </p>
-        <p v-if="copyLinkState.status === 'error'" class="mt-1 text-sm text-red-600">
+        </Message>
+        <Message v-if="copyLinkState.status === 'error'" severity="error" class="mt-1">
           {{ copyLinkState.message }}
-        </p>
+        </Message>
       </div>
 
-      <div class="flex flex-wrap items-start gap-10">
+      <div class="flex flex-wrap align-items-start gap-6">
         <div>
-          <h2 class="mb-2 text-sm font-medium text-neutral-500">
+          <h2 class="mb-2 text-sm font-medium text-color-secondary">
             Primary — {{ state.consultation.primaryHexagram.kingWenNumber }}.
             {{ state.consultation.primaryHexagram.chineseName }}
           </h2>
@@ -421,7 +418,7 @@ onMounted(async () => {
         </div>
 
         <div>
-          <h2 class="mb-2 text-sm font-medium text-neutral-500">
+          <h2 class="mb-2 text-sm font-medium text-color-secondary">
             Resulting — {{ state.consultation.resultingHexagram.kingWenNumber }}.
             {{ state.consultation.resultingHexagram.chineseName }}
           </h2>
@@ -431,37 +428,31 @@ onMounted(async () => {
 
       <router-link
         :to="`/hexagrams/compare?a=${state.consultation.primaryHexagram.kingWenNumber}&b=${state.consultation.resultingHexagram.kingWenNumber}`"
-        class="print:hidden self-start text-sm underline hover:no-underline"
+        class="print-hidden align-self-start text-sm"
       >
         Compare hexagrams
       </router-link>
 
-      <p v-if="state.consultation.changingLinePositions.length === 0" class="text-neutral-500">
+      <p v-if="state.consultation.changingLinePositions.length === 0" class="text-color-secondary">
         No changing lines.
       </p>
-      <p v-else class="text-neutral-500">
+      <p v-else class="text-color-secondary">
         Changing lines: {{ state.consultation.changingLinePositions.join(', ') }}
       </p>
 
       <div>
-        <p v-if="state.consultation.followUpTo" class="text-sm text-neutral-500">
+        <p v-if="state.consultation.followUpTo" class="text-sm text-color-secondary">
           Follow-up to:
-          <router-link
-            :to="`/consultations/${state.consultation.followUpTo.id}`"
-            class="underline hover:no-underline"
-          >
+          <router-link :to="`/consultations/${state.consultation.followUpTo.id}`">
             {{ state.consultation.followUpTo.question }}
           </router-link>
         </p>
 
         <div v-if="state.consultation.followUps.length > 0" class="mt-1">
-          <h2 class="text-sm font-medium text-neutral-500">Follow-ups</h2>
-          <ul class="mt-1 flex flex-col gap-1">
+          <h2 class="text-sm font-medium text-color-secondary">Follow-ups</h2>
+          <ul class="mt-1 flex flex-column gap-1 list-none p-0">
             <li v-for="followUp in state.consultation.followUps" :key="followUp.id">
-              <router-link
-                :to="`/consultations/${followUp.id}`"
-                class="text-sm underline hover:no-underline"
-              >
+              <router-link :to="`/consultations/${followUp.id}`" class="text-sm">
                 {{ followUp.question }}
               </router-link>
             </li>
@@ -470,7 +461,7 @@ onMounted(async () => {
 
         <router-link
           :to="`/consultations/new?followUpTo=${state.consultation.id}`"
-          class="print:hidden mt-1 inline-block text-sm underline hover:no-underline"
+          class="print-hidden mt-1 inline-block text-sm"
         >
           Create Follow-up
         </router-link>
@@ -483,13 +474,13 @@ onMounted(async () => {
             repeats.resultingHexagram.length > 0 ||
             repeats.changingLines.length > 0)
         "
-        class="flex flex-col gap-3"
+        class="flex flex-column gap-3"
       >
         <div v-if="repeats.primaryHexagram.length > 0">
-          <h2 class="text-sm font-medium text-neutral-500">Same primary hexagram before</h2>
-          <ul class="mt-1 flex flex-col gap-1">
+          <h2 class="text-sm font-medium text-color-secondary">Same primary hexagram before</h2>
+          <ul class="mt-1 flex flex-column gap-1 list-none p-0">
             <li v-for="match in repeats.primaryHexagram" :key="match.id">
-              <router-link :to="`/consultations/${match.id}`" class="text-sm underline hover:no-underline">
+              <router-link :to="`/consultations/${match.id}`" class="text-sm">
                 {{ match.question }}
               </router-link>
             </li>
@@ -497,10 +488,10 @@ onMounted(async () => {
         </div>
 
         <div v-if="repeats.resultingHexagram.length > 0">
-          <h2 class="text-sm font-medium text-neutral-500">Same resulting hexagram before</h2>
-          <ul class="mt-1 flex flex-col gap-1">
+          <h2 class="text-sm font-medium text-color-secondary">Same resulting hexagram before</h2>
+          <ul class="mt-1 flex flex-column gap-1 list-none p-0">
             <li v-for="match in repeats.resultingHexagram" :key="match.id">
-              <router-link :to="`/consultations/${match.id}`" class="text-sm underline hover:no-underline">
+              <router-link :to="`/consultations/${match.id}`" class="text-sm">
                 {{ match.question }}
               </router-link>
             </li>
@@ -508,10 +499,10 @@ onMounted(async () => {
         </div>
 
         <div v-if="repeats.changingLines.length > 0">
-          <h2 class="text-sm font-medium text-neutral-500">Same changing lines before</h2>
-          <ul class="mt-1 flex flex-col gap-1">
+          <h2 class="text-sm font-medium text-color-secondary">Same changing lines before</h2>
+          <ul class="mt-1 flex flex-column gap-1 list-none p-0">
             <li v-for="match in repeats.changingLines" :key="match.id">
-              <router-link :to="`/consultations/${match.id}`" class="text-sm underline hover:no-underline">
+              <router-link :to="`/consultations/${match.id}`" class="text-sm">
                 {{ match.question }}
               </router-link>
             </li>
@@ -520,300 +511,245 @@ onMounted(async () => {
       </div>
 
       <div>
-        <h2 class="mb-2 text-sm font-medium text-neutral-500">Notes</h2>
-        <ul v-if="state.consultation.notes.length > 0" class="mb-3 flex flex-col gap-2">
+        <h2 class="mb-2 text-sm font-medium text-color-secondary">Notes</h2>
+        <ul v-if="state.consultation.notes.length > 0" class="mb-3 flex flex-column gap-2 list-none p-0">
           <li v-for="(note, index) in state.consultation.notes" :key="index">
-            <span class="text-xs tracking-wide text-neutral-400 uppercase">{{ note.label }}</span>
-            <p>{{ note.text }}</p>
+            <span class="text-xs tracking-wide text-color-secondary uppercase">{{ note.label }}</span>
+            <p class="mt-1 mb-0">{{ note.text }}</p>
           </li>
         </ul>
 
-        <form class="print:hidden flex flex-col gap-2" @submit.prevent="addNote">
+        <form class="print-hidden flex flex-column gap-2" @submit.prevent="addNote">
           <div class="flex gap-2">
-            <select v-model="noteLabel" class="rounded-md border border-neutral-300 p-2 text-sm">
-              <option value="before">Before</option>
-              <option value="after">After</option>
-              <option value="later">Later</option>
-            </select>
-            <textarea
-              v-model="noteText"
-              rows="2"
-              required
-              maxlength="5000"
-              placeholder="Add a note…"
-              class="flex-1 rounded-md border border-neutral-300 p-2 text-sm"
-            />
+            <Select v-model="noteLabel" :options="noteLabelOptions" option-label="label" option-value="value" />
+            <Textarea v-model="noteText" rows="2" required maxlength="5000" placeholder="Add a note…" class="flex-1" />
           </div>
-          <p v-if="noteFormState.status === 'error'" class="text-sm text-red-600">
-            {{ noteFormState.message }}
-          </p>
-          <button
+          <Message v-if="noteFormState.status === 'error'" severity="error">{{ noteFormState.message }}</Message>
+          <Button
             type="submit"
             :disabled="noteFormState.status === 'submitting'"
-            class="self-start rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-          >
-            {{ noteFormState.status === 'submitting' ? 'Adding…' : 'Add Note' }}
-          </button>
+            :label="noteFormState.status === 'submitting' ? 'Adding…' : 'Add Note'"
+            class="align-self-start"
+          />
         </form>
       </div>
 
       <div>
-        <div v-if="state.consultation.tags.length > 0" class="mb-3 flex gap-2">
-          <span
-            v-for="tag in state.consultation.tags"
-            :key="tag"
-            class="rounded-full bg-neutral-100 px-3 py-1 text-xs text-neutral-600"
-          >
-            {{ tag }}
-          </span>
+        <div v-if="state.consultation.tags.length > 0" class="mb-3 flex gap-2 flex-wrap">
+          <Tag v-for="tag in state.consultation.tags" :key="tag" :value="tag" severity="secondary" rounded />
         </div>
 
-        <form class="print:hidden flex flex-col gap-2" @submit.prevent="addTag">
+        <form class="print-hidden flex flex-column gap-2" @submit.prevent="addTag">
           <div class="flex gap-2">
-            <input
-              v-model="tagText"
-              type="text"
-              required
-              placeholder="Add a tag…"
-              class="flex-1 rounded-md border border-neutral-300 p-2 text-sm"
-            />
-            <button
+            <InputText v-model="tagText" type="text" required placeholder="Add a tag…" class="flex-1" />
+            <Button
               type="submit"
               :disabled="tagFormState.status === 'submitting'"
-              class="rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-            >
-              {{ tagFormState.status === 'submitting' ? 'Adding…' : 'Add Tag' }}
-            </button>
+              :label="tagFormState.status === 'submitting' ? 'Adding…' : 'Add Tag'"
+            />
           </div>
-          <p v-if="tagFormState.status === 'error'" class="text-sm text-red-600">
-            {{ tagFormState.message }}
-          </p>
+          <Message v-if="tagFormState.status === 'error'" severity="error">{{ tagFormState.message }}</Message>
         </form>
       </div>
 
       <div>
-        <h2 class="mb-2 text-sm font-medium text-neutral-500">Context</h2>
-        <form class="flex flex-col gap-3" @submit.prevent="saveContext">
+        <h2 class="mb-2 text-sm font-medium text-color-secondary">Context</h2>
+        <form class="flex flex-column gap-3" @submit.prevent="saveContext">
           <div>
-            <label for="edit-context" class="mb-1 block text-xs text-neutral-500">Context</label>
-            <textarea
-              id="edit-context"
-              v-model="contextForm.context"
-              rows="2"
-              maxlength="5000"
-              class="w-full rounded-md border border-neutral-300 p-2 text-sm"
-            />
+            <label for="edit-context" class="mb-1 block text-xs text-color-secondary">Context</label>
+            <Textarea id="edit-context" v-model="contextForm.context" rows="2" maxlength="5000" class="w-full" />
           </div>
           <div>
-            <label for="edit-what-happened-before" class="mb-1 block text-xs text-neutral-500">
+            <label for="edit-what-happened-before" class="mb-1 block text-xs text-color-secondary">
               What happened before
             </label>
-            <textarea
+            <Textarea
               id="edit-what-happened-before"
               v-model="contextForm.whatHappenedBefore"
               rows="2"
               maxlength="5000"
-              class="w-full rounded-md border border-neutral-300 p-2 text-sm"
+              class="w-full"
             />
           </div>
           <div>
-            <label for="edit-what-to-understand" class="mb-1 block text-xs text-neutral-500">
+            <label for="edit-what-to-understand" class="mb-1 block text-xs text-color-secondary">
               What you want to understand
             </label>
-            <textarea
+            <Textarea
               id="edit-what-to-understand"
               v-model="contextForm.whatUserWantsToUnderstand"
               rows="2"
               maxlength="5000"
-              class="w-full rounded-md border border-neutral-300 p-2 text-sm"
+              class="w-full"
             />
           </div>
           <div>
-            <label for="edit-background" class="mb-1 block text-xs text-neutral-500">
+            <label for="edit-background" class="mb-1 block text-xs text-color-secondary">
               Background information
             </label>
-            <textarea
+            <Textarea
               id="edit-background"
               v-model="contextForm.backgroundInformation"
               rows="2"
               maxlength="5000"
-              class="w-full rounded-md border border-neutral-300 p-2 text-sm"
+              class="w-full"
             />
           </div>
           <div>
-            <label for="edit-initial-interpretation" class="mb-1 block text-xs text-neutral-500">
+            <label for="edit-initial-interpretation" class="mb-1 block text-xs text-color-secondary">
               Your initial interpretation
             </label>
-            <textarea
+            <Textarea
               id="edit-initial-interpretation"
               v-model="contextForm.initialInterpretation"
               rows="2"
               maxlength="5000"
-              class="w-full rounded-md border border-neutral-300 p-2 text-sm"
+              class="w-full"
             />
           </div>
-          <p v-if="contextFormState.status === 'error'" class="text-sm text-red-600">
+          <Message v-if="contextFormState.status === 'error'" severity="error">
             {{ contextFormState.message }}
-          </p>
-          <button
+          </Message>
+          <Button
             type="submit"
             :disabled="contextFormState.status === 'submitting'"
-            class="print:hidden self-start rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-          >
-            {{ contextFormState.status === 'submitting' ? 'Saving…' : 'Save Context' }}
-          </button>
+            :label="contextFormState.status === 'submitting' ? 'Saving…' : 'Save Context'"
+            class="print-hidden align-self-start"
+          />
         </form>
       </div>
 
       <div>
-        <h2 class="mb-2 text-sm font-medium text-neutral-500">Outcome</h2>
-        <p v-if="state.consultation.outcome" class="mb-2 text-xs text-neutral-400">
+        <h2 class="mb-2 text-sm font-medium text-color-secondary">Outcome</h2>
+        <p v-if="state.consultation.outcome" class="mb-2 text-xs text-color-secondary">
           Last recorded {{ new Date(state.consultation.outcome.recordedAt).toLocaleString() }}
         </p>
-        <form class="flex flex-col gap-3" @submit.prevent="saveOutcome">
+        <form class="flex flex-column gap-3" @submit.prevent="saveOutcome">
           <div>
-            <label for="edit-what-happened" class="mb-1 block text-xs text-neutral-500">
+            <label for="edit-what-happened" class="mb-1 block text-xs text-color-secondary">
               What actually happened
             </label>
-            <textarea
+            <Textarea
               id="edit-what-happened"
               v-model="outcomeForm.whatActuallyHappened"
               rows="2"
               maxlength="5000"
-              class="w-full rounded-md border border-neutral-300 p-2 text-sm"
+              class="w-full"
             />
           </div>
           <div>
-            <label for="edit-outcome" class="mb-1 block text-xs text-neutral-500">Outcome</label>
-            <textarea
-              id="edit-outcome"
-              v-model="outcomeForm.outcome"
-              rows="2"
-              maxlength="5000"
-              class="w-full rounded-md border border-neutral-300 p-2 text-sm"
-            />
+            <label for="edit-outcome" class="mb-1 block text-xs text-color-secondary">Outcome</label>
+            <Textarea id="edit-outcome" v-model="outcomeForm.outcome" rows="2" maxlength="5000" class="w-full" />
           </div>
           <div>
-            <label for="edit-reflection" class="mb-1 block text-xs text-neutral-500">Reflection</label>
-            <textarea
-              id="edit-reflection"
-              v-model="outcomeForm.reflection"
-              rows="2"
-              maxlength="5000"
-              class="w-full rounded-md border border-neutral-300 p-2 text-sm"
-            />
+            <label for="edit-reflection" class="mb-1 block text-xs text-color-secondary">Reflection</label>
+            <Textarea id="edit-reflection" v-model="outcomeForm.reflection" rows="2" maxlength="5000" class="w-full" />
           </div>
           <div
             v-if="outcomeForm.interpretationLens"
-            class="flex items-start justify-between gap-3 rounded-md bg-neutral-100 p-2 text-sm"
+            class="flex align-items-start justify-content-between gap-3 border-round surface-100 p-2 text-sm"
           >
-            <p class="capitalize">
+            <p class="capitalize m-0">
               Linked: {{ outcomeForm.interpretationLens }} — {{ outcomeForm.interpretationSummary }}
             </p>
-            <button
-              type="button"
-              class="print:hidden shrink-0 text-neutral-500 underline hover:text-neutral-700"
+            <Button
+              text
+              size="small"
+              label="Unlink"
+              class="print-hidden flex-shrink-0"
               @click="unlinkInterpretationFromOutcome"
-            >
-              Unlink
-            </button>
+            />
           </div>
-          <p v-if="outcomeFormState.status === 'error'" class="text-sm text-red-600">
+          <Message v-if="outcomeFormState.status === 'error'" severity="error">
             {{ outcomeFormState.message }}
-          </p>
-          <button
+          </Message>
+          <Button
             type="submit"
             :disabled="outcomeFormState.status === 'submitting'"
-            class="print:hidden self-start rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-          >
-            {{ outcomeFormState.status === 'submitting' ? 'Saving…' : 'Save Outcome' }}
-          </button>
+            :label="outcomeFormState.status === 'submitting' ? 'Saving…' : 'Save Outcome'"
+            class="print-hidden align-self-start"
+          />
         </form>
       </div>
 
       <section
-        class="rounded-lg border-2 border-dashed border-neutral-300 p-4"
-        :class="{ 'print:hidden': interpretationState.status !== 'loaded' }"
+        class="border-2 border-dashed surface-border border-round p-4"
+        :class="{ 'print-hidden': interpretationState.status !== 'loaded' }"
       >
-        <h2 class="mb-3 text-sm font-medium text-neutral-500">AI Interpretation</h2>
+        <h2 class="mb-3 text-sm font-medium text-color-secondary">AI Interpretation</h2>
 
-        <div class="print:hidden mb-3 flex flex-wrap gap-2">
-          <button
+        <div class="print-hidden mb-3 flex flex-wrap gap-2">
+          <Button
             v-for="lens in INTERPRETATION_LENSES"
             :key="lens"
-            type="button"
             :aria-pressed="selectedLens === lens"
-            class="rounded-full border px-3 py-1 text-sm capitalize"
-            :class="
-              selectedLens === lens
-                ? 'border-neutral-900 bg-neutral-900 text-white'
-                : 'border-neutral-300 text-neutral-600 hover:border-neutral-400'
-            "
+            rounded
+            size="small"
+            class="capitalize"
+            :outlined="selectedLens !== lens"
             @click="selectedLens = lens"
           >
             {{ lens }}
             <span v-if="interpretationStates[lens].status === 'loaded'" aria-hidden="true">✓</span>
-          </button>
+          </Button>
         </div>
 
-        <button
-          type="button"
+        <Button
+          class="print-hidden"
           :disabled="interpretationState.status === 'loading'"
-          class="print:hidden rounded-md bg-neutral-800 px-4 py-2 text-sm text-white disabled:opacity-50"
-          @click="getInterpretation"
-        >
-          {{
+          :label="
             interpretationState.status === 'loading'
               ? 'Interpreting…'
               : interpretationState.status === 'loaded'
                 ? 'Regenerate'
                 : 'Get Interpretation'
-          }}
-        </button>
+          "
+          @click="getInterpretation"
+        />
 
-        <p v-if="interpretationState.status === 'error'" class="mt-3 text-red-600">
+        <Message v-if="interpretationState.status === 'error'" severity="error" class="mt-3">
           {{ interpretationState.message }}
-        </p>
+        </Message>
 
-        <div v-else-if="interpretationState.status === 'loaded'" class="mt-4 flex flex-col gap-3">
-          <p>{{ interpretationState.interpretation.summary }}</p>
+        <div v-else-if="interpretationState.status === 'loaded'" class="mt-4 flex flex-column gap-3">
+          <p class="m-0">{{ interpretationState.interpretation.summary }}</p>
 
-          <button
-            type="button"
-            class="print:hidden self-start rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-600 hover:border-neutral-400"
+          <Button
+            outlined
+            size="small"
+            label="Link to Outcome"
+            class="print-hidden align-self-start"
             @click="linkInterpretationToOutcome"
-          >
-            Link to Outcome
-          </button>
+          />
 
           <div>
-            <h3 class="text-xs font-medium text-neutral-500 uppercase">Core theme</h3>
-            <p>{{ interpretationState.interpretation.coreTheme }}</p>
+            <h3 class="text-xs font-medium text-color-secondary uppercase">Core theme</h3>
+            <p class="mt-1 mb-0">{{ interpretationState.interpretation.coreTheme }}</p>
           </div>
 
           <div>
-            <h3 class="text-xs font-medium text-neutral-500 uppercase">Situation</h3>
-            <p>{{ interpretationState.interpretation.situation }}</p>
+            <h3 class="text-xs font-medium text-color-secondary uppercase">Situation</h3>
+            <p class="mt-1 mb-0">{{ interpretationState.interpretation.situation }}</p>
           </div>
 
           <div v-if="interpretationState.interpretation.changingLineMeaning">
-            <h3 class="text-xs font-medium text-neutral-500 uppercase">Changing line meaning</h3>
-            <p>{{ interpretationState.interpretation.changingLineMeaning }}</p>
+            <h3 class="text-xs font-medium text-color-secondary uppercase">Changing line meaning</h3>
+            <p class="mt-1 mb-0">{{ interpretationState.interpretation.changingLineMeaning }}</p>
           </div>
 
           <div v-if="interpretationState.interpretation.transition">
-            <h3 class="text-xs font-medium text-neutral-500 uppercase">Transition</h3>
-            <p>{{ interpretationState.interpretation.transition }}</p>
+            <h3 class="text-xs font-medium text-color-secondary uppercase">Transition</h3>
+            <p class="mt-1 mb-0">{{ interpretationState.interpretation.transition }}</p>
           </div>
 
           <div>
-            <h3 class="text-xs font-medium text-neutral-500 uppercase">Practical reflection</h3>
-            <p>{{ interpretationState.interpretation.practicalReflection }}</p>
+            <h3 class="text-xs font-medium text-color-secondary uppercase">Practical reflection</h3>
+            <p class="mt-1 mb-0">{{ interpretationState.interpretation.practicalReflection }}</p>
           </div>
 
           <div v-if="interpretationState.interpretation.uncertainties.length > 0">
-            <h3 class="text-xs font-medium text-neutral-500 uppercase">Uncertainties</h3>
-            <ul class="list-inside list-disc">
+            <h3 class="text-xs font-medium text-color-secondary uppercase">Uncertainties</h3>
+            <ul class="list-inside list-disc m-0 pl-0">
               <li v-for="(note, index) in interpretationState.interpretation.uncertainties" :key="index">
                 {{ note }}
               </li>
@@ -821,8 +757,8 @@ onMounted(async () => {
           </div>
 
           <div v-if="interpretationState.interpretation.sourceReferences.length > 0">
-            <h3 class="text-xs font-medium text-neutral-500 uppercase">Sources</h3>
-            <ul class="list-inside list-disc text-sm text-neutral-500">
+            <h3 class="text-xs font-medium text-color-secondary uppercase">Sources</h3>
+            <ul class="list-inside list-disc text-sm text-color-secondary m-0 pl-0">
               <li
                 v-for="(sourceRef, index) in interpretationState.interpretation.sourceReferences"
                 :key="index"
@@ -832,35 +768,34 @@ onMounted(async () => {
             </ul>
           </div>
 
-          <div class="border-t border-neutral-200 pt-3">
-            <h3 class="mb-2 text-xs font-medium text-neutral-500 uppercase">Follow-up questions</h3>
+          <div class="border-top-1 surface-border pt-3">
+            <h3 class="mb-2 text-xs font-medium text-color-secondary uppercase">Follow-up questions</h3>
 
-            <ul v-if="currentConversation.length > 0" class="mb-3 flex flex-col gap-3">
+            <ul v-if="currentConversation.length > 0" class="mb-3 flex flex-column gap-3 list-none p-0">
               <li v-for="(exchange, index) in currentConversation" :key="index">
-                <p class="text-sm font-medium">{{ exchange.question }}</p>
-                <p class="text-sm text-neutral-600">{{ exchange.answer }}</p>
+                <p class="text-sm font-medium m-0">{{ exchange.question }}</p>
+                <p class="text-sm text-color-secondary mt-1 mb-0">{{ exchange.answer }}</p>
               </li>
             </ul>
 
-            <form class="print:hidden flex flex-col gap-2" @submit.prevent="askFollowUp">
-              <textarea
+            <form class="print-hidden flex flex-column gap-2" @submit.prevent="askFollowUp">
+              <Textarea
                 v-model="followUpText"
                 rows="2"
                 required
                 maxlength="2000"
                 placeholder="Ask a follow-up question…"
-                class="w-full rounded-md border border-neutral-300 p-2 text-sm"
+                class="w-full"
               />
-              <p v-if="followUpFormState.status === 'error'" class="text-sm text-red-600">
+              <Message v-if="followUpFormState.status === 'error'" severity="error">
                 {{ followUpFormState.message }}
-              </p>
-              <button
+              </Message>
+              <Button
                 type="submit"
                 :disabled="followUpFormState.status === 'submitting'"
-                class="self-start rounded-md bg-neutral-800 px-3 py-1.5 text-sm text-white disabled:opacity-50"
-              >
-                {{ followUpFormState.status === 'submitting' ? 'Asking…' : 'Ask' }}
-              </button>
+                :label="followUpFormState.status === 'submitting' ? 'Asking…' : 'Ask'"
+                class="align-self-start"
+              />
             </form>
           </div>
         </div>

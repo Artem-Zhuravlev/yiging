@@ -1,11 +1,22 @@
 import { describe, it, expect, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, VueWrapper } from '@vue/test-utils'
 import InterpretationSettingsPage from './InterpretationSettingsPage.vue'
 import {
   fetchInterpretationProfile,
   updateInterpretationProfile,
 } from '../../entities/interpretation-profile/api'
 import type { InterpretationProfile } from '../../entities/interpretation-profile/model'
+
+// PrimeVue's Select has no native <select> to target; findComponent()'s WrapperLike return type
+// doesn't expose .props()/.setValue() without narrowing away from the untyped default first.
+function selectValue(wrapper: ReturnType<typeof mount>, selector: string): string {
+  const component = wrapper.findComponent(selector) as VueWrapper
+  return (component.props() as { modelValue: string }).modelValue
+}
+
+async function setSelectValue(wrapper: ReturnType<typeof mount>, selector: string, value: string): Promise<void> {
+  await wrapper.findComponent(selector).setValue(value)
+}
 
 vi.mock('../../entities/interpretation-profile/api', () => ({
   fetchInterpretationProfile: vi.fn(),
@@ -33,8 +44,8 @@ describe('InterpretationSettingsPage', () => {
     const wrapper = mount(InterpretationSettingsPage)
     await flushPromises()
 
-    expect((wrapper.find('#tone').element as HTMLSelectElement).value).toBe('poetic')
-    expect((wrapper.find('#length').element as HTMLSelectElement).value).toBe('brief')
+    expect(selectValue(wrapper, '#tone')).toBe('poetic')
+    expect(selectValue(wrapper, '#length')).toBe('brief')
     expect((wrapper.find('#notes').element as HTMLTextAreaElement).value).toBe('Be vivid.')
   })
 
@@ -49,8 +60,8 @@ describe('InterpretationSettingsPage', () => {
     const wrapper = mount(InterpretationSettingsPage)
     await flushPromises()
 
-    await wrapper.find('#tone').setValue('formal')
-    await wrapper.find('#length').setValue('detailed')
+    await setSelectValue(wrapper, '#tone', 'formal')
+    await setSelectValue(wrapper, '#length', 'detailed')
     await wrapper.find('#notes').setValue('Prefer directness.')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
@@ -60,7 +71,7 @@ describe('InterpretationSettingsPage', () => {
       length: 'detailed',
       notes: 'Prefer directness.',
     })
-    expect((wrapper.find('#tone').element as HTMLSelectElement).value).toBe('formal')
+    expect(selectValue(wrapper, '#tone')).toBe('formal')
   })
 
   it('sends null for blank notes', async () => {

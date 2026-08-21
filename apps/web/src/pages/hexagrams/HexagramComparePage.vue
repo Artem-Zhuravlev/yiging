@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import Button from 'primevue/button'
+import Message from 'primevue/message'
 import { compareHexagrams } from '../../entities/hexagram/api'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
 import type { HexagramComparison } from '../../entities/hexagram/model'
@@ -74,77 +76,57 @@ const relationshipNote = computed<string | null>(() => {
 </script>
 
 <template>
-  <main class="mx-auto max-w-3xl px-6 py-10">
-    <router-link to="/hexagrams" class="text-sm text-neutral-500 hover:underline">
-      &larr; Hexagrams
-    </router-link>
+  <main class="max-w-screen-md mx-auto p-4">
+    <router-link to="/hexagrams" class="text-sm text-color-secondary">&larr; Hexagrams</router-link>
 
-    <h1 class="mt-4 mb-6 text-2xl font-semibold tracking-tight">Hexagram Comparison</h1>
+    <h1 class="mt-3 mb-4 text-2xl font-semibold">Hexagram Comparison</h1>
 
-    <form class="mb-8 flex items-end gap-4" @submit.prevent="submit">
-      <label class="flex flex-col gap-1 text-sm text-neutral-700">
+    <form class="mb-5 flex align-items-end gap-3" @submit.prevent="submit">
+      <label class="flex flex-column gap-1 text-sm">
         Hexagram A
-        <input
-          v-model.number="formA"
-          type="number"
-          min="1"
-          max="64"
-          class="w-20 rounded-md border border-neutral-300 p-2"
-        />
+        <input v-model.number="formA" type="number" min="1" max="64" class="p-inputtext p-component w-5rem" />
       </label>
-      <label class="flex flex-col gap-1 text-sm text-neutral-700">
+      <label class="flex flex-column gap-1 text-sm">
         Hexagram B
-        <input
-          v-model.number="formB"
-          type="number"
-          min="1"
-          max="64"
-          class="w-20 rounded-md border border-neutral-300 p-2"
-        />
+        <input v-model.number="formB" type="number" min="1" max="64" class="p-inputtext p-component w-5rem" />
       </label>
-      <button type="submit" class="rounded-md bg-neutral-800 px-4 py-2 text-white">Compare</button>
+      <Button type="submit" label="Compare" />
     </form>
 
-    <p v-if="state.status === 'loading'" class="text-neutral-500">Loading…</p>
-    <p v-else-if="state.status === 'error'" class="text-red-600">{{ state.message }}</p>
+    <p v-if="state.status === 'loading'" class="text-color-secondary">Loading…</p>
+    <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
 
-    <div v-else class="flex flex-col gap-6">
-      <div class="flex flex-wrap gap-10">
+    <div v-else class="flex flex-column gap-5">
+      <div class="flex flex-wrap gap-6">
         <div>
-          <h2 class="mb-2 text-sm font-medium text-neutral-500">
+          <h2 class="mb-2 text-sm font-medium text-color-secondary">
             A — {{ state.comparison.a.kingWenNumber }}. {{ state.comparison.a.chineseName }}
           </h2>
           <HexagramLines :lines="state.comparison.a.lines" />
-          <router-link
-            :to="`/hexagrams/${state.comparison.a.kingWenNumber}`"
-            class="mt-2 block text-sm underline hover:no-underline"
-          >
+          <router-link :to="`/hexagrams/${state.comparison.a.kingWenNumber}`" class="mt-2 block text-sm">
             View full page
           </router-link>
         </div>
         <div>
-          <h2 class="mb-2 text-sm font-medium text-neutral-500">
+          <h2 class="mb-2 text-sm font-medium text-color-secondary">
             B — {{ state.comparison.b.kingWenNumber }}. {{ state.comparison.b.chineseName }}
           </h2>
           <HexagramLines :lines="state.comparison.b.lines" />
-          <router-link
-            :to="`/hexagrams/${state.comparison.b.kingWenNumber}`"
-            class="mt-2 block text-sm underline hover:no-underline"
-          >
+          <router-link :to="`/hexagrams/${state.comparison.b.kingWenNumber}`" class="mt-2 block text-sm">
             View full page
           </router-link>
         </div>
       </div>
 
-      <p v-if="relationshipNote" class="text-neutral-700">{{ relationshipNote }}</p>
+      <p v-if="relationshipNote" class="m-0">{{ relationshipNote }}</p>
 
-      <table class="w-full border-collapse text-sm">
+      <table class="w-full text-sm compare-table">
         <thead>
-          <tr class="border-b border-neutral-200 text-left text-neutral-500">
-            <th class="py-1">Position</th>
-            <th class="py-1">A</th>
-            <th class="py-1">B</th>
-            <th class="py-1">Changed</th>
+          <tr>
+            <th class="text-left py-1">Position</th>
+            <th class="text-left py-1">A</th>
+            <th class="text-left py-1">B</th>
+            <th class="text-left py-1">Changed</th>
           </tr>
         </thead>
         <tbody>
@@ -153,7 +135,6 @@ const relationshipNote = computed<string | null>(() => {
             :key="line.position"
             :data-position="line.position"
             :data-changed="line.changed ? 'true' : undefined"
-            class="border-b border-neutral-100"
           >
             <td class="py-1">{{ line.position }}</td>
             <td class="py-1">{{ line.aPolarity }}</td>
@@ -163,27 +144,38 @@ const relationshipNote = computed<string | null>(() => {
         </tbody>
       </table>
 
-      <dl class="grid grid-cols-2 gap-4">
-        <div>
-          <dt class="text-sm text-neutral-500">Upper trigrams</dt>
-          <dd>{{ state.comparison.upperTrigramDiffers ? 'Differ' : 'Match' }}</dd>
+      <dl class="grid m-0">
+        <div class="col-6">
+          <dt class="text-sm text-color-secondary">Upper trigrams</dt>
+          <dd class="m-0">{{ state.comparison.upperTrigramDiffers ? 'Differ' : 'Match' }}</dd>
         </div>
-        <div>
-          <dt class="text-sm text-neutral-500">Lower trigrams</dt>
-          <dd>{{ state.comparison.lowerTrigramDiffers ? 'Differ' : 'Match' }}</dd>
+        <div class="col-6">
+          <dt class="text-sm text-color-secondary">Lower trigrams</dt>
+          <dd class="m-0">{{ state.comparison.lowerTrigramDiffers ? 'Differ' : 'Match' }}</dd>
         </div>
       </dl>
 
-      <div class="grid grid-cols-2 gap-6">
-        <div>
-          <h3 class="text-xs font-medium text-neutral-500 uppercase">A — Judgment</h3>
+      <div class="grid">
+        <div class="col-6">
+          <h3 class="text-xs font-medium text-color-secondary uppercase">A — Judgment</h3>
           <p class="text-sm">{{ state.comparison.a.judgment ?? NOT_AVAILABLE }}</p>
         </div>
-        <div>
-          <h3 class="text-xs font-medium text-neutral-500 uppercase">B — Judgment</h3>
+        <div class="col-6">
+          <h3 class="text-xs font-medium text-color-secondary uppercase">B — Judgment</h3>
           <p class="text-sm">{{ state.comparison.b.judgment ?? NOT_AVAILABLE }}</p>
         </div>
       </div>
     </div>
   </main>
 </template>
+
+<style scoped>
+.compare-table {
+  border-collapse: collapse;
+}
+
+.compare-table th,
+.compare-table td {
+  border-bottom: 1px solid var(--p-content-border-color);
+}
+</style>
