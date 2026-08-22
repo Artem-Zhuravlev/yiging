@@ -20,6 +20,8 @@ export const uk: typeof en = {
     journal: 'Щоденник',
     statistics: 'Статистика',
     settings: 'Налаштування',
+    darkMode: 'Перемкнути на темну тему',
+    lightMode: 'Перемкнути на світлу тему',
   },
   home: {
     title: 'Yijing',

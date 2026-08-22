@@ -6,6 +6,7 @@ import Toolbar from 'primevue/toolbar'
 import Button from 'primevue/button'
 import { setLocale, SUPPORTED_LOCALES } from './i18n'
 import type { Locale } from './i18n'
+import { isDarkMode, setDarkMode } from './darkMode'
 
 const route = useRoute()
 const { t, locale } = useI18n()
@@ -37,16 +38,26 @@ const links = computed(() => [
       <div v-else class="font-semibold">Yijing</div>
     </template>
     <template #end>
-      <div class="flex gap-1">
+      <div class="flex align-items-center gap-2">
         <Button
-          v-for="code in SUPPORTED_LOCALES"
-          :key="code"
-          :label="code.toUpperCase()"
+          :icon="isDarkMode ? 'pi pi-sun' : 'pi pi-moon'"
+          text
+          rounded
           size="small"
-          :text="locale !== code"
-          :aria-pressed="locale === code"
-          @click="setLocale(code as Locale)"
+          :aria-label="isDarkMode ? t('nav.lightMode') : t('nav.darkMode')"
+          @click="setDarkMode(!isDarkMode)"
         />
+        <div class="flex gap-1">
+          <Button
+            v-for="code in SUPPORTED_LOCALES"
+            :key="code"
+            :label="code.toUpperCase()"
+            size="small"
+            :text="locale !== code"
+            :aria-pressed="locale === code"
+            @click="setLocale(code as Locale)"
+          />
+        </div>
       </div>
     </template>
   </Toolbar>

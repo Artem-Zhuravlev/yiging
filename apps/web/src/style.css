@@ -18,6 +18,17 @@ body {
 
 a {
   color: var(--p-primary-color);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Links already styled as PrimeVue buttons (nav, "Save"/"Add" actions, etc.) get their own
+   hover treatment — a text-decoration underline on top of that looks broken. */
+a.p-button:hover {
+  text-decoration: none;
 }
 
 /* PrimeFlex has no print-variant utilities; controls that shouldn't appear on a printed page

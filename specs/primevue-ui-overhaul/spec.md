@@ -51,10 +51,17 @@ without changing any existing behavior, API calls, routes, or business logic.
 
 - **No new features or behavior changes.** Every page keeps its existing fields, buttons, states,
   and API calls; this is a pure re-skin.
-- **Dark mode.** The preset is configured with a `darkModeSelector` for future use, but no
-  dark-mode toggle is added — out of scope for this pass.
 - **PrimeVue's DataTable server-side features** (lazy loading, pagination server round-trips) —
   any table used here is a simple client-rendered list, matching current behavior.
+
+**2026-08-22 update**: Dark mode was originally scoped out above, but the default light theme
+turned out not to work for the user, and default browser underlines on every `<a>` (never reset
+in `style.css`) looked broken next to PrimeVue's own unstyled buttons. Added `src/darkMode.ts` — a
+toggle in the toolbar next to the locale switcher, using the `darkModeSelector: '.p-dark'` this
+spec already wired up, persisted in `localStorage`, defaulting new visitors to dark rather than
+PrimeVue's usual light default. `style.css` now resets `a { text-decoration: none }` with an
+`:hover` underline for plain inline links (excluded for anything already styled as a `.p-button`).
+Manually verified both themes on the home and consultation-detail pages.
 
 ## Acceptance criteria
 

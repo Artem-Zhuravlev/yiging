@@ -18,6 +18,8 @@ export const en = {
     journal: 'Journal',
     statistics: 'Statistics',
     settings: 'Settings',
+    darkMode: 'Switch to dark mode',
+    lightMode: 'Switch to light mode',
   },
   home: {
     title: 'Yijing',
