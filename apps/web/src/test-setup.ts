@@ -1,6 +1,7 @@
 import { config } from '@vue/test-utils'
 import PrimeVue from 'primevue/config'
 import { redTheme } from './theme'
+import { i18n } from './i18n'
 
 // jsdom has no window.matchMedia; several PrimeVue components (Select's responsive overlay
 // positioning, among others) call it unconditionally on mount.
@@ -30,3 +31,4 @@ config.global.plugins.push([
     },
   },
 ])
+config.global.plugins.push(i18n)

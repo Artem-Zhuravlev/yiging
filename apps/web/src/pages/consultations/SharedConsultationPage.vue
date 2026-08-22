@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import Tag from 'primevue/tag'
 import Message from 'primevue/message'
 import { fetchConsultation } from '../../entities/consultation/api'
@@ -21,6 +22,7 @@ type State =
       resultingLines: HexagramLine[]
     }
 
+const { t } = useI18n()
 const route = useRoute()
 const id = computed(() => String(route.params.id))
 const state = ref<State>({ status: 'loading' })
@@ -51,7 +53,7 @@ onMounted(async () => {
     }
     state.value = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to load consultation.',
+      message: error instanceof Error ? error.message : t('consultation.loadError'),
     }
   }
 })
@@ -59,8 +61,8 @@ onMounted(async () => {
 
 <template>
   <main class="max-w-screen-sm mx-auto p-4">
-    <p v-if="state.status === 'loading'" class="text-color-secondary">Loading…</p>
-    <p v-else-if="state.status === 'not-found'" class="text-color-secondary">Consultation not found.</p>
+    <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('common.loading') }}</p>
+    <p v-else-if="state.status === 'not-found'" class="text-color-secondary">{{ t('consultation.notFound') }}</p>
     <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
 
     <div v-else class="flex flex-column gap-5">
@@ -75,30 +77,38 @@ onMounted(async () => {
       <div class="flex flex-wrap align-items-start gap-6">
         <div>
           <h2 class="mb-2 text-sm font-medium text-color-secondary">
-            Primary — {{ state.consultation.primaryHexagram.kingWenNumber }}.
-            {{ state.consultation.primaryHexagram.chineseName }}
+            {{
+              t('consultation.primaryHeading', {
+                number: state.consultation.primaryHexagram.kingWenNumber,
+                name: state.consultation.primaryHexagram.chineseName,
+              })
+            }}
           </h2>
           <HexagramLines :lines="state.primaryLines" />
         </div>
 
         <div>
           <h2 class="mb-2 text-sm font-medium text-color-secondary">
-            Resulting — {{ state.consultation.resultingHexagram.kingWenNumber }}.
-            {{ state.consultation.resultingHexagram.chineseName }}
+            {{
+              t('consultation.resultingHeading', {
+                number: state.consultation.resultingHexagram.kingWenNumber,
+                name: state.consultation.resultingHexagram.chineseName,
+              })
+            }}
           </h2>
           <HexagramLines :lines="state.resultingLines" />
         </div>
       </div>
 
       <p v-if="state.consultation.changingLinePositions.length === 0" class="text-color-secondary">
-        No changing lines.
+        {{ t('consultation.noChangingLines') }}
       </p>
       <p v-else class="text-color-secondary">
-        Changing lines: {{ state.consultation.changingLinePositions.join(', ') }}
+        {{ t('consultation.changingLines', { list: state.consultation.changingLinePositions.join(', ') }) }}
       </p>
 
       <div v-if="state.consultation.notes.length > 0">
-        <h2 class="mb-2 text-sm font-medium text-color-secondary">Notes</h2>
+        <h2 class="mb-2 text-sm font-medium text-color-secondary">{{ t('consultation.notes') }}</h2>
         <ul class="flex flex-column gap-2 list-none p-0 m-0">
           <li v-for="(note, index) in state.consultation.notes" :key="index">
             <span class="text-xs tracking-wide text-color-secondary uppercase">{{ note.label }}</span>
@@ -121,41 +131,41 @@ onMounted(async () => {
         "
         class="flex flex-column gap-3"
       >
-        <h2 class="text-sm font-medium text-color-secondary m-0">Context</h2>
+        <h2 class="text-sm font-medium text-color-secondary m-0">{{ t('consultation.context') }}</h2>
         <div v-if="state.consultation.context">
-          <h3 class="text-xs text-color-secondary m-0">Context</h3>
+          <h3 class="text-xs text-color-secondary m-0">{{ t('consultation.context') }}</h3>
           <p class="mt-1 mb-0">{{ state.consultation.context }}</p>
         </div>
         <div v-if="state.consultation.whatHappenedBefore">
-          <h3 class="text-xs text-color-secondary m-0">What happened before</h3>
+          <h3 class="text-xs text-color-secondary m-0">{{ t('consultation.whatHappenedBefore') }}</h3>
           <p class="mt-1 mb-0">{{ state.consultation.whatHappenedBefore }}</p>
         </div>
         <div v-if="state.consultation.whatUserWantsToUnderstand">
-          <h3 class="text-xs text-color-secondary m-0">What you want to understand</h3>
+          <h3 class="text-xs text-color-secondary m-0">{{ t('consultation.whatUserWantsToUnderstand') }}</h3>
           <p class="mt-1 mb-0">{{ state.consultation.whatUserWantsToUnderstand }}</p>
         </div>
         <div v-if="state.consultation.backgroundInformation">
-          <h3 class="text-xs text-color-secondary m-0">Background information</h3>
+          <h3 class="text-xs text-color-secondary m-0">{{ t('consultation.backgroundInformation') }}</h3>
           <p class="mt-1 mb-0">{{ state.consultation.backgroundInformation }}</p>
         </div>
         <div v-if="state.consultation.initialInterpretation">
-          <h3 class="text-xs text-color-secondary m-0">Initial interpretation</h3>
+          <h3 class="text-xs text-color-secondary m-0">{{ t('consultation.initialInterpretation') }}</h3>
           <p class="mt-1 mb-0">{{ state.consultation.initialInterpretation }}</p>
         </div>
       </div>
 
       <div v-if="state.consultation.outcome">
-        <h2 class="mb-2 text-sm font-medium text-color-secondary">Outcome</h2>
+        <h2 class="mb-2 text-sm font-medium text-color-secondary">{{ t('consultation.outcome') }}</h2>
         <div v-if="state.consultation.outcome.whatActuallyHappened">
-          <h3 class="text-xs text-color-secondary m-0">What actually happened</h3>
+          <h3 class="text-xs text-color-secondary m-0">{{ t('consultation.whatActuallyHappened') }}</h3>
           <p class="mt-1 mb-0">{{ state.consultation.outcome.whatActuallyHappened }}</p>
         </div>
         <div v-if="state.consultation.outcome.outcome">
-          <h3 class="text-xs text-color-secondary m-0">Outcome</h3>
+          <h3 class="text-xs text-color-secondary m-0">{{ t('consultation.outcome') }}</h3>
           <p class="mt-1 mb-0">{{ state.consultation.outcome.outcome }}</p>
         </div>
         <div v-if="state.consultation.outcome.reflection">
-          <h3 class="text-xs text-color-secondary m-0">Reflection</h3>
+          <h3 class="text-xs text-color-secondary m-0">{{ t('consultation.reflection') }}</h3>
           <p class="mt-1 mb-0">{{ state.consultation.outcome.reflection }}</p>
         </div>
       </div>

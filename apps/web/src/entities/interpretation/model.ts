@@ -17,6 +17,7 @@ export interface Interpretation {
   uncertainties: string[]
   sourceReferences: string[]
   lens: InterpretationLens
+  language: string
 }
 
 /** One prior round of a follow-up conversation about an interpretation (SPEC-034) — sent back

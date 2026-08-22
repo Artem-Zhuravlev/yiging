@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
@@ -15,9 +16,15 @@ type State =
 
 type FormState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string }
 
+const { t } = useI18n()
 const state = ref<State>({ status: 'loading' })
 const formState = ref<FormState>({ status: 'idle' })
 const form = ref({ tone: 'neutral' as InterpretationProfile['tone'], length: 'standard' as InterpretationProfile['length'], notes: '' })
+
+const toneOptions = computed(() => TONES.map((tone) => ({ label: t(`settings.toneOptions.${tone}`), value: tone })))
+const lengthOptions = computed(() =>
+  RESPONSE_LENGTHS.map((length) => ({ label: t(`settings.lengthOptions.${length}`), value: length })),
+)
 
 onMounted(async () => {
   try {
@@ -27,7 +34,7 @@ onMounted(async () => {
   } catch (error) {
     state.value = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to load interpretation profile.',
+      message: error instanceof Error ? error.message : t('settings.loadError'),
     }
   }
 })
@@ -48,7 +55,7 @@ async function save(): Promise<void> {
   } catch (error) {
     formState.value = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to save interpretation profile.',
+      message: error instanceof Error ? error.message : t('settings.saveError'),
     }
   }
 }
@@ -56,36 +63,44 @@ async function save(): Promise<void> {
 
 <template>
   <main class="max-w-screen-sm mx-auto p-4">
-    <h1 class="text-2xl font-semibold mb-4">Settings</h1>
+    <h1 class="text-2xl font-semibold mb-4">{{ t('settings.title') }}</h1>
 
-    <p v-if="state.status === 'loading'" class="text-color-secondary">Loading…</p>
+    <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('common.loading') }}</p>
     <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
 
     <form v-else class="flex flex-column gap-4" @submit.prevent="save">
-      <h2 class="text-sm font-medium text-color-secondary m-0">Interpretation Profile</h2>
+      <h2 class="text-sm font-medium text-color-secondary m-0">{{ t('settings.profileHeading') }}</h2>
       <p class="text-sm text-color-secondary m-0">
-        Shapes every AI interpretation and follow-up answer from now on.
+        {{ t('settings.profileDescription') }}
       </p>
 
       <div class="flex flex-column gap-2">
-        <label for="tone" class="text-xs text-color-secondary">Tone</label>
-        <Select id="tone" v-model="form.tone" :options="[...TONES]" class="capitalize w-15rem" />
-      </div>
-
-      <div class="flex flex-column gap-2">
-        <label for="length" class="text-xs text-color-secondary">Length</label>
-        <Select id="length" v-model="form.length" :options="[...RESPONSE_LENGTHS]" class="capitalize w-15rem" />
-      </div>
-
-      <div class="flex flex-column gap-2">
-        <label for="notes" class="text-xs text-color-secondary">Notes</label>
-        <Textarea
-          id="notes"
-          v-model="form.notes"
-          rows="3"
-          maxlength="1000"
-          placeholder="Anything else the interpretation should take into account…"
+        <label for="tone" class="text-xs text-color-secondary">{{ t('settings.tone') }}</label>
+        <Select
+          id="tone"
+          v-model="form.tone"
+          :options="toneOptions"
+          option-label="label"
+          option-value="value"
+          class="w-15rem"
         />
+      </div>
+
+      <div class="flex flex-column gap-2">
+        <label for="length" class="text-xs text-color-secondary">{{ t('settings.length') }}</label>
+        <Select
+          id="length"
+          v-model="form.length"
+          :options="lengthOptions"
+          option-label="label"
+          option-value="value"
+          class="w-15rem"
+        />
+      </div>
+
+      <div class="flex flex-column gap-2">
+        <label for="notes" class="text-xs text-color-secondary">{{ t('settings.notes') }}</label>
+        <Textarea id="notes" v-model="form.notes" rows="3" maxlength="1000" :placeholder="t('settings.notesPlaceholder')" />
       </div>
 
       <Message v-if="formState.status === 'error'" severity="error">{{ formState.message }}</Message>
@@ -93,7 +108,7 @@ async function save(): Promise<void> {
       <Button
         type="submit"
         :disabled="formState.status === 'submitting'"
-        :label="formState.status === 'submitting' ? 'Saving…' : 'Save'"
+        :label="formState.status === 'submitting' ? t('settings.saving') : t('settings.save')"
         class="align-self-start"
       />
     </form>

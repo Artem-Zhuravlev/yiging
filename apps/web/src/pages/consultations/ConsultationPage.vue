@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { fetchConsultation, updateConsultation } from '../../entities/consultation/api'
 import type { Consultation, ConsultationRepeats } from '../../entities/consultation/model'
 import { fetchHexagram } from '../../entities/hexagram/api'
@@ -46,6 +47,7 @@ type FormState = { status: 'idle' } | { status: 'submitting' } | { status: 'erro
 
 type CopyLinkState = { status: 'idle' } | { status: 'copied' } | { status: 'error'; message: string }
 
+const { t, locale } = useI18n()
 const route = useRoute()
 const id = computed(() => String(route.params.id))
 const shareUrl = computed(() => `${location.origin}/share/consultations/${id.value}`)
@@ -79,13 +81,34 @@ const followUpText = ref('')
 const followUpFormState = ref<FormState>({ status: 'idle' })
 
 const noteLabel = ref<'before' | 'after' | 'later'>('after')
-const noteLabelOptions = [
-  { label: 'Before', value: 'before' },
-  { label: 'After', value: 'after' },
-  { label: 'Later', value: 'later' },
-]
+const noteLabelOptions = computed(() => [
+  { label: t('consultationPage.noteLabelBefore'), value: 'before' },
+  { label: t('consultationPage.noteLabelAfter'), value: 'after' },
+  { label: t('consultationPage.noteLabelLater'), value: 'later' },
+])
 const noteText = ref('')
 const noteFormState = ref<FormState>({ status: 'idle' })
+
+const NOTE_LABEL_KEYS = {
+  before: 'consultationPage.noteLabelBefore',
+  after: 'consultationPage.noteLabelAfter',
+  later: 'consultationPage.noteLabelLater',
+} as const
+
+function noteLabelText(label: string): string {
+  return t(NOTE_LABEL_KEYS[label as keyof typeof NOTE_LABEL_KEYS] ?? label)
+}
+
+const LENS_LABEL_KEYS = {
+  general: 'consultationPage.lensGeneral',
+  psychological: 'consultationPage.lensPsychological',
+  practical: 'consultationPage.lensPractical',
+  symbolic: 'consultationPage.lensSymbolic',
+} as const
+
+function lensLabel(lens: string): string {
+  return t(LENS_LABEL_KEYS[lens as keyof typeof LENS_LABEL_KEYS] ?? lens)
+}
 
 const tagText = ref('')
 const tagFormState = ref<FormState>({ status: 'idle' })
@@ -153,7 +176,7 @@ async function addNote(): Promise<void> {
   } catch (error) {
     noteFormState.value = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to add note.',
+      message: error instanceof Error ? error.message : t('consultationPage.addNoteError'),
     }
   }
 }
@@ -174,7 +197,7 @@ async function addTag(): Promise<void> {
   } catch (error) {
     tagFormState.value = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to add tag.',
+      message: error instanceof Error ? error.message : t('consultationPage.addTagError'),
     }
   }
 }
@@ -210,7 +233,7 @@ async function saveContext(): Promise<void> {
   } catch (error) {
     contextFormState.value = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to save context.',
+      message: error instanceof Error ? error.message : t('consultationPage.saveContextError'),
     }
   }
 }
@@ -242,7 +265,7 @@ async function saveOutcome(): Promise<void> {
   } catch (error) {
     outcomeFormState.value = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to save outcome.',
+      message: error instanceof Error ? error.message : t('consultationPage.saveOutcomeError'),
     }
   }
 }
@@ -258,7 +281,7 @@ async function copyShareLink(): Promise<void> {
   } catch (error) {
     copyLinkState.value = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to copy link.',
+      message: error instanceof Error ? error.message : t('consultationPage.copyLinkError'),
     }
   }
 }
@@ -280,7 +303,7 @@ async function toggleFavorite(): Promise<void> {
   } catch (error) {
     favoriteFormState.value = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to update favorite.',
+      message: error instanceof Error ? error.message : t('consultationPage.favoriteError'),
     }
   }
 }
@@ -295,12 +318,12 @@ async function getInterpretation(): Promise<void> {
   interpretationStates.value[lens] = { status: 'loading' }
 
   try {
-    const interpretation = await requestInterpretation(id.value, lens)
+    const interpretation = await requestInterpretation(id.value, lens, locale.value)
     interpretationStates.value[lens] = { status: 'loaded', interpretation }
   } catch (error) {
     interpretationStates.value[lens] = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to get interpretation.',
+      message: error instanceof Error ? error.message : t('consultationPage.getInterpretationError'),
     }
   }
 }
@@ -315,14 +338,14 @@ async function askFollowUp(): Promise<void> {
   followUpFormState.value = { status: 'submitting' }
 
   try {
-    const { answer } = await requestFollowUp(id.value, question, conversations.value[lens])
+    const { answer } = await requestFollowUp(id.value, question, conversations.value[lens], locale.value)
     conversations.value[lens] = [...conversations.value[lens], { question, answer }]
     followUpText.value = ''
     followUpFormState.value = { status: 'idle' }
   } catch (error) {
     followUpFormState.value = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to get an answer.',
+      message: error instanceof Error ? error.message : t('consultationPage.askFollowUpError'),
     }
   }
 }
@@ -356,7 +379,7 @@ onMounted(async () => {
     }
     state.value = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to load consultation.',
+      message: error instanceof Error ? error.message : t('consultationPage.loadError'),
     }
   }
 })
@@ -365,11 +388,13 @@ onMounted(async () => {
 <template>
   <main class="max-w-screen-sm mx-auto p-4">
     <router-link to="/consultations" class="print-hidden text-sm text-color-secondary">
-      &larr; History
+      &larr; {{ t('history.title') }}
     </router-link>
 
-    <p v-if="state.status === 'loading'" class="mt-4 text-color-secondary">Loading…</p>
-    <p v-else-if="state.status === 'not-found'" class="mt-4 text-color-secondary">Consultation not found.</p>
+    <p v-if="state.status === 'loading'" class="mt-4 text-color-secondary">{{ t('common.loading') }}</p>
+    <p v-else-if="state.status === 'not-found'" class="mt-4 text-color-secondary">
+      {{ t('consultationPage.notFound') }}
+    </p>
     <Message v-else-if="state.status === 'error'" severity="error" class="mt-4">{{ state.message }}</Message>
 
     <div v-else class="mt-4 flex flex-column gap-5">
@@ -381,18 +406,18 @@ onMounted(async () => {
               text
               size="small"
               :disabled="favoriteFormState.status === 'submitting'"
-              :label="state.consultation.favorite ? '★ Favorited' : '☆ Add to Favorites'"
+              :label="state.consultation.favorite ? t('hexagramDetail.favorited') : t('hexagramDetail.addToFavorites')"
               @click="toggleFavorite"
             />
-            <Button text size="small" label="Print / Export" @click="printPage" />
+            <Button text size="small" :label="t('consultationPage.printExport')" @click="printPage" />
             <Button
               text
               size="small"
-              :label="copyLinkState.status === 'copied' ? 'Link Copied' : 'Copy Share Link'"
+              :label="copyLinkState.status === 'copied' ? t('consultationPage.linkCopied') : t('consultationPage.copyShareLink')"
               @click="copyShareLink"
             />
             <router-link :to="`/share/consultations/${id}`" target="_blank" class="text-sm text-color-secondary">
-              View Public Share Page
+              {{ t('consultationPage.viewPublicSharePage') }}
             </router-link>
           </div>
         </div>
@@ -411,16 +436,24 @@ onMounted(async () => {
       <div class="flex flex-wrap align-items-start gap-6">
         <div>
           <h2 class="mb-2 text-sm font-medium text-color-secondary">
-            Primary — {{ state.consultation.primaryHexagram.kingWenNumber }}.
-            {{ state.consultation.primaryHexagram.chineseName }}
+            {{
+              t('consultation.primaryHeading', {
+                number: state.consultation.primaryHexagram.kingWenNumber,
+                name: state.consultation.primaryHexagram.chineseName,
+              })
+            }}
           </h2>
           <HexagramLines :lines="state.primaryLines" />
         </div>
 
         <div>
           <h2 class="mb-2 text-sm font-medium text-color-secondary">
-            Resulting — {{ state.consultation.resultingHexagram.kingWenNumber }}.
-            {{ state.consultation.resultingHexagram.chineseName }}
+            {{
+              t('consultation.resultingHeading', {
+                number: state.consultation.resultingHexagram.kingWenNumber,
+                name: state.consultation.resultingHexagram.chineseName,
+              })
+            }}
           </h2>
           <HexagramLines :lines="state.resultingLines" />
         </div>
@@ -430,26 +463,26 @@ onMounted(async () => {
         :to="`/hexagrams/compare?a=${state.consultation.primaryHexagram.kingWenNumber}&b=${state.consultation.resultingHexagram.kingWenNumber}`"
         class="print-hidden align-self-start text-sm"
       >
-        Compare hexagrams
+        {{ t('consultationPage.compareHexagrams') }}
       </router-link>
 
       <p v-if="state.consultation.changingLinePositions.length === 0" class="text-color-secondary">
-        No changing lines.
+        {{ t('consultation.noChangingLines') }}
       </p>
       <p v-else class="text-color-secondary">
-        Changing lines: {{ state.consultation.changingLinePositions.join(', ') }}
+        {{ t('consultation.changingLines', { list: state.consultation.changingLinePositions.join(', ') }) }}
       </p>
 
       <div>
         <p v-if="state.consultation.followUpTo" class="text-sm text-color-secondary">
-          Follow-up to:
+          {{ t('newConsultation.followUpTo') }}
           <router-link :to="`/consultations/${state.consultation.followUpTo.id}`">
             {{ state.consultation.followUpTo.question }}
           </router-link>
         </p>
 
         <div v-if="state.consultation.followUps.length > 0" class="mt-1">
-          <h2 class="text-sm font-medium text-color-secondary">Follow-ups</h2>
+          <h2 class="text-sm font-medium text-color-secondary">{{ t('consultationPage.followUps') }}</h2>
           <ul class="mt-1 flex flex-column gap-1 list-none p-0">
             <li v-for="followUp in state.consultation.followUps" :key="followUp.id">
               <router-link :to="`/consultations/${followUp.id}`" class="text-sm">
@@ -463,7 +496,7 @@ onMounted(async () => {
           :to="`/consultations/new?followUpTo=${state.consultation.id}`"
           class="print-hidden mt-1 inline-block text-sm"
         >
-          Create Follow-up
+          {{ t('consultationPage.createFollowUp') }}
         </router-link>
       </div>
 
@@ -477,7 +510,7 @@ onMounted(async () => {
         class="flex flex-column gap-3"
       >
         <div v-if="repeats.primaryHexagram.length > 0">
-          <h2 class="text-sm font-medium text-color-secondary">Same primary hexagram before</h2>
+          <h2 class="text-sm font-medium text-color-secondary">{{ t('consultationPage.samePrimaryBefore') }}</h2>
           <ul class="mt-1 flex flex-column gap-1 list-none p-0">
             <li v-for="match in repeats.primaryHexagram" :key="match.id">
               <router-link :to="`/consultations/${match.id}`" class="text-sm">
@@ -488,7 +521,7 @@ onMounted(async () => {
         </div>
 
         <div v-if="repeats.resultingHexagram.length > 0">
-          <h2 class="text-sm font-medium text-color-secondary">Same resulting hexagram before</h2>
+          <h2 class="text-sm font-medium text-color-secondary">{{ t('consultationPage.sameResultingBefore') }}</h2>
           <ul class="mt-1 flex flex-column gap-1 list-none p-0">
             <li v-for="match in repeats.resultingHexagram" :key="match.id">
               <router-link :to="`/consultations/${match.id}`" class="text-sm">
@@ -499,7 +532,7 @@ onMounted(async () => {
         </div>
 
         <div v-if="repeats.changingLines.length > 0">
-          <h2 class="text-sm font-medium text-color-secondary">Same changing lines before</h2>
+          <h2 class="text-sm font-medium text-color-secondary">{{ t('consultationPage.sameChangingBefore') }}</h2>
           <ul class="mt-1 flex flex-column gap-1 list-none p-0">
             <li v-for="match in repeats.changingLines" :key="match.id">
               <router-link :to="`/consultations/${match.id}`" class="text-sm">
@@ -511,10 +544,10 @@ onMounted(async () => {
       </div>
 
       <div>
-        <h2 class="mb-2 text-sm font-medium text-color-secondary">Notes</h2>
+        <h2 class="mb-2 text-sm font-medium text-color-secondary">{{ t('consultation.notes') }}</h2>
         <ul v-if="state.consultation.notes.length > 0" class="mb-3 flex flex-column gap-2 list-none p-0">
           <li v-for="(note, index) in state.consultation.notes" :key="index">
-            <span class="text-xs tracking-wide text-color-secondary uppercase">{{ note.label }}</span>
+            <span class="text-xs tracking-wide text-color-secondary uppercase">{{ noteLabelText(note.label) }}</span>
             <p class="mt-1 mb-0">{{ note.text }}</p>
           </li>
         </ul>
@@ -522,13 +555,20 @@ onMounted(async () => {
         <form class="print-hidden flex flex-column gap-2" @submit.prevent="addNote">
           <div class="flex gap-2">
             <Select v-model="noteLabel" :options="noteLabelOptions" option-label="label" option-value="value" />
-            <Textarea v-model="noteText" rows="2" required maxlength="5000" placeholder="Add a note…" class="flex-1" />
+            <Textarea
+              v-model="noteText"
+              rows="2"
+              required
+              maxlength="5000"
+              :placeholder="t('consultationPage.addNotePlaceholder')"
+              class="flex-1"
+            />
           </div>
           <Message v-if="noteFormState.status === 'error'" severity="error">{{ noteFormState.message }}</Message>
           <Button
             type="submit"
             :disabled="noteFormState.status === 'submitting'"
-            :label="noteFormState.status === 'submitting' ? 'Adding…' : 'Add Note'"
+            :label="noteFormState.status === 'submitting' ? t('journal.adding') : t('consultationPage.addNote')"
             class="align-self-start"
           />
         </form>
@@ -541,11 +581,17 @@ onMounted(async () => {
 
         <form class="print-hidden flex flex-column gap-2" @submit.prevent="addTag">
           <div class="flex gap-2">
-            <InputText v-model="tagText" type="text" required placeholder="Add a tag…" class="flex-1" />
+            <InputText
+              v-model="tagText"
+              type="text"
+              required
+              :placeholder="t('consultationPage.addTagPlaceholder')"
+              class="flex-1"
+            />
             <Button
               type="submit"
               :disabled="tagFormState.status === 'submitting'"
-              :label="tagFormState.status === 'submitting' ? 'Adding…' : 'Add Tag'"
+              :label="tagFormState.status === 'submitting' ? t('journal.adding') : t('consultationPage.addTag')"
             />
           </div>
           <Message v-if="tagFormState.status === 'error'" severity="error">{{ tagFormState.message }}</Message>
@@ -553,15 +599,17 @@ onMounted(async () => {
       </div>
 
       <div>
-        <h2 class="mb-2 text-sm font-medium text-color-secondary">Context</h2>
+        <h2 class="mb-2 text-sm font-medium text-color-secondary">{{ t('consultation.context') }}</h2>
         <form class="flex flex-column gap-3" @submit.prevent="saveContext">
           <div>
-            <label for="edit-context" class="mb-1 block text-xs text-color-secondary">Context</label>
+            <label for="edit-context" class="mb-1 block text-xs text-color-secondary">
+              {{ t('contextFields.context') }}
+            </label>
             <Textarea id="edit-context" v-model="contextForm.context" rows="2" maxlength="5000" class="w-full" />
           </div>
           <div>
             <label for="edit-what-happened-before" class="mb-1 block text-xs text-color-secondary">
-              What happened before
+              {{ t('contextFields.whatHappenedBefore') }}
             </label>
             <Textarea
               id="edit-what-happened-before"
@@ -573,7 +621,7 @@ onMounted(async () => {
           </div>
           <div>
             <label for="edit-what-to-understand" class="mb-1 block text-xs text-color-secondary">
-              What you want to understand
+              {{ t('contextFields.whatUserWantsToUnderstand') }}
             </label>
             <Textarea
               id="edit-what-to-understand"
@@ -585,7 +633,7 @@ onMounted(async () => {
           </div>
           <div>
             <label for="edit-background" class="mb-1 block text-xs text-color-secondary">
-              Background information
+              {{ t('contextFields.backgroundInformation') }}
             </label>
             <Textarea
               id="edit-background"
@@ -597,7 +645,7 @@ onMounted(async () => {
           </div>
           <div>
             <label for="edit-initial-interpretation" class="mb-1 block text-xs text-color-secondary">
-              Your initial interpretation
+              {{ t('contextFields.initialInterpretation') }}
             </label>
             <Textarea
               id="edit-initial-interpretation"
@@ -613,21 +661,25 @@ onMounted(async () => {
           <Button
             type="submit"
             :disabled="contextFormState.status === 'submitting'"
-            :label="contextFormState.status === 'submitting' ? 'Saving…' : 'Save Context'"
+            :label="contextFormState.status === 'submitting' ? t('consultationPage.saving') : t('consultationPage.saveContext')"
             class="print-hidden align-self-start"
           />
         </form>
       </div>
 
       <div>
-        <h2 class="mb-2 text-sm font-medium text-color-secondary">Outcome</h2>
+        <h2 class="mb-2 text-sm font-medium text-color-secondary">{{ t('consultation.outcome') }}</h2>
         <p v-if="state.consultation.outcome" class="mb-2 text-xs text-color-secondary">
-          Last recorded {{ new Date(state.consultation.outcome.recordedAt).toLocaleString() }}
+          {{
+            t('consultationPage.lastRecorded', {
+              date: new Date(state.consultation.outcome.recordedAt).toLocaleString(),
+            })
+          }}
         </p>
         <form class="flex flex-column gap-3" @submit.prevent="saveOutcome">
           <div>
             <label for="edit-what-happened" class="mb-1 block text-xs text-color-secondary">
-              What actually happened
+              {{ t('consultation.whatActuallyHappened') }}
             </label>
             <Textarea
               id="edit-what-happened"
@@ -638,24 +690,30 @@ onMounted(async () => {
             />
           </div>
           <div>
-            <label for="edit-outcome" class="mb-1 block text-xs text-color-secondary">Outcome</label>
+            <label for="edit-outcome" class="mb-1 block text-xs text-color-secondary">
+              {{ t('consultation.outcome') }}
+            </label>
             <Textarea id="edit-outcome" v-model="outcomeForm.outcome" rows="2" maxlength="5000" class="w-full" />
           </div>
           <div>
-            <label for="edit-reflection" class="mb-1 block text-xs text-color-secondary">Reflection</label>
+            <label for="edit-reflection" class="mb-1 block text-xs text-color-secondary">
+              {{ t('consultation.reflection') }}
+            </label>
             <Textarea id="edit-reflection" v-model="outcomeForm.reflection" rows="2" maxlength="5000" class="w-full" />
           </div>
           <div
             v-if="outcomeForm.interpretationLens"
             class="flex align-items-start justify-content-between gap-3 border-round surface-100 p-2 text-sm"
           >
-            <p class="capitalize m-0">
-              Linked: {{ outcomeForm.interpretationLens }} — {{ outcomeForm.interpretationSummary }}
+            <p class="m-0">
+              {{ t('consultationPage.linkedPrefix') }}
+              <span class="capitalize">{{ lensLabel(outcomeForm.interpretationLens) }}</span>
+              — {{ outcomeForm.interpretationSummary }}
             </p>
             <Button
               text
               size="small"
-              label="Unlink"
+              :label="t('consultationPage.unlink')"
               class="print-hidden flex-shrink-0"
               @click="unlinkInterpretationFromOutcome"
             />
@@ -666,7 +724,7 @@ onMounted(async () => {
           <Button
             type="submit"
             :disabled="outcomeFormState.status === 'submitting'"
-            :label="outcomeFormState.status === 'submitting' ? 'Saving…' : 'Save Outcome'"
+            :label="outcomeFormState.status === 'submitting' ? t('consultationPage.saving') : t('consultationPage.saveOutcome')"
             class="print-hidden align-self-start"
           />
         </form>
@@ -676,7 +734,7 @@ onMounted(async () => {
         class="border-2 border-dashed surface-border border-round p-4"
         :class="{ 'print-hidden': interpretationState.status !== 'loaded' }"
       >
-        <h2 class="mb-3 text-sm font-medium text-color-secondary">AI Interpretation</h2>
+        <h2 class="mb-3 text-sm font-medium text-color-secondary">{{ t('consultationPage.aiInterpretation') }}</h2>
 
         <div class="print-hidden mb-3 flex flex-wrap gap-2">
           <Button
@@ -689,7 +747,7 @@ onMounted(async () => {
             :outlined="selectedLens !== lens"
             @click="selectedLens = lens"
           >
-            {{ lens }}
+            {{ lensLabel(lens) }}
             <span v-if="interpretationStates[lens].status === 'loaded'" aria-hidden="true">✓</span>
           </Button>
         </div>
@@ -699,10 +757,10 @@ onMounted(async () => {
           :disabled="interpretationState.status === 'loading'"
           :label="
             interpretationState.status === 'loading'
-              ? 'Interpreting…'
+              ? t('consultationPage.interpreting')
               : interpretationState.status === 'loaded'
-                ? 'Regenerate'
-                : 'Get Interpretation'
+                ? t('consultationPage.regenerate')
+                : t('consultationPage.getInterpretation')
           "
           @click="getInterpretation"
         />
@@ -717,38 +775,44 @@ onMounted(async () => {
           <Button
             outlined
             size="small"
-            label="Link to Outcome"
+            :label="t('consultationPage.linkToOutcome')"
             class="print-hidden align-self-start"
             @click="linkInterpretationToOutcome"
           />
 
           <div>
-            <h3 class="text-xs font-medium text-color-secondary uppercase">Core theme</h3>
+            <h3 class="text-xs font-medium text-color-secondary uppercase">{{ t('consultationPage.coreTheme') }}</h3>
             <p class="mt-1 mb-0">{{ interpretationState.interpretation.coreTheme }}</p>
           </div>
 
           <div>
-            <h3 class="text-xs font-medium text-color-secondary uppercase">Situation</h3>
+            <h3 class="text-xs font-medium text-color-secondary uppercase">{{ t('consultationPage.situation') }}</h3>
             <p class="mt-1 mb-0">{{ interpretationState.interpretation.situation }}</p>
           </div>
 
           <div v-if="interpretationState.interpretation.changingLineMeaning">
-            <h3 class="text-xs font-medium text-color-secondary uppercase">Changing line meaning</h3>
+            <h3 class="text-xs font-medium text-color-secondary uppercase">
+              {{ t('consultationPage.changingLineMeaning') }}
+            </h3>
             <p class="mt-1 mb-0">{{ interpretationState.interpretation.changingLineMeaning }}</p>
           </div>
 
           <div v-if="interpretationState.interpretation.transition">
-            <h3 class="text-xs font-medium text-color-secondary uppercase">Transition</h3>
+            <h3 class="text-xs font-medium text-color-secondary uppercase">{{ t('consultationPage.transition') }}</h3>
             <p class="mt-1 mb-0">{{ interpretationState.interpretation.transition }}</p>
           </div>
 
           <div>
-            <h3 class="text-xs font-medium text-color-secondary uppercase">Practical reflection</h3>
+            <h3 class="text-xs font-medium text-color-secondary uppercase">
+              {{ t('consultationPage.practicalReflection') }}
+            </h3>
             <p class="mt-1 mb-0">{{ interpretationState.interpretation.practicalReflection }}</p>
           </div>
 
           <div v-if="interpretationState.interpretation.uncertainties.length > 0">
-            <h3 class="text-xs font-medium text-color-secondary uppercase">Uncertainties</h3>
+            <h3 class="text-xs font-medium text-color-secondary uppercase">
+              {{ t('consultationPage.uncertainties') }}
+            </h3>
             <ul class="list-inside list-disc m-0 pl-0">
               <li v-for="(note, index) in interpretationState.interpretation.uncertainties" :key="index">
                 {{ note }}
@@ -757,7 +821,7 @@ onMounted(async () => {
           </div>
 
           <div v-if="interpretationState.interpretation.sourceReferences.length > 0">
-            <h3 class="text-xs font-medium text-color-secondary uppercase">Sources</h3>
+            <h3 class="text-xs font-medium text-color-secondary uppercase">{{ t('consultationPage.sources') }}</h3>
             <ul class="list-inside list-disc text-sm text-color-secondary m-0 pl-0">
               <li
                 v-for="(sourceRef, index) in interpretationState.interpretation.sourceReferences"
@@ -769,7 +833,9 @@ onMounted(async () => {
           </div>
 
           <div class="border-top-1 surface-border pt-3">
-            <h3 class="mb-2 text-xs font-medium text-color-secondary uppercase">Follow-up questions</h3>
+            <h3 class="mb-2 text-xs font-medium text-color-secondary uppercase">
+              {{ t('consultationPage.followUpQuestions') }}
+            </h3>
 
             <ul v-if="currentConversation.length > 0" class="mb-3 flex flex-column gap-3 list-none p-0">
               <li v-for="(exchange, index) in currentConversation" :key="index">
@@ -784,7 +850,7 @@ onMounted(async () => {
                 rows="2"
                 required
                 maxlength="2000"
-                placeholder="Ask a follow-up question…"
+                :placeholder="t('consultationPage.askPlaceholder')"
                 class="w-full"
               />
               <Message v-if="followUpFormState.status === 'error'" severity="error">
@@ -793,7 +859,7 @@ onMounted(async () => {
               <Button
                 type="submit"
                 :disabled="followUpFormState.status === 'submitting'"
-                :label="followUpFormState.status === 'submitting' ? 'Asking…' : 'Ask'"
+                :label="followUpFormState.status === 'submitting' ? t('consultationPage.asking') : t('consultationPage.ask')"
                 class="align-self-start"
               />
             </form>

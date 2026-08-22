@@ -123,6 +123,94 @@ final class InterpretationControllerTest extends TestCase
         self::assertSame(422, $response->getStatusCode());
     }
 
+    public function testDefaultsToEnglishWhenLanguageIsAbsent(): void
+    {
+        $primary = self::hexagramFromPattern('111111', changingPositions: [1]);
+        $consultation = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            $primary,
+            new \DateTimeImmutable(),
+        );
+        $this->repository->save($consultation);
+
+        $response = $this->kernel->handle(Request::create('/api/interpretations/consult-1', 'POST'));
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame('en', $this->decode($response)['language']);
+    }
+
+    public function testAcceptsAnExplicitLanguageAndEchoesItInTheResponse(): void
+    {
+        $primary = self::hexagramFromPattern('111111', changingPositions: [1]);
+        $consultation = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            $primary,
+            new \DateTimeImmutable(),
+        );
+        $this->repository->save($consultation);
+
+        $response = $this->kernel->handle(Request::create(
+            '/api/interpretations/consult-1',
+            'POST',
+            content: json_encode(['language' => 'uk'], JSON_THROW_ON_ERROR),
+        ));
+
+        self::assertSame(200, $response->getStatusCode());
+        $body = $this->decode($response);
+        self::assertSame('uk', $body['language']);
+        self::assertStringContainsString('Requested language: uk', implode(' ', $body['uncertainties']));
+    }
+
+    public function testRejectsAnInvalidLanguageWith422BeforeTouchingTheConsultation(): void
+    {
+        $response = $this->kernel->handle(Request::create(
+            '/api/interpretations/does-not-exist',
+            'POST',
+            content: json_encode(['language' => 'fr'], JSON_THROW_ON_ERROR),
+        ));
+
+        // 422, not 404 - proves language validation happens before the repository lookup, even
+        // though the id in this test doesn't exist either.
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testFollowUpAcceptsAnExplicitLanguage(): void
+    {
+        $primary = self::hexagramFromPattern('111111', changingPositions: [1]);
+        $consultation = Consultation::create(
+            'consult-1',
+            'Should I take the offer?',
+            CastingMethodName::ThreeCoins,
+            $primary,
+            new \DateTimeImmutable(),
+        );
+        $this->repository->save($consultation);
+
+        $response = $this->kernel->handle(Request::create(
+            '/api/interpretations/consult-1/followup',
+            'POST',
+            content: json_encode(['question' => 'What should I avoid?', 'language' => 'uk'], JSON_THROW_ON_ERROR),
+        ));
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertStringContainsString('Requested language: uk', $this->decode($response)['answer']);
+    }
+
+    public function testFollowUpRejectsAnInvalidLanguageWith422(): void
+    {
+        $response = $this->kernel->handle(Request::create(
+            '/api/interpretations/does-not-exist/followup',
+            'POST',
+            content: json_encode(['question' => 'Q?', 'language' => 'fr'], JSON_THROW_ON_ERROR),
+        ));
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
     public function testRejectsMalformedJsonBodyWith422(): void
     {
         $response = $this->kernel->handle(Request::create(

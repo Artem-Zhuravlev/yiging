@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
@@ -16,6 +17,7 @@ type State =
   | { status: 'error'; message: string }
   | { status: 'loaded'; hexagrams: Hexagram[] }
 
+const { t } = useI18n()
 const state = ref<State>({ status: 'loading' })
 const searchQuery = ref('')
 const favoritesOnly = ref(false)
@@ -27,7 +29,7 @@ onMounted(async () => {
   } catch (error) {
     state.value = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to load hexagrams.',
+      message: error instanceof Error ? error.message : t('hexagramList.loadError'),
     }
   }
 })
@@ -71,11 +73,11 @@ async function toggleFavorite(hexagram: Hexagram): Promise<void> {
 <template>
   <main class="max-w-screen-lg mx-auto p-4">
     <div class="mb-4 flex align-items-center justify-content-between">
-      <h1 class="text-2xl font-semibold m-0">Hexagram Explorer</h1>
-      <router-link to="/hexagrams/editor" class="text-sm">Visual Editor</router-link>
+      <h1 class="text-2xl font-semibold m-0">{{ t('hexagramList.title') }}</h1>
+      <router-link to="/hexagrams/editor" class="text-sm">{{ t('hexagramList.visualEditor') }}</router-link>
     </div>
 
-    <p v-if="state.status === 'loading'" class="text-color-secondary">Loading hexagrams…</p>
+    <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('hexagramList.loading') }}</p>
     <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
 
     <template v-else>
@@ -83,12 +85,12 @@ async function toggleFavorite(hexagram: Hexagram): Promise<void> {
         <InputText
           v-model="searchQuery"
           type="search"
-          placeholder="Search name, pinyin, Judgment, Image…"
+          :placeholder="t('hexagramList.searchPlaceholder')"
           class="w-full sm:w-25rem"
         />
         <Button
           :aria-pressed="favoritesOnly"
-          label="★ Favorites only"
+          :label="t('hexagramList.favoritesOnly')"
           rounded
           size="small"
           :outlined="!favoritesOnly"
@@ -97,7 +99,7 @@ async function toggleFavorite(hexagram: Hexagram): Promise<void> {
       </div>
 
       <p v-if="filteredHexagrams.length === 0" class="text-color-secondary">
-        No hexagrams match your search.
+        {{ t('hexagramList.noMatches') }}
       </p>
 
       <ul v-else class="grid list-none p-0 m-0">
@@ -110,7 +112,7 @@ async function toggleFavorite(hexagram: Hexagram): Promise<void> {
             class="absolute favorite-star"
             text
             rounded
-            :aria-label="hexagram.favorite ? 'Remove from favorites' : 'Add to favorites'"
+            :aria-label="hexagram.favorite ? t('hexagramList.removeFromFavorites') : t('hexagramList.addToFavorites')"
             @click.stop.prevent="toggleFavorite(hexagram)"
           >
             {{ hexagram.favorite ? '★' : '☆' }}

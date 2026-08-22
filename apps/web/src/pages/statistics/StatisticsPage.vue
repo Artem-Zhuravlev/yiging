@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Panel from 'primevue/panel'
 import ProgressBar from 'primevue/progressbar'
 import Message from 'primevue/message'
@@ -12,6 +13,7 @@ type State =
   | { status: 'error'; message: string }
   | { status: 'loaded'; statistics: Statistics }
 
+const { t } = useI18n()
 const state = ref<State>({ status: 'loading' })
 
 onMounted(async () => {
@@ -21,7 +23,7 @@ onMounted(async () => {
   } catch (error) {
     state.value = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to load statistics.',
+      message: error instanceof Error ? error.message : t('statistics.loadError'),
     }
   }
 })
@@ -41,19 +43,21 @@ const yangPercent = computed(() => {
 
 <template>
   <main class="max-w-screen-sm mx-auto p-4">
-    <h1 class="text-2xl font-semibold mb-4">Statistics</h1>
+    <h1 class="text-2xl font-semibold mb-4">{{ t('statistics.title') }}</h1>
 
-    <p v-if="state.status === 'loading'" class="text-color-secondary">Loading…</p>
+    <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('common.loading') }}</p>
     <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
 
     <p v-else-if="state.statistics.totalConsultations === 0" class="text-color-secondary">
-      No consultations yet — nothing to show statistics for.
+      {{ t('statistics.empty') }}
     </p>
 
     <div v-else class="flex flex-column gap-4">
-      <p class="text-color-secondary m-0">{{ state.statistics.totalConsultations }} consultations</p>
+      <p class="text-color-secondary m-0">
+        {{ t('statistics.consultationsCount', { count: state.statistics.totalConsultations }) }}
+      </p>
 
-      <Panel header="Hexagram frequency">
+      <Panel :header="t('statistics.hexagramFrequency')">
         <ul class="flex flex-column gap-2 list-none p-0 m-0">
           <li
             v-for="entry in state.statistics.hexagramFrequency"
@@ -66,15 +70,21 @@ const yangPercent = computed(() => {
         </ul>
       </Panel>
 
-      <Panel header="Yin / Yang ratio">
+      <Panel :header="t('statistics.yinYangRatio')">
         <p class="text-sm mt-0">
-          {{ state.statistics.yinYangRatio.yin }} yin / {{ state.statistics.yinYangRatio.yang }} yang
-          ({{ yinPercent }}% / {{ yangPercent }}%)
+          {{
+            t('statistics.yinYangLine', {
+              yin: state.statistics.yinYangRatio.yin,
+              yang: state.statistics.yinYangRatio.yang,
+              yinPercent,
+              yangPercent,
+            })
+          }}
         </p>
         <ProgressBar :value="yinPercent" :show-value="false" />
       </Panel>
 
-      <Panel v-if="state.statistics.tagFrequency.length > 0" header="Tag frequency">
+      <Panel v-if="state.statistics.tagFrequency.length > 0" :header="t('statistics.tagFrequency')">
         <ul class="flex flex-column gap-2 list-none p-0 m-0">
           <li
             v-for="entry in state.statistics.tagFrequency"

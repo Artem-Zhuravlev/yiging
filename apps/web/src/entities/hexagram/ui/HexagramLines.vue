@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { HexagramLine } from '../model'
 
 const props = defineProps<{
   lines: HexagramLine[]
 }>()
+
+const { t } = useI18n()
 
 // Domain lines are ordered position 1 (bottom) to 6 (top); reverse only for top-to-bottom
 // visual stacking. The prop itself is never mutated or reordered for callers.
@@ -12,7 +15,11 @@ const topToBottom = computed(() => [...props.lines].reverse())
 </script>
 
 <template>
-  <div class="flex flex-column gap-2" role="img" :aria-label="`Hexagram with ${lines.length} lines`">
+  <div
+    class="flex flex-column gap-2"
+    role="img"
+    :aria-label="t('hexagramLines.ariaLabel', { count: lines.length })"
+  >
     <div
       v-for="line in topToBottom"
       :key="line.position"
@@ -26,7 +33,7 @@ const topToBottom = computed(() => [...props.lines].reverse())
         <span class="hexagram-line-bar hexagram-line-bar-broken" />
         <span class="hexagram-line-bar hexagram-line-bar-broken" />
       </template>
-      <span v-if="line.changing" class="hexagram-line-changing-dot" title="Changing line" />
+      <span v-if="line.changing" class="hexagram-line-changing-dot" :title="t('hexagramLines.changingLine')" />
     </div>
   </div>
 </template>

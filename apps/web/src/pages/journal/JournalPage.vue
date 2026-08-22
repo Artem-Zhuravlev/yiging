@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -19,6 +20,7 @@ interface EntryGroup {
 
 type FormState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string }
 
+const { t } = useI18n()
 const state = ref<State>({ status: 'loading' })
 const entryText = ref('')
 const formState = ref<FormState>({ status: 'idle' })
@@ -30,7 +32,7 @@ onMounted(async () => {
   } catch (error) {
     state.value = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to load journal entries.',
+      message: error instanceof Error ? error.message : t('journal.loadError'),
     }
   }
 })
@@ -67,7 +69,7 @@ async function addEntry(): Promise<void> {
   } catch (error) {
     formState.value = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to add entry.',
+      message: error instanceof Error ? error.message : t('journal.addError'),
     }
   }
 }
@@ -75,25 +77,25 @@ async function addEntry(): Promise<void> {
 
 <template>
   <main class="max-w-screen-sm mx-auto p-4">
-    <h1 class="text-2xl font-semibold mb-4">Journal</h1>
+    <h1 class="text-2xl font-semibold mb-4">{{ t('journal.title') }}</h1>
 
-    <p v-if="state.status === 'loading'" class="text-color-secondary">Loading…</p>
+    <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('common.loading') }}</p>
     <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
 
     <template v-else>
       <form class="mb-5 flex flex-column gap-2" @submit.prevent="addEntry">
-        <Textarea v-model="entryText" rows="3" required maxlength="5000" placeholder="Write a reflection…" />
+        <Textarea v-model="entryText" rows="3" required maxlength="5000" :placeholder="t('journal.entryPlaceholder')" />
         <Message v-if="formState.status === 'error'" severity="error">{{ formState.message }}</Message>
         <Button
           type="submit"
           :disabled="formState.status === 'submitting'"
-          :label="formState.status === 'submitting' ? 'Adding…' : 'Add Entry'"
+          :label="formState.status === 'submitting' ? t('journal.adding') : t('journal.addEntry')"
           class="align-self-start"
         />
       </form>
 
       <p v-if="state.entries.length === 0" class="text-color-secondary">
-        No journal entries yet — write your first one above.
+        {{ t('journal.empty') }}
       </p>
 
       <div v-else class="flex flex-column gap-5">

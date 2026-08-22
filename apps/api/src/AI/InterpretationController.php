@@ -73,6 +73,15 @@ final class InterpretationController
             );
         }
 
+        $language = $this->resolveLanguage($body);
+
+        if ($language === null) {
+            return new JsonResponse(
+                ['error' => "Invalid 'language'. Expected one of: en, uk."],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
         $consultation = $this->repository->findById($vars['id']);
 
         if ($consultation === null) {
@@ -83,12 +92,12 @@ final class InterpretationController
         $profile = $this->profileRepository->get();
 
         try {
-            $interpretation = $this->provider->interpret($context, $lens, $profile);
+            $interpretation = $this->provider->interpret($context, $lens, $profile, $language);
         } catch (InterpretationProviderException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_BAD_GATEWAY);
         }
 
-        return new JsonResponse($this->toJson($interpretation, $lens));
+        return new JsonResponse($this->toJson($interpretation, $lens, $language));
     }
 
     /**
@@ -136,6 +145,15 @@ final class InterpretationController
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        $language = $this->resolveLanguage($body);
+
+        if ($language === null) {
+            return new JsonResponse(
+                ['error' => "Invalid 'language'. Expected one of: en, uk."],
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
         $consultation = $this->repository->findById($vars['id']);
 
         if ($consultation === null) {
@@ -146,7 +164,7 @@ final class InterpretationController
         $profile = $this->profileRepository->get();
 
         try {
-            $answer = $this->provider->answerFollowUp($context, $history, $question, $profile);
+            $answer = $this->provider->answerFollowUp($context, $history, $question, $profile, $language);
         } catch (InterpretationProviderException $e) {
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_BAD_GATEWAY);
         }
@@ -155,6 +173,23 @@ final class InterpretationController
             'answer' => $answer->answer,
             'sourceReferences' => $answer->sourceReferences,
         ]);
+    }
+
+    /**
+     * Absent defaults to English; present-but-invalid returns null (the caller then responds
+     * 422) — same present/absent distinction already used for "lens" above.
+     *
+     * @param array<string, mixed> $body
+     */
+    private function resolveLanguage(array $body): ?ResponseLanguage
+    {
+        if (!array_key_exists('language', $body)) {
+            return ResponseLanguage::English;
+        }
+
+        $languageValue = $body['language'];
+
+        return is_string($languageValue) ? ResponseLanguage::tryFrom($languageValue) : null;
     }
 
     /**
@@ -239,7 +274,7 @@ final class InterpretationController
     /**
      * @return array<string, mixed>
      */
-    private function toJson(Interpretation $interpretation, InterpretationLens $lens): array
+    private function toJson(Interpretation $interpretation, InterpretationLens $lens, ResponseLanguage $language): array
     {
         return [
             'summary' => $interpretation->summary,
@@ -251,6 +286,7 @@ final class InterpretationController
             'uncertainties' => $interpretation->uncertainties,
             'sourceReferences' => $interpretation->sourceReferences,
             'lens' => $lens->value,
+            'language' => $language->value,
         ];
     }
 }

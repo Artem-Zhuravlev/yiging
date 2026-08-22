@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import Textarea from 'primevue/textarea'
 import RadioButton from 'primevue/radiobutton'
 import Checkbox from 'primevue/checkbox'
@@ -34,6 +35,7 @@ const followUpToQuestion = ref<string | null>(null)
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 
 // Blank fields are omitted from the request entirely (undefined), rather than sent as empty
 // strings — an untouched optional field should look untouched to the API, not like the user
@@ -63,7 +65,7 @@ async function submit(): Promise<void> {
   } catch (error) {
     state.value = {
       status: 'error',
-      message: error instanceof ApiError ? error.message : 'Failed to create consultation.',
+      message: error instanceof ApiError ? error.message : t('newConsultation.createError'),
     }
   }
 }
@@ -89,32 +91,32 @@ onMounted(async () => {
 
 <template>
   <main class="max-w-screen-sm mx-auto p-4">
-    <h1 class="text-2xl font-semibold m-0">New Consultation</h1>
+    <h1 class="text-2xl font-semibold m-0">{{ t('newConsultation.title') }}</h1>
     <p v-if="followUpToConsultationId" class="mt-1 text-sm text-color-secondary">
-      Follow-up to: <span v-if="followUpToQuestion">{{ followUpToQuestion }}</span>
+      {{ t('newConsultation.followUpTo') }} <span v-if="followUpToQuestion">{{ followUpToQuestion }}</span>
       <span v-else>…</span>
     </p>
 
     <form class="mt-4 flex flex-column gap-4" @submit.prevent="submit">
       <div>
-        <label for="question" class="mb-1 block text-sm font-medium">Question</label>
+        <label for="question" class="mb-1 block text-sm font-medium">{{ t('newConsultation.question') }}</label>
         <Textarea id="question" v-model="question" rows="3" required maxlength="2000" class="w-full" />
       </div>
 
       <fieldset class="border-none p-0 m-0">
-        <legend class="mb-2 text-sm font-medium">Method</legend>
+        <legend class="mb-2 text-sm font-medium">{{ t('newConsultation.method') }}</legend>
         <label class="mr-4 inline-flex align-items-center gap-2">
           <RadioButton v-model="method" name="method" value="three_coins" />
-          Three Coins
+          {{ t('newConsultation.threeCoins') }}
         </label>
         <label class="inline-flex align-items-center gap-2">
           <RadioButton v-model="method" name="method" value="manual" />
-          Manual
+          {{ t('newConsultation.manual') }}
         </label>
       </fieldset>
 
       <fieldset v-if="method === 'manual'" class="flex flex-column gap-2 border-none p-0 m-0">
-        <legend class="mb-2 text-sm font-medium">Lines (top to bottom)</legend>
+        <legend class="mb-2 text-sm font-medium">{{ t('hexagramEditor.linesTopToBottom') }}</legend>
         <div
           v-for="position in [6, 5, 4, 3, 2, 1]"
           :key="position"
@@ -124,33 +126,37 @@ onMounted(async () => {
           <span class="w-2rem text-sm text-color-secondary">{{ position }}</span>
           <label class="inline-flex align-items-center gap-2">
             <RadioButton v-model="lines[position - 1]!.polarity" :name="`polarity-${position}`" value="yang" />
-            Yang
+            {{ t('common.yang') }}
           </label>
           <label class="inline-flex align-items-center gap-2">
             <RadioButton v-model="lines[position - 1]!.polarity" :name="`polarity-${position}`" value="yin" />
-            Yin
+            {{ t('common.yin') }}
           </label>
           <label class="inline-flex align-items-center gap-2">
             <Checkbox v-model="lines[position - 1]!.changing" binary />
-            Changing
+            {{ t('newConsultation.changing') }}
           </label>
         </div>
       </fieldset>
 
       <details>
-        <summary class="cursor-pointer text-sm font-medium">Add more context (optional)</summary>
+        <summary class="cursor-pointer text-sm font-medium">{{ t('newConsultation.addContext') }}</summary>
         <Panel class="mt-3">
           <div class="flex flex-column gap-3">
             <div>
-              <label for="context" class="mb-1 block text-sm">Context</label>
+              <label for="context" class="mb-1 block text-sm">{{ t('contextFields.context') }}</label>
               <Textarea id="context" v-model="context" rows="2" maxlength="5000" class="w-full" />
             </div>
             <div>
-              <label for="what-happened-before" class="mb-1 block text-sm">What happened before</label>
+              <label for="what-happened-before" class="mb-1 block text-sm">
+                {{ t('contextFields.whatHappenedBefore') }}
+              </label>
               <Textarea id="what-happened-before" v-model="whatHappenedBefore" rows="2" maxlength="5000" class="w-full" />
             </div>
             <div>
-              <label for="what-to-understand" class="mb-1 block text-sm">What you want to understand</label>
+              <label for="what-to-understand" class="mb-1 block text-sm">
+                {{ t('contextFields.whatUserWantsToUnderstand') }}
+              </label>
               <Textarea
                 id="what-to-understand"
                 v-model="whatUserWantsToUnderstand"
@@ -160,11 +166,15 @@ onMounted(async () => {
               />
             </div>
             <div>
-              <label for="background" class="mb-1 block text-sm">Background information</label>
+              <label for="background" class="mb-1 block text-sm">
+                {{ t('contextFields.backgroundInformation') }}
+              </label>
               <Textarea id="background" v-model="backgroundInformation" rows="2" maxlength="5000" class="w-full" />
             </div>
             <div>
-              <label for="initial-interpretation" class="mb-1 block text-sm">Your initial interpretation</label>
+              <label for="initial-interpretation" class="mb-1 block text-sm">
+                {{ t('contextFields.initialInterpretation') }}
+              </label>
               <Textarea
                 id="initial-interpretation"
                 v-model="initialInterpretation"
@@ -182,7 +192,7 @@ onMounted(async () => {
       <Button
         type="submit"
         :disabled="state.status === 'submitting'"
-        :label="state.status === 'submitting' ? 'Casting…' : 'Cast'"
+        :label="state.status === 'submitting' ? t('newConsultation.casting') : t('newConsultation.cast')"
         class="align-self-start"
       />
     </form>

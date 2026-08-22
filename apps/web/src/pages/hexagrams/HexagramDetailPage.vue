@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import {
@@ -11,8 +12,6 @@ import {
 import { ApiError } from '../../shared/api/http'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
 import type { Hexagram, HexagramSummary } from '../../entities/hexagram/model'
-
-const NOT_AVAILABLE = 'Not yet available.'
 
 type State =
   | { status: 'loading' }
@@ -28,6 +27,7 @@ interface RelatedHexagram {
   isSelf: boolean
 }
 
+const { t } = useI18n()
 const route = useRoute()
 const state = ref<State>({ status: 'loading' })
 const kingWenNumber = computed(() => Number(route.params.number))
@@ -52,7 +52,7 @@ async function toggleFavorite(): Promise<void> {
   } catch (error) {
     favoriteFormState.value = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to update favorite.',
+      message: error instanceof Error ? error.message : t('hexagramDetail.favoriteError'),
     }
   }
 }
@@ -64,9 +64,9 @@ const relatedHexagrams = computed<RelatedHexagram[]>(() => {
   const { kingWenNumber: current, relationships } = state.value.hexagram
 
   return [
-    { label: 'Nuclear', summary: relationships.nuclear },
-    { label: 'Reversed', summary: relationships.reversed },
-    { label: 'Complement', summary: relationships.complement },
+    { label: t('common.nuclear'), summary: relationships.nuclear },
+    { label: t('common.reversed'), summary: relationships.reversed },
+    { label: t('common.complement'), summary: relationships.complement },
   ].map((entry) => ({ ...entry, isSelf: entry.summary.kingWenNumber === current }))
 })
 
@@ -84,7 +84,7 @@ watch(
       }
       state.value = {
         status: 'error',
-        message: error instanceof Error ? error.message : 'Failed to load hexagram.',
+        message: error instanceof Error ? error.message : t('hexagramDetail.loadError'),
       }
     }
   },
@@ -94,10 +94,12 @@ watch(
 
 <template>
   <main class="max-w-screen-sm mx-auto p-4">
-    <router-link to="/hexagrams" class="text-sm text-color-secondary">&larr; Hexagrams</router-link>
+    <router-link to="/hexagrams" class="text-sm text-color-secondary">&larr; {{ t('nav.hexagrams') }}</router-link>
 
-    <p v-if="state.status === 'loading'" class="mt-4 text-color-secondary">Loading…</p>
-    <p v-else-if="state.status === 'not-found'" class="mt-4 text-color-secondary">Hexagram not found.</p>
+    <p v-if="state.status === 'loading'" class="mt-4 text-color-secondary">{{ t('common.loading') }}</p>
+    <p v-else-if="state.status === 'not-found'" class="mt-4 text-color-secondary">
+      {{ t('hexagramDetail.notFound') }}
+    </p>
     <Message v-else-if="state.status === 'error'" severity="error" class="mt-4">{{ state.message }}</Message>
 
     <div v-else class="mt-4 flex flex-column gap-5">
@@ -117,7 +119,7 @@ watch(
             text
             size="small"
             :disabled="favoriteFormState.status === 'submitting'"
-            :label="state.hexagram.favorite ? '★ Favorited' : '☆ Add to Favorites'"
+            :label="state.hexagram.favorite ? t('hexagramDetail.favorited') : t('hexagramDetail.addToFavorites')"
             @click="toggleFavorite"
           />
           <Message v-if="favoriteFormState.status === 'error'" severity="error" class="mt-1">
@@ -128,23 +130,24 @@ watch(
 
       <dl class="grid m-0">
         <div class="col-6">
-          <dt class="text-sm text-color-secondary">Upper trigram</dt>
+          <dt class="text-sm text-color-secondary">{{ t('common.upperTrigram') }}</dt>
           <dd class="m-0">{{ state.hexagram.upperTrigram.symbol }} {{ state.hexagram.upperTrigram.name }}</dd>
         </div>
         <div class="col-6">
-          <dt class="text-sm text-color-secondary">Lower trigram</dt>
+          <dt class="text-sm text-color-secondary">{{ t('common.lowerTrigram') }}</dt>
           <dd class="m-0">{{ state.hexagram.lowerTrigram.symbol }} {{ state.hexagram.lowerTrigram.name }}</dd>
         </div>
       </dl>
 
       <div>
-        <h2 class="mb-2 text-sm font-medium text-color-secondary">Related Hexagrams</h2>
+        <h2 class="mb-2 text-sm font-medium text-color-secondary">{{ t('hexagramDetail.relatedHexagrams') }}</h2>
         <dl class="grid m-0">
           <div v-for="related in relatedHexagrams" :key="related.label" class="col-4">
             <dt class="text-xs text-color-secondary uppercase">{{ related.label }}</dt>
             <dd class="m-0">
               <span v-if="related.isSelf">
-                {{ related.summary.kingWenNumber }}. {{ related.summary.chineseName }} (self)
+                {{ related.summary.kingWenNumber }}. {{ related.summary.chineseName }}
+                ({{ t('hexagramDetail.self') }})
               </span>
               <router-link v-else :to="`/hexagrams/${related.summary.kingWenNumber}`">
                 {{ related.summary.kingWenNumber }}. {{ related.summary.chineseName }}
@@ -155,22 +158,22 @@ watch(
       </div>
 
       <div>
-        <h2 class="text-sm font-medium text-color-secondary mb-1">Judgment</h2>
-        <p class="mt-0">{{ state.hexagram.judgment ?? NOT_AVAILABLE }}</p>
+        <h2 class="text-sm font-medium text-color-secondary mb-1">{{ t('hexagramDetail.judgment') }}</h2>
+        <p class="mt-0">{{ state.hexagram.judgment ?? t('common.notAvailable') }}</p>
       </div>
 
       <div>
-        <h2 class="text-sm font-medium text-color-secondary mb-1">Image</h2>
-        <p class="mt-0">{{ state.hexagram.image ?? NOT_AVAILABLE }}</p>
+        <h2 class="text-sm font-medium text-color-secondary mb-1">{{ t('hexagramDetail.image') }}</h2>
+        <p class="mt-0">{{ state.hexagram.image ?? t('common.notAvailable') }}</p>
       </div>
 
       <div>
-        <h2 class="mb-2 text-sm font-medium text-color-secondary">Line Texts</h2>
-        <p v-if="state.hexagram.lineStatements === null" class="mt-0">{{ NOT_AVAILABLE }}</p>
+        <h2 class="mb-2 text-sm font-medium text-color-secondary">{{ t('hexagramDetail.lineTexts') }}</h2>
+        <p v-if="state.hexagram.lineStatements === null" class="mt-0">{{ t('common.notAvailable') }}</p>
         <ol v-else class="flex flex-column gap-2 p-0 m-0">
           <li v-for="(text, index) in [...state.hexagram.lineStatements].reverse()" :key="index" class="list-none">
             <span class="text-xs tracking-wide text-color-secondary uppercase">
-              Line {{ state.hexagram.lineStatements!.length - index }}
+              {{ t('hexagramDetail.line', { position: state.hexagram.lineStatements!.length - index }) }}
             </span>
             <p class="mt-1 mb-0">{{ text }}</p>
           </li>
@@ -178,7 +181,7 @@ watch(
       </div>
 
       <p class="text-xs text-color-secondary">
-        Source: James Legge's <em>The I Ching</em> (1899), public domain.
+        {{ t('hexagramDetail.sourcePrefix') }} <em>The I Ching</em> {{ t('hexagramDetail.sourceSuffix') }}
       </p>
     </div>
   </main>

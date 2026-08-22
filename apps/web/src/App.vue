@@ -1,18 +1,24 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import Toolbar from 'primevue/toolbar'
+import Button from 'primevue/button'
+import { setLocale, SUPPORTED_LOCALES } from './i18n'
+import type { Locale } from './i18n'
 
 const route = useRoute()
+const { t, locale } = useI18n()
 
-const links = [
+const links = computed(() => [
   { to: '/', label: 'Yijing' },
-  { to: '/hexagrams', label: 'Hexagrams' },
-  { to: '/consultations/new', label: 'New Consultation' },
-  { to: '/consultations', label: 'History' },
-  { to: '/journal', label: 'Journal' },
-  { to: '/statistics', label: 'Statistics' },
-  { to: '/settings', label: 'Settings' },
-]
+  { to: '/hexagrams', label: t('nav.hexagrams') },
+  { to: '/consultations/new', label: t('nav.newConsultation') },
+  { to: '/consultations', label: t('nav.history') },
+  { to: '/journal', label: t('nav.journal') },
+  { to: '/statistics', label: t('nav.statistics') },
+  { to: '/settings', label: t('nav.settings') },
+])
 </script>
 
 <template>
@@ -29,6 +35,19 @@ const links = [
         </router-link>
       </div>
       <div v-else class="font-semibold">Yijing</div>
+    </template>
+    <template #end>
+      <div class="flex gap-1">
+        <Button
+          v-for="code in SUPPORTED_LOCALES"
+          :key="code"
+          :label="code.toUpperCase()"
+          size="small"
+          :text="locale !== code"
+          :aria-pressed="locale === code"
+          @click="setLocale(code as Locale)"
+        />
+      </div>
     </template>
   </Toolbar>
   <router-view />

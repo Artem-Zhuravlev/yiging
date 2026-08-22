@@ -10,6 +10,7 @@ interface InterpretationProvider
         InterpretationContext $context,
         InterpretationLens $lens,
         InterpretationProfile $profile,
+        ResponseLanguage $language,
     ): Interpretation;
 
     /**
@@ -20,5 +21,6 @@ interface InterpretationProvider
         array $history,
         string $question,
         InterpretationProfile $profile,
+        ResponseLanguage $language,
     ): FollowUpAnswer;
 }

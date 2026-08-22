@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
@@ -26,6 +27,7 @@ interface ConsultationGroup {
   consultations: Consultation[]
 }
 
+const { t } = useI18n()
 const state = ref<State>({ status: 'loading' })
 const selectedTags = ref<Set<string>>(new Set())
 const favoritesOnly = ref(false)
@@ -39,7 +41,7 @@ onMounted(async () => {
   } catch (error) {
     state.value = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to load consultations.',
+      message: error instanceof Error ? error.message : t('history.loadError'),
     }
   }
 })
@@ -105,10 +107,10 @@ async function handleImportFile(event: Event): Promise<void> {
     try {
       items = JSON.parse(text)
     } catch {
-      throw new Error('That file is not valid JSON.')
+      throw new Error(t('history.invalidJson'))
     }
     if (!Array.isArray(items)) {
-      throw new Error('That file does not contain a backup array.')
+      throw new Error(t('history.invalidBackupArray'))
     }
 
     const { imported } = await importConsultationsBackup(items)
@@ -119,7 +121,7 @@ async function handleImportFile(event: Event): Promise<void> {
   } catch (error) {
     importState.value = {
       status: 'error',
-      message: error instanceof Error ? error.message : 'Failed to import backup.',
+      message: error instanceof Error ? error.message : t('history.importError'),
     }
   } finally {
     input.value = ''
@@ -130,49 +132,54 @@ async function handleImportFile(event: Event): Promise<void> {
 <template>
   <main class="max-w-screen-sm mx-auto p-4">
     <div class="mb-4 flex align-items-center justify-content-between gap-3">
-      <h1 class="text-2xl font-semibold m-0">History</h1>
+      <h1 class="text-2xl font-semibold m-0">{{ t('history.title') }}</h1>
       <div class="flex align-items-center gap-3">
         <Button
           text
           size="small"
-          label="Export Backup (JSON)"
+          :label="t('history.exportBackup')"
           :disabled="state.status !== 'loaded'"
           @click="exportBackup"
         />
         <label class="cursor-pointer text-sm p-button p-button-text p-button-sm">
-          Import Backup (JSON)
+          {{ t('history.importBackup') }}
           <input type="file" accept="application/json" class="hidden-input" @change="handleImportFile" />
         </label>
       </div>
     </div>
 
     <Message v-if="importState.status === 'success'" severity="success" class="mb-4">
-      Imported {{ importState.imported }} consultation{{ importState.imported === 1 ? '' : 's' }}.
+      {{
+        t('history.imported', {
+          count: importState.imported,
+          suffix: importState.imported === 1 ? '' : 's',
+        })
+      }}
     </Message>
     <Message v-else-if="importState.status === 'error'" severity="error" class="mb-4">
       {{ importState.message }}
     </Message>
 
-    <p v-if="state.status === 'loading'" class="text-color-secondary">Loading…</p>
+    <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('common.loading') }}</p>
     <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
 
     <p v-else-if="state.consultations.length === 0" class="text-color-secondary">
-      No consultations yet —
-      <router-link to="/consultations/new">cast your first one</router-link>.
+      {{ t('history.emptyPrefix') }}
+      <router-link to="/consultations/new">{{ t('history.castFirstOne') }}</router-link>.
     </p>
 
     <template v-else>
       <InputText
         v-model="searchQuery"
         type="search"
-        placeholder="Search questions and notes…"
+        :placeholder="t('history.searchPlaceholder')"
         class="mb-4 w-full"
       />
 
       <div class="mb-5 flex flex-wrap gap-2">
         <Button
           :aria-pressed="favoritesOnly"
-          label="★ Favorites only"
+          :label="t('history.favoritesOnly')"
           rounded
           size="small"
           :outlined="!favoritesOnly"
@@ -191,7 +198,7 @@ async function handleImportFile(event: Event): Promise<void> {
       </div>
 
       <p v-if="groupedConsultations.length === 0" class="text-color-secondary">
-        No consultations match the selected tags.
+        {{ t('history.noTagMatches') }}
       </p>
 
       <div v-else class="flex flex-column gap-5">

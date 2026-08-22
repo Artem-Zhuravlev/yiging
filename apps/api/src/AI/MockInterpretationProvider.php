@@ -17,6 +17,7 @@ final class MockInterpretationProvider implements InterpretationProvider
         InterpretationContext $context,
         InterpretationLens $lens,
         InterpretationProfile $profile,
+        ResponseLanguage $language,
     ): Interpretation {
         $hasChangingLines = $context->changingLinePositions !== [];
 
@@ -39,6 +40,13 @@ final class MockInterpretationProvider implements InterpretationProvider
                 $profile->tone->value,
                 $profile->length->value,
                 $profile->notes !== null ? ', notes set' : '',
+            );
+        }
+
+        if ($language !== ResponseLanguage::English) {
+            $uncertainties[] = sprintf(
+                'Requested language: %s — the mock provider does not translate its interpretation.',
+                $language->value,
             );
         }
 
@@ -79,6 +87,7 @@ final class MockInterpretationProvider implements InterpretationProvider
         array $history,
         string $question,
         InterpretationProfile $profile,
+        ResponseLanguage $language,
     ): FollowUpAnswer {
         $answer = sprintf(
             'This is a placeholder answer from the mock interpretation provider. Your '
@@ -94,6 +103,14 @@ final class MockInterpretationProvider implements InterpretationProvider
                 $profile->tone->value,
                 $profile->length->value,
                 $profile->notes !== null ? ', notes set' : '',
+            );
+        }
+
+        if ($language !== ResponseLanguage::English) {
+            $answer .= sprintf(
+                ' (Requested language: %s — not applied, since the mock provider does not '
+                    . 'translate.)',
+                $language->value,
             );
         }
 

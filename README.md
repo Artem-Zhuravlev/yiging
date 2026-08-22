@@ -113,6 +113,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-035 | [Interpretation Profile](specs/interpretation-profile/spec.md) | `verified` |
 | SPEC-036 | [Outcome-Interpretation Link](specs/outcome-interpretation-link/spec.md) | `verified` |
 | SPEC-037 | [PrimeVue UI Overhaul](specs/primevue-ui-overhaul/spec.md) | `verified` |
+| SPEC-038 | [Localization (English/Ukrainian)](specs/localization-en-uk/spec.md) | `verified` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
@@ -550,7 +551,27 @@ the one test that asserted on the literal class name. Manually verified across e
 including a real Gemini interpretation requested, linked to an outcome, and saved through the
 converted `ConsultationPage`. See [SPEC-037](specs/primevue-ui-overhaul/spec.md).
 
-Next recommended steps: explicit interpretation-to-outcome linking (feature 10, the one AI
-feature not yet done), authentication (feature 9 of the *original* numbering — deliberately
+The app is now localized in English and Ukrainian (`src/i18n/`, `vue-i18n`), with a toolbar
+switcher that persists the choice in `localStorage` and defaults to the browser's language when
+it's Ukrainian. Every static UI string across all 14 pages/components was extracted into
+`src/i18n/locales/{en,uk}.ts`. The user specifically stressed that the AI side must be *reliably*
+correct, not just "asked nicely" — Gemini can silently ignore a language instruction, especially
+mid-prompt alongside lens/profile instructions. `App\AI\ResponseLanguage` (`en`/`uk`) is threaded
+through `InterpretationProvider::interpret()`/`answerFollowUp()`; `GeminiInterpretationProvider`
+verifies its own response against a Cyrillic-character-ratio classifier
+(`ResponseLanguage::matches()` — deliberately simple and dependency-free, reliable specifically
+because English and Ukrainian don't share a script) and retries with a strengthened corrective
+prompt line up to 3 attempts total before failing loudly (`502`, the existing
+`InterpretationProviderException` path) rather than ever serving the wrong language silently. The
+frontend sends its active UI locale as `language` on every interpret/follow-up call — one shared
+setting drives both the UI chrome and the AI's output, no separate setting to keep in sync.
+Manually verified end to end: toggled EN↔UK in the browser (every route's text switched
+immediately), then requested a real Gemini interpretation in Ukrainian on a live consultation —
+every free-text field (summary, core theme, situation, changing-line meaning, transition,
+practical reflection, uncertainties) came back genuinely, fluently Ukrainian, with
+`sourceReferences` correctly left as the deterministic English citations they've always been. See
+[SPEC-038](specs/localization-en-uk/spec.md).
+
+Next recommended steps: authentication (feature 9 of the *original* numbering — deliberately
 skipped this session, see above), or provide a second public-domain I Ching translation source to
 unblock features 26/27.

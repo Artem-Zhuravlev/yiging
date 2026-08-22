@@ -1,20 +1,21 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { compareHexagrams } from '../../entities/hexagram/api'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
 import type { HexagramComparison } from '../../entities/hexagram/model'
 
-const NOT_AVAILABLE = 'Not yet available.'
-const RELATIONSHIP_LABELS = { nuclear: 'nuclear', reversed: 'reversed', complement: 'complement' } as const
+const RELATIONSHIP_KEYS = ['nuclear', 'reversed', 'complement'] as const
 
 type State =
   | { status: 'loading' }
   | { status: 'error'; message: string }
   | { status: 'loaded'; comparison: HexagramComparison }
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const state = ref<State>({ status: 'loading' })
@@ -48,7 +49,7 @@ watch(
     } catch (error) {
       state.value = {
         status: 'error',
-        message: error instanceof Error ? error.message : 'Failed to compare hexagrams.',
+        message: error instanceof Error ? error.message : t('hexagramCompare.loadError'),
       }
     }
   },
@@ -63,12 +64,20 @@ const relationshipNote = computed<string | null>(() => {
   }
   const { a, b } = state.value.comparison
 
-  for (const key of Object.keys(RELATIONSHIP_LABELS) as (keyof typeof RELATIONSHIP_LABELS)[]) {
+  for (const key of RELATIONSHIP_KEYS) {
     if (a.relationships[key].kingWenNumber === b.kingWenNumber) {
-      return `${b.kingWenNumber} is ${a.kingWenNumber}'s ${RELATIONSHIP_LABELS[key]} hexagram.`
+      return t('hexagramCompare.relationshipNote', {
+        subject: b.kingWenNumber,
+        owner: a.kingWenNumber,
+        relation: t(`hexagramCompare.relationshipLabels.${key}`),
+      })
     }
     if (b.relationships[key].kingWenNumber === a.kingWenNumber) {
-      return `${a.kingWenNumber} is ${b.kingWenNumber}'s ${RELATIONSHIP_LABELS[key]} hexagram.`
+      return t('hexagramCompare.relationshipNote', {
+        subject: a.kingWenNumber,
+        owner: b.kingWenNumber,
+        relation: t(`hexagramCompare.relationshipLabels.${key}`),
+      })
     }
   }
   return null
@@ -77,23 +86,23 @@ const relationshipNote = computed<string | null>(() => {
 
 <template>
   <main class="max-w-screen-md mx-auto p-4">
-    <router-link to="/hexagrams" class="text-sm text-color-secondary">&larr; Hexagrams</router-link>
+    <router-link to="/hexagrams" class="text-sm text-color-secondary">&larr; {{ t('nav.hexagrams') }}</router-link>
 
-    <h1 class="mt-3 mb-4 text-2xl font-semibold">Hexagram Comparison</h1>
+    <h1 class="mt-3 mb-4 text-2xl font-semibold">{{ t('hexagramCompare.title') }}</h1>
 
     <form class="mb-5 flex align-items-end gap-3" @submit.prevent="submit">
       <label class="flex flex-column gap-1 text-sm">
-        Hexagram A
+        {{ t('hexagramCompare.hexagramA') }}
         <input v-model.number="formA" type="number" min="1" max="64" class="p-inputtext p-component w-5rem" />
       </label>
       <label class="flex flex-column gap-1 text-sm">
-        Hexagram B
+        {{ t('hexagramCompare.hexagramB') }}
         <input v-model.number="formB" type="number" min="1" max="64" class="p-inputtext p-component w-5rem" />
       </label>
-      <Button type="submit" label="Compare" />
+      <Button type="submit" :label="t('hexagramCompare.compare')" />
     </form>
 
-    <p v-if="state.status === 'loading'" class="text-color-secondary">Loading…</p>
+    <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('common.loading') }}</p>
     <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
 
     <div v-else class="flex flex-column gap-5">
@@ -104,7 +113,7 @@ const relationshipNote = computed<string | null>(() => {
           </h2>
           <HexagramLines :lines="state.comparison.a.lines" />
           <router-link :to="`/hexagrams/${state.comparison.a.kingWenNumber}`" class="mt-2 block text-sm">
-            View full page
+            {{ t('common.viewFullPage') }}
           </router-link>
         </div>
         <div>
@@ -113,7 +122,7 @@ const relationshipNote = computed<string | null>(() => {
           </h2>
           <HexagramLines :lines="state.comparison.b.lines" />
           <router-link :to="`/hexagrams/${state.comparison.b.kingWenNumber}`" class="mt-2 block text-sm">
-            View full page
+            {{ t('common.viewFullPage') }}
           </router-link>
         </div>
       </div>
@@ -123,10 +132,10 @@ const relationshipNote = computed<string | null>(() => {
       <table class="w-full text-sm compare-table">
         <thead>
           <tr>
-            <th class="text-left py-1">Position</th>
+            <th class="text-left py-1">{{ t('hexagramCompare.position') }}</th>
             <th class="text-left py-1">A</th>
             <th class="text-left py-1">B</th>
-            <th class="text-left py-1">Changed</th>
+            <th class="text-left py-1">{{ t('hexagramCompare.changed') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -139,30 +148,34 @@ const relationshipNote = computed<string | null>(() => {
             <td class="py-1">{{ line.position }}</td>
             <td class="py-1">{{ line.aPolarity }}</td>
             <td class="py-1">{{ line.bPolarity }}</td>
-            <td class="py-1">{{ line.changed ? 'Yes' : '—' }}</td>
+            <td class="py-1">{{ line.changed ? t('hexagramCompare.yes') : '—' }}</td>
           </tr>
         </tbody>
       </table>
 
       <dl class="grid m-0">
         <div class="col-6">
-          <dt class="text-sm text-color-secondary">Upper trigrams</dt>
-          <dd class="m-0">{{ state.comparison.upperTrigramDiffers ? 'Differ' : 'Match' }}</dd>
+          <dt class="text-sm text-color-secondary">{{ t('hexagramCompare.upperTrigrams') }}</dt>
+          <dd class="m-0">
+            {{ state.comparison.upperTrigramDiffers ? t('hexagramCompare.differ') : t('hexagramCompare.match') }}
+          </dd>
         </div>
         <div class="col-6">
-          <dt class="text-sm text-color-secondary">Lower trigrams</dt>
-          <dd class="m-0">{{ state.comparison.lowerTrigramDiffers ? 'Differ' : 'Match' }}</dd>
+          <dt class="text-sm text-color-secondary">{{ t('hexagramCompare.lowerTrigrams') }}</dt>
+          <dd class="m-0">
+            {{ state.comparison.lowerTrigramDiffers ? t('hexagramCompare.differ') : t('hexagramCompare.match') }}
+          </dd>
         </div>
       </dl>
 
       <div class="grid">
         <div class="col-6">
-          <h3 class="text-xs font-medium text-color-secondary uppercase">A — Judgment</h3>
-          <p class="text-sm">{{ state.comparison.a.judgment ?? NOT_AVAILABLE }}</p>
+          <h3 class="text-xs font-medium text-color-secondary uppercase">{{ t('hexagramCompare.judgmentA') }}</h3>
+          <p class="text-sm">{{ state.comparison.a.judgment ?? t('common.notAvailable') }}</p>
         </div>
         <div class="col-6">
-          <h3 class="text-xs font-medium text-color-secondary uppercase">B — Judgment</h3>
-          <p class="text-sm">{{ state.comparison.b.judgment ?? NOT_AVAILABLE }}</p>
+          <h3 class="text-xs font-medium text-color-secondary uppercase">{{ t('hexagramCompare.judgmentB') }}</h3>
+          <p class="text-sm">{{ state.comparison.b.judgment ?? t('common.notAvailable') }}</p>
         </div>
       </div>
     </div>

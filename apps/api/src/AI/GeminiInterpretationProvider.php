@@ -13,6 +13,12 @@ namespace App\AI;
  */
 final class GeminiInterpretationProvider implements InterpretationProvider
 {
+    /**
+     * Total attempts (initial + retries) allowed before giving up on getting a response in the
+     * requested language (SPEC-038) - see ResponseLanguage::matches().
+     */
+    private const MAX_LANGUAGE_ATTEMPTS = 3;
+
     private const RESPONSE_SCHEMA = [
         'type' => 'object',
         'properties' => [
@@ -49,31 +55,68 @@ final class GeminiInterpretationProvider implements InterpretationProvider
         InterpretationContext $context,
         InterpretationLens $lens,
         InterpretationProfile $profile,
+        ResponseLanguage $language,
     ): Interpretation {
-        $data = $this->client->generateJson($this->buildPrompt($context, $lens, $profile), self::RESPONSE_SCHEMA);
+        $prompt = $this->buildPrompt($context, $lens, $profile, $language);
 
-        foreach (self::REQUIRED_STRING_FIELDS as $field) {
-            if (!isset($data[$field]) || !is_string($data[$field]) || trim($data[$field]) === '') {
+        for ($attempt = 1; $attempt <= self::MAX_LANGUAGE_ATTEMPTS; $attempt++) {
+            $data = $this->client->generateJson($prompt, self::RESPONSE_SCHEMA);
+
+            foreach (self::REQUIRED_STRING_FIELDS as $field) {
+                if (!isset($data[$field]) || !is_string($data[$field]) || trim($data[$field]) === '') {
+                    throw new InterpretationProviderException(
+                        "Gemini response is missing a valid '{$field}' field.",
+                    );
+                }
+            }
+
+            if (!isset($data['uncertainties']) || !is_array($data['uncertainties'])) {
                 throw new InterpretationProviderException(
-                    "Gemini response is missing a valid '{$field}' field.",
+                    "Gemini response is missing a valid 'uncertainties' field.",
                 );
             }
+
+            $interpretation = new Interpretation(
+                summary: $data['summary'],
+                coreTheme: $data['coreTheme'],
+                situation: $data['situation'],
+                changingLineMeaning: $this->nullableString($data['changingLineMeaning'] ?? null),
+                transition: $this->nullableString($data['transition'] ?? null),
+                practicalReflection: $data['practicalReflection'],
+                uncertainties: array_values(array_map(strval(...), $data['uncertainties'])),
+                sourceReferences: $context->defaultSourceReferences(),
+            );
+
+            if ($language->matches($this->interpretationText($interpretation))) {
+                return $interpretation;
+            }
+
+            $prompt .= "\n\n" . $language->correctivePromptInstruction();
         }
 
-        if (!isset($data['uncertainties']) || !is_array($data['uncertainties'])) {
-            throw new InterpretationProviderException("Gemini response is missing a valid 'uncertainties' field.");
-        }
+        throw new InterpretationProviderException(sprintf(
+            'Gemini failed to respond in the requested language (%s) after %d attempts.',
+            $language->value,
+            self::MAX_LANGUAGE_ATTEMPTS,
+        ));
+    }
 
-        return new Interpretation(
-            summary: $data['summary'],
-            coreTheme: $data['coreTheme'],
-            situation: $data['situation'],
-            changingLineMeaning: $this->nullableString($data['changingLineMeaning'] ?? null),
-            transition: $this->nullableString($data['transition'] ?? null),
-            practicalReflection: $data['practicalReflection'],
-            uncertainties: array_values(array_map(strval(...), $data['uncertainties'])),
-            sourceReferences: $context->defaultSourceReferences(),
-        );
+    /**
+     * Every AI-generated free-text field, concatenated for the language check — deliberately
+     * excludes sourceReferences, which is never model-written (always
+     * $context->defaultSourceReferences()) and may legitimately cite non-Ukrainian source titles.
+     */
+    private function interpretationText(Interpretation $interpretation): string
+    {
+        return implode(' ', array_filter([
+            $interpretation->summary,
+            $interpretation->coreTheme,
+            $interpretation->situation,
+            $interpretation->changingLineMeaning,
+            $interpretation->transition,
+            $interpretation->practicalReflection,
+            implode(' ', $interpretation->uncertainties),
+        ]));
     }
 
     /**
@@ -84,15 +127,29 @@ final class GeminiInterpretationProvider implements InterpretationProvider
         array $history,
         string $question,
         InterpretationProfile $profile,
+        ResponseLanguage $language,
     ): FollowUpAnswer {
-        $prompt = $this->buildFollowUpPrompt($context, $history, $question, $profile);
-        $data = $this->client->generateJson($prompt, self::FOLLOW_UP_RESPONSE_SCHEMA);
+        $prompt = $this->buildFollowUpPrompt($context, $history, $question, $profile, $language);
 
-        if (!isset($data['answer']) || !is_string($data['answer']) || trim($data['answer']) === '') {
-            throw new InterpretationProviderException("Gemini response is missing a valid 'answer' field.");
+        for ($attempt = 1; $attempt <= self::MAX_LANGUAGE_ATTEMPTS; $attempt++) {
+            $data = $this->client->generateJson($prompt, self::FOLLOW_UP_RESPONSE_SCHEMA);
+
+            if (!isset($data['answer']) || !is_string($data['answer']) || trim($data['answer']) === '') {
+                throw new InterpretationProviderException("Gemini response is missing a valid 'answer' field.");
+            }
+
+            if ($language->matches($data['answer'])) {
+                return new FollowUpAnswer($data['answer'], $context->defaultSourceReferences());
+            }
+
+            $prompt .= "\n\n" . $language->correctivePromptInstruction();
         }
 
-        return new FollowUpAnswer($data['answer'], $context->defaultSourceReferences());
+        throw new InterpretationProviderException(sprintf(
+            'Gemini failed to respond in the requested language (%s) after %d attempts.',
+            $language->value,
+            self::MAX_LANGUAGE_ATTEMPTS,
+        ));
     }
 
     /**
@@ -103,6 +160,7 @@ final class GeminiInterpretationProvider implements InterpretationProvider
         array $history,
         string $question,
         InterpretationProfile $profile,
+        ResponseLanguage $language,
     ): string {
         $lines = $this->contextGroundingLines($context);
 
@@ -123,6 +181,9 @@ final class GeminiInterpretationProvider implements InterpretationProvider
             . 'facts beyond what is given here (answer).';
 
         $this->appendProfileInstruction($lines, $profile);
+
+        $lines[] = '';
+        $lines[] = $language->promptInstruction();
 
         return implode("\n", $lines);
     }
@@ -195,6 +256,7 @@ final class GeminiInterpretationProvider implements InterpretationProvider
         InterpretationContext $context,
         InterpretationLens $lens,
         InterpretationProfile $profile,
+        ResponseLanguage $language,
     ): string {
         $hasChangingLines = $context->changingLinePositions !== [];
         $lines = $this->contextGroundingLines($context);
@@ -220,6 +282,9 @@ final class GeminiInterpretationProvider implements InterpretationProvider
         }
 
         $this->appendProfileInstruction($lines, $profile);
+
+        $lines[] = '';
+        $lines[] = $language->promptInstruction();
 
         return implode("\n", $lines);
     }
