@@ -63,6 +63,16 @@ PrimeVue's usual light default. `style.css` now resets `a { text-decoration: non
 `:hover` underline for plain inline links (excluded for anything already styled as a `.p-button`).
 Manually verified both themes on the home and consultation-detail pages.
 
+**2026-08-22 update 2**: user reported insufficient responsiveness. Automated a horizontal-overflow
+scan (`document.documentElement.scrollWidth` vs `clientWidth`) across every route at 320/375/768px
+widths — found exactly one real bug: `ConsultationPage`'s header (`<h1>` + favorite/print/share
+button row) used `justify-content-between` with no wrap on the outer flex container, so on narrow
+screens the button row (`flex-shrink-0`) overflowed the viewport by ~460px instead of dropping
+below the title. Fixed by making that row `flex-column` below the `sm:` breakpoint (stacking title
+above buttons) and `sm:flex-row sm:justify-content-between` above it, removing the now-unnecessary
+`flex-shrink-0`. Every other route was already overflow-free at all three widths, including live
+AI-interpretation content and the outcome-link box with real long text.
+
 ## Acceptance criteria
 
 - [x] `npm install` resolves with `primevue`/`@primevue/themes`/`primeicons`/`primeflex`;

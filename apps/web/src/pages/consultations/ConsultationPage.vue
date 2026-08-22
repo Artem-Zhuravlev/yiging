@@ -399,9 +399,9 @@ onMounted(async () => {
 
     <div v-else class="mt-4 flex flex-column gap-5">
       <div>
-        <div class="flex align-items-start justify-content-between gap-3">
+        <div class="flex flex-column sm:flex-row sm:align-items-start sm:justify-content-between gap-3">
           <h1 class="text-xl font-semibold m-0">{{ state.consultation.question }}</h1>
-          <div class="print-hidden flex flex-shrink-0 gap-3 flex-wrap">
+          <div class="print-hidden flex gap-3 flex-wrap">
             <Button
               text
               size="small"
