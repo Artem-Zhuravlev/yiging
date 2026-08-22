@@ -386,7 +386,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="max-w-screen-sm mx-auto p-4">
+  <main class="container-sm mx-auto p-4">
     <router-link to="/consultations" class="print-hidden text-sm text-color-secondary">
       &larr; {{ t('history.title') }}
     </router-link>

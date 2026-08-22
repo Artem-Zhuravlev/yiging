@@ -3,7 +3,7 @@ import { createPinia } from 'pinia'
 import PrimeVue from 'primevue/config'
 import ToastService from 'primevue/toastservice'
 import ConfirmationService from 'primevue/confirmationservice'
-import { redTheme } from './theme'
+import { appTheme } from './theme'
 import { i18n } from './i18n'
 import './darkMode'
 import App from './App.vue'
@@ -18,7 +18,7 @@ app.use(createPinia())
 app.use(router)
 app.use(PrimeVue, {
   theme: {
-    preset: redTheme,
+    preset: appTheme,
     options: {
       darkModeSelector: '.p-dark',
     },

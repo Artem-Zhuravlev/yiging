@@ -32,7 +32,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="flex flex-column align-items-center justify-content-center gap-4 text-center p-4">
+  <main
+    class="container-sm mx-auto flex flex-column align-items-center justify-content-center gap-4 text-center p-4"
+    style="min-height: calc(100vh - 5rem)"
+  >
     <h1 class="text-4xl font-semibold m-0">{{ t('home.title') }}</h1>
     <p class="text-color-secondary m-0">{{ t('home.tagline') }}</p>
     <div class="flex gap-3">

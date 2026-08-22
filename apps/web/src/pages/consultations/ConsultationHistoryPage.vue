@@ -130,7 +130,7 @@ async function handleImportFile(event: Event): Promise<void> {
 </script>
 
 <template>
-  <main class="max-w-screen-sm mx-auto p-4">
+  <main class="container-sm mx-auto p-4">
     <div class="mb-4 flex align-items-center justify-content-between gap-3">
       <h1 class="text-2xl font-semibold m-0">{{ t('history.title') }}</h1>
       <div class="flex align-items-center gap-3">

@@ -38,3 +38,19 @@ a.p-button:hover {
     display: none !important;
   }
 }
+
+/* Page-level content containers. PrimeFlex's own `.max-w-*` scale stops at 30rem — nowhere near
+   enough for a "sm" page container, let alone "md"/"lg" — so every page centers its content with
+   one of these instead (values match the old Tailwind `max-w-screen-{sm,md,lg}` breakpoints they
+   replace). */
+.container-sm {
+  max-width: 40rem;
+}
+
+.container-md {
+  max-width: 48rem;
+}
+
+.container-lg {
+  max-width: 64rem;
+}

@@ -90,7 +90,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="max-w-screen-sm mx-auto p-4">
+  <main class="container-sm mx-auto p-4">
     <h1 class="text-2xl font-semibold m-0">{{ t('newConsultation.title') }}</h1>
     <p v-if="followUpToConsultationId" class="mt-1 text-sm text-color-secondary">
       {{ t('newConsultation.followUpTo') }} <span v-if="followUpToQuestion">{{ followUpToQuestion }}</span>

@@ -60,7 +60,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="max-w-screen-sm mx-auto p-4">
+  <main class="container-sm mx-auto p-4">
     <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('common.loading') }}</p>
     <p v-else-if="state.status === 'not-found'" class="text-color-secondary">{{ t('consultation.notFound') }}</p>
     <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>

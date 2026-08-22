@@ -73,6 +73,17 @@ above buttons) and `sm:flex-row sm:justify-content-between` above it, removing t
 `flex-shrink-0`. Every other route was already overflow-free at all three widths, including live
 AI-interpretation content and the outcome-link box with real long text.
 
+**2026-08-22 update 3**: user reported two more issues. (1) "No main container, everything
+stretched full-width" — every page's `<main>` used Tailwind-named classes
+(`max-w-screen-{sm,md,lg}`) that were never ported to a PrimeFlex (or custom) equivalent when
+Tailwind was removed; PrimeFlex's own `.max-w-*` scale tops out at `30rem`, nowhere near a page
+container, so these classes had silently done nothing since the original conversion — every page
+has been full-width and uncentered the whole time. Added `.container-{sm,md,lg}` to `style.css`
+(`40rem`/`48rem`/`64rem`, matching the Tailwind breakpoints they replace) and swapped every page
+over; confirmed centered and width-constrained at 1600px. (2) The red primary color "wasn't
+comfortable or nice to look at" — swapped to PrimeVue's built-in `blue` palette in `theme.ts`
+(`redTheme` renamed `appTheme` throughout), per the user's choice among a few alternatives offered.
+
 ## Acceptance criteria
 
 - [x] `npm install` resolves with `primevue`/`@primevue/themes`/`primeicons`/`primeflex`;

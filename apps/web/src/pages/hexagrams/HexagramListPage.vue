@@ -71,7 +71,7 @@ async function toggleFavorite(hexagram: Hexagram): Promise<void> {
 </script>
 
 <template>
-  <main class="max-w-screen-lg mx-auto p-4">
+  <main class="container-lg mx-auto p-4">
     <div class="mb-4 flex align-items-center justify-content-between">
       <h1 class="text-2xl font-semibold m-0">{{ t('hexagramList.title') }}</h1>
       <router-link to="/hexagrams/editor" class="text-sm">{{ t('hexagramList.visualEditor') }}</router-link>

@@ -93,7 +93,7 @@ watch(
 </script>
 
 <template>
-  <main class="max-w-screen-sm mx-auto p-4">
+  <main class="container-sm mx-auto p-4">
     <router-link to="/hexagrams" class="text-sm text-color-secondary">&larr; {{ t('nav.hexagrams') }}</router-link>
 
     <p v-if="state.status === 'loading'" class="mt-4 text-color-secondary">{{ t('common.loading') }}</p>

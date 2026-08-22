@@ -62,7 +62,7 @@ async function save(): Promise<void> {
 </script>
 
 <template>
-  <main class="max-w-screen-sm mx-auto p-4">
+  <main class="container-sm mx-auto p-4">
     <h1 class="text-2xl font-semibold mb-4">{{ t('settings.title') }}</h1>
 
     <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('common.loading') }}</p>

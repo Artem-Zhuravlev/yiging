@@ -1,6 +1,6 @@
 import { config } from '@vue/test-utils'
 import PrimeVue from 'primevue/config'
-import { redTheme } from './theme'
+import { appTheme } from './theme'
 import { i18n } from './i18n'
 
 // jsdom has no window.matchMedia; several PrimeVue components (Select's responsive overlay
@@ -26,7 +26,7 @@ config.global.plugins.push([
   PrimeVue,
   {
     theme: {
-      preset: redTheme,
+      preset: appTheme,
       options: { darkModeSelector: '.p-dark' },
     },
   },
