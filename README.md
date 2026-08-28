@@ -114,6 +114,11 @@ plain-VPS instructions, all Docker-free.
 | SPEC-036 | [Outcome-Interpretation Link](specs/outcome-interpretation-link/spec.md) | `verified` |
 | SPEC-037 | [PrimeVue UI Overhaul](specs/primevue-ui-overhaul/spec.md) | `verified` |
 | SPEC-038 | [Localization (English/Ukrainian)](specs/localization-en-uk/spec.md) | `verified` |
+| SPEC-039 | [Accessibility Pass](specs/accessibility-pass/spec.md) | `implemented` |
+| SPEC-040 | [Gemini API Contract Regression Test](specs/gemini-contract-regression/spec.md) | `implemented` |
+| SPEC-041 | [History & Journal Pagination](specs/history-journal-pagination/spec.md) | `implemented` |
+| SPEC-042 | [Casting Reveal Animation](specs/casting-reveal-animation/spec.md) | `implemented` |
+| SPEC-043 | [Statistics Charts](specs/statistics-charts/spec.md) | `implemented` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`

@@ -12,8 +12,23 @@ interface ConsultationRepository
 
     /**
      * @return list<Consultation> ordered newest-first (createdAt descending)
+     *
+     * Full hydration of the entire history — used only by the backup export (SPEC-028/041).
+     * The History page uses {@see findListPage()} instead.
      */
     public function findAll(): array;
+
+    /**
+     * One page of the lean, filterable consultation list (SPEC-041). Bounded query cost
+     * regardless of history size: one page query plus one batched tag query, no per-row
+     * notes/outcome/follow-up hydration.
+     */
+    public function findListPage(ConsultationListQuery $query): ConsultationListPage;
+
+    /**
+     * @return list<string> every distinct tag name currently applied to a consultation, sorted
+     */
+    public function allTagNames(): array;
 
     public function findSummaryById(string $id): ?ConsultationSummary;
 

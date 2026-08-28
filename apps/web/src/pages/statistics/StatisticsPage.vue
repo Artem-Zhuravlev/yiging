@@ -2,19 +2,24 @@
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Panel from 'primevue/panel'
-import ProgressBar from 'primevue/progressbar'
 import Message from 'primevue/message'
-import Tag from 'primevue/tag'
 import { fetchStatistics } from '../../entities/statistics/api'
 import type { Statistics } from '../../entities/statistics/model'
+import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
+import BarChart from '../../shared/ui/BarChart.vue'
+import DonutChart from '../../shared/ui/DonutChart.vue'
 
 type State =
   | { status: 'loading' }
   | { status: 'error'; message: string }
   | { status: 'loaded'; statistics: Statistics }
 
+const HEXAGRAM_ROWS = 12
+
 const { t } = useI18n()
 const state = ref<State>({ status: 'loading' })
+
+useStatusAnnouncer(computed(() => state.value.status))
 
 onMounted(async () => {
   try {
@@ -28,6 +33,23 @@ onMounted(async () => {
   }
 })
 
+const hexagramBars = computed(() => {
+  if (state.value.status !== 'loaded') return []
+  return state.value.statistics.hexagramFrequency
+    .slice(0, HEXAGRAM_ROWS)
+    .map((h) => ({ label: `${h.kingWenNumber}. ${h.chineseName}`, value: h.count }))
+})
+
+const hexagramOverflow = computed(() => {
+  if (state.value.status !== 'loaded') return 0
+  return Math.max(0, state.value.statistics.hexagramFrequency.length - HEXAGRAM_ROWS)
+})
+
+const tagBars = computed(() => {
+  if (state.value.status !== 'loaded') return []
+  return state.value.statistics.tagFrequency.map((tg) => ({ label: tg.name, value: tg.count }))
+})
+
 const yinPercent = computed(() => {
   if (state.value.status !== 'loaded') return 0
   const { yin, yang } = state.value.statistics.yinYangRatio
@@ -35,18 +57,34 @@ const yinPercent = computed(() => {
   return total === 0 ? 0 : Math.round((yin / total) * 100)
 })
 
-const yangPercent = computed(() => {
-  if (state.value.status !== 'loaded') return 0
-  return 100 - yinPercent.value
+const yangPercent = computed(() => 100 - yinPercent.value)
+
+const yinYangSegments = computed(() => {
+  if (state.value.status !== 'loaded') return []
+  const { yin, yang } = state.value.statistics.yinYangRatio
+  return [
+    { label: t('common.yin'), value: yin },
+    { label: t('common.yang'), value: yang },
+  ]
+})
+
+const yinYangCaption = computed(() => {
+  if (state.value.status !== 'loaded') return ''
+  return t('statistics.yinYangLine', {
+    yin: state.value.statistics.yinYangRatio.yin,
+    yang: state.value.statistics.yinYangRatio.yang,
+    yinPercent: yinPercent.value,
+    yangPercent: yangPercent.value,
+  })
 })
 </script>
 
 <template>
-  <main class="container-sm mx-auto p-4">
+  <main id="main" tabindex="-1" class="container-sm mx-auto p-4">
     <h1 class="text-2xl font-semibold mb-4">{{ t('statistics.title') }}</h1>
 
     <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('common.loading') }}</p>
-    <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
+    <Message v-else-if="state.status === 'error'" severity="error" role="alert">{{ state.message }}</Message>
 
     <p v-else-if="state.statistics.totalConsultations === 0" class="text-color-secondary">
       {{ t('statistics.empty') }}
@@ -58,43 +96,18 @@ const yangPercent = computed(() => {
       </p>
 
       <Panel :header="t('statistics.hexagramFrequency')">
-        <ul class="flex flex-column gap-2 list-none p-0 m-0">
-          <li
-            v-for="entry in state.statistics.hexagramFrequency"
-            :key="entry.kingWenNumber"
-            class="flex justify-content-between text-sm"
-          >
-            <span>{{ entry.kingWenNumber }}. {{ entry.chineseName }} ({{ entry.pinyin }})</span>
-            <Tag :value="String(entry.count)" severity="secondary" />
-          </li>
-        </ul>
+        <BarChart :items="hexagramBars" :caption="t('statistics.hexagramFrequency')" />
+        <p v-if="hexagramOverflow > 0" class="mt-2 mb-0 text-sm text-color-secondary">
+          {{ t('statistics.andMore', { count: hexagramOverflow }) }}
+        </p>
       </Panel>
 
       <Panel :header="t('statistics.yinYangRatio')">
-        <p class="text-sm mt-0">
-          {{
-            t('statistics.yinYangLine', {
-              yin: state.statistics.yinYangRatio.yin,
-              yang: state.statistics.yinYangRatio.yang,
-              yinPercent,
-              yangPercent,
-            })
-          }}
-        </p>
-        <ProgressBar :value="yinPercent" :show-value="false" />
+        <DonutChart :segments="yinYangSegments" :caption="yinYangCaption" />
       </Panel>
 
-      <Panel v-if="state.statistics.tagFrequency.length > 0" :header="t('statistics.tagFrequency')">
-        <ul class="flex flex-column gap-2 list-none p-0 m-0">
-          <li
-            v-for="entry in state.statistics.tagFrequency"
-            :key="entry.name"
-            class="flex justify-content-between text-sm"
-          >
-            <span>{{ entry.name }}</span>
-            <Tag :value="String(entry.count)" severity="secondary" />
-          </li>
-        </ul>
+      <Panel v-if="tagBars.length > 0" :header="t('statistics.tagFrequency')">
+        <BarChart :items="tagBars" :caption="t('statistics.tagFrequency')" />
       </Panel>
     </div>
   </main>

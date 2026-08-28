@@ -6,6 +6,7 @@ namespace App\Journal;
 
 use App\Core\Config;
 use App\Core\Database;
+use App\Core\ListCursor;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -45,14 +46,38 @@ final class JournalController
         return new JsonResponse($this->toJson($entry), Response::HTTP_CREATED);
     }
 
-    public function index(): Response
-    {
-        $entries = array_map(
-            fn (JournalEntry $entry): array => $this->toJson($entry),
-            $this->repository->findAll(),
-        );
+    private const DEFAULT_LIMIT = 30;
+    private const MIN_LIMIT = 1;
+    private const MAX_LIMIT = 100;
 
-        return new JsonResponse($entries);
+    public function index(Request $request): Response
+    {
+        $cursor = $request->query->get('cursor');
+        $cursor = is_string($cursor) && trim($cursor) !== '' ? trim($cursor) : null;
+
+        if ($cursor !== null) {
+            try {
+                ListCursor::decode($cursor);
+            } catch (\InvalidArgumentException $e) {
+                return $this->errorResponse($e->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
+        }
+
+        $page = $this->repository->findPage($this->clampLimit($request->query->get('limit')), $cursor);
+
+        return new JsonResponse([
+            'items' => array_map(fn (JournalEntry $entry): array => $this->toJson($entry), $page->items),
+            'nextCursor' => $page->nextCursor,
+        ]);
+    }
+
+    private function clampLimit(mixed $raw): int
+    {
+        if (is_string($raw) && ctype_digit($raw)) {
+            return max(self::MIN_LIMIT, min(self::MAX_LIMIT, (int) $raw));
+        }
+
+        return self::DEFAULT_LIMIT;
     }
 
     private function errorResponse(string $message, int $status): JsonResponse

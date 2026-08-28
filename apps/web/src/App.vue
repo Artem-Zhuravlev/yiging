@@ -7,6 +7,8 @@ import Button from 'primevue/button'
 import { setLocale, SUPPORTED_LOCALES } from './i18n'
 import type { Locale } from './i18n'
 import { isDarkMode, setDarkMode } from './darkMode'
+import SkipLink from './shared/ui/SkipLink.vue'
+import LiveRegion from './shared/ui/LiveRegion.vue'
 
 const route = useRoute()
 const { t, locale } = useI18n()
@@ -23,9 +25,10 @@ const links = computed(() => [
 </script>
 
 <template>
+  <SkipLink />
   <Toolbar class="print-hidden border-noround border-x-none border-top-none">
     <template #start>
-      <div v-if="!route.meta.public" class="flex flex-wrap gap-2">
+      <nav v-if="!route.meta.public" :aria-label="t('nav.primaryLabel')" class="flex flex-wrap gap-2">
         <router-link
           v-for="link in links"
           :key="link.to"
@@ -34,7 +37,7 @@ const links = computed(() => [
         >
           {{ link.label }}
         </router-link>
-      </div>
+      </nav>
       <div v-else class="font-semibold">Yijing</div>
     </template>
     <template #end>
@@ -61,5 +64,6 @@ const links = computed(() => [
       </div>
     </template>
   </Toolbar>
+  <LiveRegion />
   <router-view />
 </template>

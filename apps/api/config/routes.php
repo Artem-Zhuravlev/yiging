@@ -18,6 +18,8 @@ return static function (RouteCollector $r): void {
     $r->addRoute('POST', '/api/consultations', [ConsultationController::class, 'create']);
     $r->addRoute('POST', '/api/consultations/import', [ConsultationController::class, 'import']);
     $r->addRoute('GET', '/api/consultations', [ConsultationController::class, 'index']);
+    $r->addRoute('GET', '/api/consultations/tags', [ConsultationController::class, 'tags']);
+    $r->addRoute('GET', '/api/consultations/export', [ConsultationController::class, 'export']);
     $r->addRoute('GET', '/api/consultations/{id}', [ConsultationController::class, 'show']);
     $r->addRoute('PATCH', '/api/consultations/{id}', [ConsultationController::class, 'update']);
 

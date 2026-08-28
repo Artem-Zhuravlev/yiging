@@ -12,6 +12,7 @@ import {
 import { ApiError } from '../../shared/api/http'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
 import type { Hexagram, HexagramSummary } from '../../entities/hexagram/model'
+import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
 
 type State =
   | { status: 'loading' }
@@ -32,6 +33,11 @@ const route = useRoute()
 const state = ref<State>({ status: 'loading' })
 const kingWenNumber = computed(() => Number(route.params.number))
 const favoriteFormState = ref<FavoriteFormState>({ status: 'idle' })
+
+useStatusAnnouncer(
+  computed(() => state.value.status),
+  (status) => (status === 'not-found' ? t('hexagramDetail.notFound') : undefined),
+)
 
 async function toggleFavorite(): Promise<void> {
   if (state.value.status !== 'loaded' || favoriteFormState.value.status === 'submitting') {
@@ -93,14 +99,14 @@ watch(
 </script>
 
 <template>
-  <main class="container-sm mx-auto p-4">
+  <main id="main" tabindex="-1" class="container-sm mx-auto p-4">
     <router-link to="/hexagrams" class="text-sm text-color-secondary">&larr; {{ t('nav.hexagrams') }}</router-link>
 
     <p v-if="state.status === 'loading'" class="mt-4 text-color-secondary">{{ t('common.loading') }}</p>
     <p v-else-if="state.status === 'not-found'" class="mt-4 text-color-secondary">
       {{ t('hexagramDetail.notFound') }}
     </p>
-    <Message v-else-if="state.status === 'error'" severity="error" class="mt-4">{{ state.message }}</Message>
+    <Message v-else-if="state.status === 'error'" severity="error" role="alert" class="mt-4">{{ state.message }}</Message>
 
     <div v-else class="mt-4 flex flex-column gap-5">
       <div class="flex align-items-start justify-content-between gap-4">

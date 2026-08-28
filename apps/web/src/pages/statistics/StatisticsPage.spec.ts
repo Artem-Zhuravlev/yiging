@@ -19,17 +19,41 @@ const sample: Statistics = {
 }
 
 describe('StatisticsPage', () => {
-  it('renders total count, hexagram frequency, yin/yang ratio, and tag frequency', async () => {
+  it('renders total count, hexagram + tag bar charts, and the yin/yang donut', async () => {
     vi.mocked(fetchStatistics).mockResolvedValue(sample)
 
     const wrapper = mount(StatisticsPage)
     await flushPromises()
 
     expect(wrapper.text()).toContain('3 consultations')
-    expect(wrapper.text()).toContain('1. 乾 (Qián)')
-    expect(wrapper.text()).toContain('2. 坤 (Kūn)')
+    // hexagram frequency is now a bar chart (table): row headers "1. 乾" / "2. 坤"
+    const rowHeaders = wrapper.findAll('th[scope="row"]').map((th) => th.text())
+    expect(rowHeaders).toContain('1. 乾')
+    expect(rowHeaders).toContain('2. 坤')
+    expect(rowHeaders).toContain('career')
+    // yin/yang ratio is a donut with the count/percent line as its caption + an aria summary
+    const donut = wrapper.find('svg[role="img"]')
+    expect(donut.attributes('aria-label')).toContain('33% Yin')
+    expect(donut.attributes('aria-label')).toContain('67% Yang')
     expect(wrapper.text()).toContain('6 yin / 12 yang (33% / 67%)')
-    expect(wrapper.text()).toContain('career')
+  })
+
+  it('caps the hexagram chart at 12 rows and notes how many more there are', async () => {
+    vi.mocked(fetchStatistics).mockResolvedValue({
+      ...sample,
+      hexagramFrequency: Array.from({ length: 15 }, (_, i) => ({
+        kingWenNumber: i + 1,
+        chineseName: `H${i + 1}`,
+        pinyin: 'x',
+        count: 15 - i,
+      })),
+    })
+
+    const wrapper = mount(StatisticsPage)
+    await flushPromises()
+
+    expect(wrapper.findAll('th[scope="row"]').filter((th) => /\bH\d+$/.test(th.text()))).toHaveLength(12)
+    expect(wrapper.text()).toContain('+3 more')
   })
 
   it('shows a distinct empty-history message when there are no consultations', async () => {

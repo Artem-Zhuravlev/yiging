@@ -122,7 +122,36 @@ final class ConsultationController
         return new JsonResponse(['imported' => count($consultations)], Response::HTTP_CREATED);
     }
 
-    public function index(): Response
+    public function index(Request $request): Response
+    {
+        try {
+            $query = ConsultationListQuery::fromRequest($request);
+        } catch (\InvalidArgumentException $e) {
+            return $this->errorResponse($e->getMessage(), Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $page = $this->repository->findListPage($query);
+
+        return new JsonResponse([
+            'items' => array_map(
+                static fn (ConsultationListItem $item): array => $item->toJson(),
+                $page->items,
+            ),
+            'nextCursor' => $page->nextCursor,
+        ]);
+    }
+
+    public function tags(): Response
+    {
+        return new JsonResponse($this->repository->allTagNames());
+    }
+
+    /**
+     * The full, fully-populated history — for the SPEC-028 "Export Backup (JSON)" download only.
+     * This is the one endpoint that still pays the O(n) hydration cost `index()` used to; it's an
+     * explicit user action, not a page load (SPEC-041).
+     */
+    public function export(): Response
     {
         $consultations = array_map(
             fn (Consultation $consultation): array => $this->toJson($consultation),

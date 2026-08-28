@@ -1,8 +1,9 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import HomePage from './HomePage.vue'
 import { fetchHexagram } from '../../entities/hexagram/api'
 import type { Hexagram } from '../../entities/hexagram/model'
+import { liveMessage } from '../../shared/lib/announce'
 
 vi.mock('../../entities/hexagram/api', () => ({
   fetchHexagram: vi.fn(),
@@ -30,6 +31,10 @@ const sampleHexagram: Hexagram = {
 }
 
 describe('HomePage', () => {
+  beforeEach(() => {
+    liveMessage.value = ''
+  })
+
   it('renders the project title and core navigation links', () => {
     vi.mocked(fetchHexagram).mockReturnValue(new Promise(() => {}))
 
@@ -69,5 +74,23 @@ describe('HomePage', () => {
 
     expect(wrapper.text()).toContain('network down')
     expect(wrapper.text()).toContain('Cast a new consultation')
+  })
+
+  it('announces the load transition in the live region', async () => {
+    vi.mocked(fetchHexagram).mockResolvedValue(sampleHexagram)
+
+    mount(HomePage, { global: { stubs } })
+    await flushPromises()
+
+    expect(liveMessage.value).toBe('Content loaded')
+  })
+
+  it('announces a load failure in the live region', async () => {
+    vi.mocked(fetchHexagram).mockRejectedValue(new Error('network down'))
+
+    mount(HomePage, { global: { stubs } })
+    await flushPromises()
+
+    expect(liveMessage.value).toBe('Failed to load content')
   })
 })

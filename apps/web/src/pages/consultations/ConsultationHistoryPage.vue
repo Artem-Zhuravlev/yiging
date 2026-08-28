@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -7,14 +7,14 @@ import Message from 'primevue/message'
 import {
   exportConsultationsBackup,
   fetchConsultations,
+  fetchConsultationTags,
+  fetchConsultationsForExport,
   importConsultationsBackup,
 } from '../../entities/consultation/api'
-import type { Consultation } from '../../entities/consultation/model'
+import type { ConsultationListItem } from '../../entities/consultation/model'
+import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
 
-type State =
-  | { status: 'loading' }
-  | { status: 'error'; message: string }
-  | { status: 'loaded'; consultations: Consultation[] }
+type Status = 'loading' | 'error' | 'ready'
 
 type ImportState =
   | { status: 'idle' }
@@ -24,53 +24,85 @@ type ImportState =
 
 interface ConsultationGroup {
   dateLabel: string
-  consultations: Consultation[]
+  consultations: ConsultationListItem[]
 }
 
 const { t } = useI18n()
-const state = ref<State>({ status: 'loading' })
+
+const status = ref<Status>('loading')
+const errorMessage = ref('')
+const items = ref<ConsultationListItem[]>([])
+const nextCursor = ref<string | null>(null)
+const loadingMore = ref(false)
+
+const searchQuery = ref('')
+const debouncedQuery = ref('')
 const selectedTags = ref<Set<string>>(new Set())
 const favoritesOnly = ref(false)
-const searchQuery = ref('')
+const allTags = ref<string[]>([])
+
 const importState = ref<ImportState>({ status: 'idle' })
+const exporting = ref(false)
+
+useStatusAnnouncer(computed(() => status.value))
+
+let debounceHandle: ReturnType<typeof setTimeout> | undefined
+watch(searchQuery, (value) => {
+  clearTimeout(debounceHandle)
+  debounceHandle = setTimeout(() => {
+    debouncedQuery.value = value.trim()
+  }, 300)
+})
+onBeforeUnmount(() => clearTimeout(debounceHandle))
+
+const filtersActive = computed(
+  () => debouncedQuery.value !== '' || selectedTags.value.size > 0 || favoritesOnly.value,
+)
+
+async function load(reset: boolean): Promise<void> {
+  if (reset) {
+    status.value = 'loading'
+    items.value = []
+    nextCursor.value = null
+  } else {
+    loadingMore.value = true
+  }
+
+  try {
+    const page = await fetchConsultations({
+      cursor: reset ? null : nextCursor.value,
+      q: debouncedQuery.value,
+      tags: [...selectedTags.value],
+      favorite: favoritesOnly.value,
+    })
+    items.value = reset ? page.items : [...items.value, ...page.items]
+    nextCursor.value = page.nextCursor
+    status.value = 'ready'
+  } catch (error) {
+    if (reset) {
+      status.value = 'error'
+      errorMessage.value = error instanceof Error ? error.message : t('history.loadError')
+    }
+  } finally {
+    loadingMore.value = false
+  }
+}
 
 onMounted(async () => {
+  await load(true)
   try {
-    const consultations = await fetchConsultations()
-    state.value = { status: 'loaded', consultations }
-  } catch (error) {
-    state.value = {
-      status: 'error',
-      message: error instanceof Error ? error.message : t('history.loadError'),
-    }
+    allTags.value = await fetchConsultationTags()
+  } catch {
+    // The chips just won't render — the list itself still works.
   }
 })
 
-const allTags = computed<string[]>(() => {
-  if (state.value.status !== 'loaded') return []
-  return [...new Set(state.value.consultations.flatMap((c) => c.tags))].sort()
-})
-
-function matchesSearch(consultation: Consultation, query: string): boolean {
-  const needle = query.toLowerCase()
-  if (consultation.question.toLowerCase().includes(needle)) return true
-  return consultation.notes.some((note) => note.text.toLowerCase().includes(needle))
-}
-
-const filteredConsultations = computed<Consultation[]>(() => {
-  if (state.value.status !== 'loaded') return []
-
-  const query = searchQuery.value.trim()
-
-  return state.value.consultations
-    .filter((c) => selectedTags.value.size === 0 || [...selectedTags.value].every((t) => c.tags.includes(t)))
-    .filter((c) => !favoritesOnly.value || c.favorite)
-    .filter((c) => query === '' || matchesSearch(c, query))
-})
+// Any filter change restarts paging from page 1 with the new server-side params.
+watch([debouncedQuery, selectedTags, favoritesOnly], () => void load(true))
 
 const groupedConsultations = computed<ConsultationGroup[]>(() => {
   const groups: ConsultationGroup[] = []
-  for (const consultation of filteredConsultations.value) {
+  for (const consultation of items.value) {
     const dateLabel = new Date(consultation.createdAt).toLocaleDateString()
     const currentGroup = groups[groups.length - 1]
     if (currentGroup && currentGroup.dateLabel === dateLabel) {
@@ -89,9 +121,19 @@ function toggleTag(tag: string): void {
   selectedTags.value = next
 }
 
-function exportBackup(): void {
-  if (state.value.status !== 'loaded') return
-  exportConsultationsBackup(state.value.consultations)
+async function exportBackup(): Promise<void> {
+  exporting.value = true
+  try {
+    const all = await fetchConsultationsForExport()
+    exportConsultationsBackup(all)
+  } catch (error) {
+    importState.value = {
+      status: 'error',
+      message: error instanceof Error ? error.message : t('history.exportError'),
+    }
+  } finally {
+    exporting.value = false
+  }
 }
 
 async function handleImportFile(event: Event): Promise<void> {
@@ -103,21 +145,25 @@ async function handleImportFile(event: Event): Promise<void> {
 
   try {
     const text = await file.text()
-    let items: unknown[]
+    let parsed: unknown[]
     try {
-      items = JSON.parse(text)
+      parsed = JSON.parse(text)
     } catch {
       throw new Error(t('history.invalidJson'))
     }
-    if (!Array.isArray(items)) {
+    if (!Array.isArray(parsed)) {
       throw new Error(t('history.invalidBackupArray'))
     }
 
-    const { imported } = await importConsultationsBackup(items)
+    const { imported } = await importConsultationsBackup(parsed)
     importState.value = { status: 'success', imported }
 
-    const consultations = await fetchConsultations()
-    state.value = { status: 'loaded', consultations }
+    await load(true)
+    try {
+      allTags.value = await fetchConsultationTags()
+    } catch {
+      /* keep whatever tag list we had */
+    }
   } catch (error) {
     importState.value = {
       status: 'error',
@@ -130,7 +176,7 @@ async function handleImportFile(event: Event): Promise<void> {
 </script>
 
 <template>
-  <main class="container-sm mx-auto p-4">
+  <main id="main" tabindex="-1" class="container-sm mx-auto p-4">
     <div class="mb-4 flex align-items-center justify-content-between gap-3">
       <h1 class="text-2xl font-semibold m-0">{{ t('history.title') }}</h1>
       <div class="flex align-items-center gap-3">
@@ -138,7 +184,7 @@ async function handleImportFile(event: Event): Promise<void> {
           text
           size="small"
           :label="t('history.exportBackup')"
-          :disabled="state.status !== 'loaded'"
+          :disabled="status !== 'ready' || exporting"
           @click="exportBackup"
         />
         <label class="cursor-pointer text-sm p-button p-button-text p-button-sm">
@@ -156,17 +202,12 @@ async function handleImportFile(event: Event): Promise<void> {
         })
       }}
     </Message>
-    <Message v-else-if="importState.status === 'error'" severity="error" class="mb-4">
+    <Message v-else-if="importState.status === 'error'" severity="error" role="alert" class="mb-4">
       {{ importState.message }}
     </Message>
 
-    <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('common.loading') }}</p>
-    <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
-
-    <p v-else-if="state.consultations.length === 0" class="text-color-secondary">
-      {{ t('history.emptyPrefix') }}
-      <router-link to="/consultations/new">{{ t('history.castFirstOne') }}</router-link>.
-    </p>
+    <p v-if="status === 'loading'" class="text-color-secondary">{{ t('common.loading') }}</p>
+    <Message v-else-if="status === 'error'" severity="error" role="alert">{{ errorMessage }}</Message>
 
     <template v-else>
       <InputText
@@ -197,7 +238,11 @@ async function handleImportFile(event: Event): Promise<void> {
         />
       </div>
 
-      <p v-if="groupedConsultations.length === 0" class="text-color-secondary">
+      <p v-if="items.length === 0 && !filtersActive" class="text-color-secondary">
+        {{ t('history.emptyPrefix') }}
+        <router-link to="/consultations/new">{{ t('history.castFirstOne') }}</router-link>.
+      </p>
+      <p v-else-if="items.length === 0" class="text-color-secondary">
         {{ t('history.noTagMatches') }}
       </p>
 
@@ -225,6 +270,16 @@ async function handleImportFile(event: Event): Promise<void> {
             </li>
           </ul>
         </section>
+      </div>
+
+      <div v-if="nextCursor" class="mt-4 flex justify-content-center">
+        <Button
+          text
+          size="small"
+          :disabled="loadingMore"
+          :label="loadingMore ? t('common.loadingMore') : t('common.loadMore')"
+          @click="load(false)"
+        />
       </div>
     </template>
   </main>

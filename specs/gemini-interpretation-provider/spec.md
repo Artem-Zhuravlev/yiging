@@ -218,3 +218,11 @@ real end-to-end `POST /api/interpretations/{id}` call against a real consultatio
 actual running dev server, returned a genuine Gemini-generated `Interpretation` (`200`, real
 grounded prose, correctly-computed `sourceReferences`) — not a fake client, not a mock, the real
 request path in full, confirmed by directly reading the response body.
+
+**2026-08-28 — contract now pinned by an offline regression test ([SPEC-040](../gemini-contract-regression/spec.md)).**
+The verified request/response contract above was, until now, only prose here plus untested code
+in `HttpGeminiClient`. SPEC-040 extracts the network call behind an `HttpTransport` seam
+(`StreamHttpTransport` is the production impl, a verbatim move) and adds `HttpGeminiClientTest`
+asserting the endpoint URL, headers, request-body shape, and response unwrapping against a
+recorded fixture — so a future change to any of those fails a test instead of only failing a
+live call. The live-key check stays a manual step; nothing about the contract changed.

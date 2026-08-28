@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { reactive } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import NewConsultationPage from './NewConsultationPage.vue'
@@ -12,6 +12,12 @@ const route = reactive<{ query: Record<string, string> }>({ query: {} })
 vi.mock('../../entities/consultation/api', () => ({
   createConsultation: vi.fn(),
   fetchConsultation: vi.fn(),
+}))
+
+// CastingReveal fetches the primary hexagram's lines on mount; keep it pending so the reveal
+// stays on screen (and never reaches its own navigation) during the one test that asserts it.
+vi.mock('../../entities/hexagram/api', () => ({
+  fetchHexagram: vi.fn().mockReturnValue(new Promise(() => {})),
 }))
 
 vi.mock('vue-router', () => ({
@@ -46,6 +52,13 @@ describe('NewConsultationPage', () => {
     vi.mocked(createConsultation).mockClear()
     vi.mocked(fetchConsultation).mockReset()
     route.query = {}
+    // Default these tests to the no-animation path so a successful cast navigates synchronously
+    // (SPEC-042); the reveal itself is covered by CastingReveal.spec.ts and the one test below.
+    localStorage.setItem('yijing-casting-reveal', 'off')
+  })
+
+  afterEach(() => {
+    localStorage.clear()
   })
 
   it('submits a three_coins request and navigates to the new consultation', async () => {
@@ -148,6 +161,45 @@ describe('NewConsultationPage', () => {
 
     expect(wrapper.text()).not.toContain('Follow-up to:')
     expect(createConsultation).toHaveBeenCalledWith({ question: 'Test?', method: 'three_coins' })
+  })
+
+  it('groups each manual line in a fieldset labelled with its line number', async () => {
+    const wrapper = mount(NewConsultationPage)
+    await wrapper.find('input[type="radio"][value="manual"]').setValue()
+
+    const groups = wrapper.findAll('fieldset[data-position]')
+    expect(groups).toHaveLength(6)
+    for (const group of groups) {
+      const position = group.attributes('data-position')
+      expect(group.find('legend').text()).toBe(`Line ${position}`)
+    }
+  })
+
+  it('marks the submit button aria-busy while a cast is in flight', async () => {
+    vi.mocked(createConsultation).mockReturnValue(new Promise(() => {}))
+
+    const wrapper = mount(NewConsultationPage)
+    const button = wrapper.find('button[type="submit"]')
+    expect(button.attributes('aria-busy')).toBe('false')
+
+    await wrapper.find('#question').setValue('Test?')
+    await wrapper.find('form').trigger('submit.prevent')
+
+    expect(button.attributes('aria-busy')).toBe('true')
+  })
+
+  it('shows the casting reveal instead of navigating when the animation is enabled', async () => {
+    localStorage.setItem('yijing-casting-reveal', 'on')
+    vi.mocked(createConsultation).mockResolvedValue(sample)
+
+    const wrapper = mount(NewConsultationPage)
+    await wrapper.find('#question').setValue('Test?')
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(push).not.toHaveBeenCalled()
+    expect(wrapper.findComponent({ name: 'CastingReveal' }).exists()).toBe(true)
+    expect(wrapper.find('form').exists()).toBe(false)
   })
 
   it('shows the API error message inline on a 422 without navigating', async () => {

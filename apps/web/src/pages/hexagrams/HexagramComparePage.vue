@@ -7,6 +7,7 @@ import Message from 'primevue/message'
 import { compareHexagrams } from '../../entities/hexagram/api'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
 import type { HexagramComparison } from '../../entities/hexagram/model'
+import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
 
 const RELATIONSHIP_KEYS = ['nuclear', 'reversed', 'complement'] as const
 
@@ -32,6 +33,8 @@ const queryB = computed(() => parseKingWenNumber(route.query.b, 2))
 // submitting, without the fields jumping around as the previous comparison loads.
 const formA = ref(queryA.value)
 const formB = ref(queryB.value)
+
+useStatusAnnouncer(computed(() => state.value.status))
 
 function submit(): void {
   void router.push({ query: { a: String(formA.value), b: String(formB.value) } })
@@ -85,7 +88,7 @@ const relationshipNote = computed<string | null>(() => {
 </script>
 
 <template>
-  <main class="container-md mx-auto p-4">
+  <main id="main" tabindex="-1" class="container-md mx-auto p-4">
     <router-link to="/hexagrams" class="text-sm text-color-secondary">&larr; {{ t('nav.hexagrams') }}</router-link>
 
     <h1 class="mt-3 mb-4 text-2xl font-semibold">{{ t('hexagramCompare.title') }}</h1>
@@ -103,7 +106,7 @@ const relationshipNote = computed<string | null>(() => {
     </form>
 
     <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('common.loading') }}</p>
-    <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
+    <Message v-else-if="state.status === 'error'" severity="error" role="alert">{{ state.message }}</Message>
 
     <div v-else class="flex flex-column gap-5">
       <div class="flex flex-wrap gap-6">

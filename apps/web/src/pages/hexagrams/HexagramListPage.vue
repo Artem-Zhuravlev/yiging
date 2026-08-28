@@ -11,6 +11,7 @@ import {
 } from '../../entities/hexagram/api'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
 import type { Hexagram } from '../../entities/hexagram/model'
+import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
 
 type State =
   | { status: 'loading' }
@@ -21,6 +22,8 @@ const { t } = useI18n()
 const state = ref<State>({ status: 'loading' })
 const searchQuery = ref('')
 const favoritesOnly = ref(false)
+
+useStatusAnnouncer(computed(() => state.value.status))
 
 onMounted(async () => {
   try {
@@ -71,14 +74,14 @@ async function toggleFavorite(hexagram: Hexagram): Promise<void> {
 </script>
 
 <template>
-  <main class="container-lg mx-auto p-4">
+  <main id="main" tabindex="-1" class="container-lg mx-auto p-4">
     <div class="mb-4 flex align-items-center justify-content-between">
       <h1 class="text-2xl font-semibold m-0">{{ t('hexagramList.title') }}</h1>
       <router-link to="/hexagrams/editor" class="text-sm">{{ t('hexagramList.visualEditor') }}</router-link>
     </div>
 
     <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('hexagramList.loading') }}</p>
-    <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
+    <Message v-else-if="state.status === 'error'" severity="error" role="alert">{{ state.message }}</Message>
 
     <template v-else>
       <div class="mb-4 flex flex-wrap align-items-center gap-3">

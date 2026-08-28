@@ -1,6 +1,8 @@
 export const en = {
   common: {
     loading: 'Loading…',
+    loadMore: 'Load more',
+    loadingMore: 'Loading…',
     viewFullPage: 'View full page',
     upperTrigram: 'Upper trigram',
     lowerTrigram: 'Lower trigram',
@@ -20,6 +22,13 @@ export const en = {
     settings: 'Settings',
     darkMode: 'Switch to dark mode',
     lightMode: 'Switch to light mode',
+    primaryLabel: 'Primary',
+    skipToContent: 'Skip to main content',
+  },
+  a11y: {
+    loading: 'Loading…',
+    loaded: 'Content loaded',
+    loadFailed: 'Failed to load content',
   },
   home: {
     title: 'Yijing',
@@ -50,6 +59,10 @@ export const en = {
     yinYangRatio: 'Yin / Yang ratio',
     yinYangLine: '{yin} yin / {yang} yang ({yinPercent}% / {yangPercent}%)',
     tagFrequency: 'Tag frequency',
+    andMore: '+{count} more',
+  },
+  barChart: {
+    caption: 'Frequency chart',
   },
   settings: {
     title: 'Settings',
@@ -159,6 +172,8 @@ export const en = {
     threeCoins: 'Three Coins',
     manual: 'Manual',
     changing: 'Changing',
+    lineGroupLabel: 'Line {n}',
+    showCastingAnimation: 'Show casting animation',
     addContext: 'Add more context (optional)',
     cast: 'Cast',
     casting: 'Casting…',
@@ -168,6 +183,7 @@ export const en = {
     title: 'History',
     loadError: 'Failed to load consultations.',
     exportBackup: 'Export Backup (JSON)',
+    exportError: 'Failed to export backup.',
     importBackup: 'Import Backup (JSON)',
     imported: 'Imported {count} consultation{suffix}.',
     invalidJson: 'That file is not valid JSON.',
@@ -182,6 +198,11 @@ export const en = {
   hexagramLines: {
     ariaLabel: 'Hexagram with {count} lines',
     changingLine: 'Changing line',
+  },
+  castingReveal: {
+    casting: 'Casting…',
+    skip: 'Skip',
+    continue: 'Continue',
   },
   consultationPage: {
     notFound: 'Consultation not found.',

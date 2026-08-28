@@ -1,4 +1,5 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, START_LOCATION } from 'vue-router'
+import { focusMain } from '../shared/lib/focusMain'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -73,6 +74,17 @@ const router = createRouter({
       component: () => import('../pages/settings/InterpretationSettingsPage.vue'),
     },
   ],
+})
+
+// Move focus to the destination page's <main> on every client-side navigation, so keyboard and
+// screen-reader users land in the new content instead of keeping focus on the link they clicked
+// (SPEC-039, REQ-A11Y-003). Skipped on the very first navigation (`from === START_LOCATION`) so a
+// cold page load leaves focus at the document start, where the skip link is.
+router.afterEach((_to, from) => {
+  if (from === START_LOCATION) {
+    return
+  }
+  void focusMain()
 })
 
 export default router

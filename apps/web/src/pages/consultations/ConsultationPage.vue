@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { fetchConsultation, updateConsultation } from '../../entities/consultation/api'
@@ -15,6 +15,8 @@ import type {
   InterpretationLens,
 } from '../../entities/interpretation/model'
 import { ApiError } from '../../shared/api/http'
+import { announce } from '../../shared/lib/announce'
+import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
 import Button from 'primevue/button'
 import Textarea from 'primevue/textarea'
 import InputText from 'primevue/inputtext'
@@ -69,6 +71,24 @@ const interpretationState = computed<InterpretationState>(() => interpretationSt
 // the pattern above for `interpretationState`.
 const repeats = ref<ConsultationRepeats | null>(null)
 const copyLinkState = ref<CopyLinkState>({ status: 'idle' })
+
+// Page-level load (SPEC-039, REQ-A11Y-004).
+useStatusAnnouncer(
+  computed(() => state.value.status),
+  (status) => (status === 'not-found' ? t('consultationPage.notFound') : undefined),
+)
+
+// The AI interpretation section loads independently of the page; announce its transitions too,
+// since it's a deliberate user action with its own latency and error surface.
+watch(
+  () => interpretationState.value.status,
+  (status, previous) => {
+    if (status === previous) return
+    if (status === 'loading') announce(t('consultationPage.interpreting'))
+    else if (status === 'error') announce(t('consultationPage.getInterpretationError'))
+    else if (status === 'loaded') announce(t('a11y.loaded'))
+  },
+)
 
 const conversations = ref<Record<InterpretationLens, ConversationExchange[]>>({
   general: [],
@@ -386,7 +406,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="container-sm mx-auto p-4">
+  <main id="main" tabindex="-1" class="container-sm mx-auto p-4">
     <router-link to="/consultations" class="print-hidden text-sm text-color-secondary">
       &larr; {{ t('history.title') }}
     </router-link>
@@ -395,7 +415,7 @@ onMounted(async () => {
     <p v-else-if="state.status === 'not-found'" class="mt-4 text-color-secondary">
       {{ t('consultationPage.notFound') }}
     </p>
-    <Message v-else-if="state.status === 'error'" severity="error" class="mt-4">{{ state.message }}</Message>
+    <Message v-else-if="state.status === 'error'" severity="error" role="alert" class="mt-4">{{ state.message }}</Message>
 
     <div v-else class="mt-4 flex flex-column gap-5">
       <div>
@@ -425,10 +445,10 @@ onMounted(async () => {
           {{ state.consultation.method }} &middot;
           {{ new Date(state.consultation.createdAt).toLocaleString() }}
         </p>
-        <Message v-if="favoriteFormState.status === 'error'" severity="error" class="mt-1">
+        <Message v-if="favoriteFormState.status === 'error'" severity="error" role="alert" class="mt-1">
           {{ favoriteFormState.message }}
         </Message>
-        <Message v-if="copyLinkState.status === 'error'" severity="error" class="mt-1">
+        <Message v-if="copyLinkState.status === 'error'" severity="error" role="alert" class="mt-1">
           {{ copyLinkState.message }}
         </Message>
       </div>
@@ -564,7 +584,7 @@ onMounted(async () => {
               class="flex-1"
             />
           </div>
-          <Message v-if="noteFormState.status === 'error'" severity="error">{{ noteFormState.message }}</Message>
+          <Message v-if="noteFormState.status === 'error'" severity="error" role="alert">{{ noteFormState.message }}</Message>
           <Button
             type="submit"
             :disabled="noteFormState.status === 'submitting'"
@@ -594,7 +614,7 @@ onMounted(async () => {
               :label="tagFormState.status === 'submitting' ? t('journal.adding') : t('consultationPage.addTag')"
             />
           </div>
-          <Message v-if="tagFormState.status === 'error'" severity="error">{{ tagFormState.message }}</Message>
+          <Message v-if="tagFormState.status === 'error'" severity="error" role="alert">{{ tagFormState.message }}</Message>
         </form>
       </div>
 
@@ -655,7 +675,7 @@ onMounted(async () => {
               class="w-full"
             />
           </div>
-          <Message v-if="contextFormState.status === 'error'" severity="error">
+          <Message v-if="contextFormState.status === 'error'" severity="error" role="alert">
             {{ contextFormState.message }}
           </Message>
           <Button
@@ -718,7 +738,7 @@ onMounted(async () => {
               @click="unlinkInterpretationFromOutcome"
             />
           </div>
-          <Message v-if="outcomeFormState.status === 'error'" severity="error">
+          <Message v-if="outcomeFormState.status === 'error'" severity="error" role="alert">
             {{ outcomeFormState.message }}
           </Message>
           <Button
@@ -765,7 +785,7 @@ onMounted(async () => {
           @click="getInterpretation"
         />
 
-        <Message v-if="interpretationState.status === 'error'" severity="error" class="mt-3">
+        <Message v-if="interpretationState.status === 'error'" severity="error" role="alert" class="mt-3">
           {{ interpretationState.message }}
         </Message>
 
@@ -853,7 +873,7 @@ onMounted(async () => {
                 :placeholder="t('consultationPage.askPlaceholder')"
                 class="w-full"
               />
-              <Message v-if="followUpFormState.status === 'error'" severity="error">
+              <Message v-if="followUpFormState.status === 'error'" severity="error" role="alert">
                 {{ followUpFormState.message }}
               </Message>
               <Button

@@ -2,6 +2,8 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import {
   createConsultation,
   fetchConsultations,
+  fetchConsultationTags,
+  fetchConsultationsForExport,
   fetchConsultation,
   updateConsultation,
   importConsultationsBackup,
@@ -55,18 +57,53 @@ describe('entities/consultation api', () => {
     )
   })
 
-  it('fetchConsultations gets /consultations', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([sample]),
-      }),
-    )
+  it('fetchConsultations gets a page from /consultations with no query string by default', async () => {
+    const pageBody = { items: [], nextCursor: null }
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(pageBody) })
+    vi.stubGlobal('fetch', fetchMock)
 
     const result = await fetchConsultations()
 
+    expect(result).toEqual(pageBody)
+    expect(fetchMock).toHaveBeenCalledWith('/api/consultations')
+  })
+
+  it('fetchConsultations builds a query string from cursor / q / tags / favorite', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ items: [], nextCursor: null }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await fetchConsultations({ cursor: 'c1', q: ' offer ', tags: ['career', 'money'], favorite: true })
+
+    const url = fetchMock.mock.calls[0]![0] as string
+    expect(url.startsWith('/api/consultations?')).toBe(true)
+    const params = new URLSearchParams(url.slice(url.indexOf('?') + 1))
+    expect(params.get('cursor')).toBe('c1')
+    expect(params.get('q')).toBe('offer')
+    expect(params.get('tags')).toBe('career,money')
+    expect(params.get('favorite')).toBe('1')
+  })
+
+  it('fetchConsultationTags gets /consultations/tags', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(['career', 'money']) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await fetchConsultationTags()
+
+    expect(result).toEqual(['career', 'money'])
+    expect(fetchMock).toHaveBeenCalledWith('/api/consultations/tags')
+  })
+
+  it('fetchConsultationsForExport gets /consultations/export', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve([sample]) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await fetchConsultationsForExport()
+
     expect(result).toEqual([sample])
+    expect(fetchMock).toHaveBeenCalledWith('/api/consultations/export')
   })
 
   it('fetchConsultation gets /consultations/{id}', async () => {

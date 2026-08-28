@@ -73,7 +73,7 @@ final class JournalControllerTest extends TestCase
         self::assertSame(422, $response->getStatusCode());
     }
 
-    public function testIndexReturnsAllEntriesNewestFirst(): void
+    public function testIndexReturnsAPageOfEntriesNewestFirst(): void
     {
         $this->postJson('/api/journal', ['text' => 'First.']);
         $this->postJson('/api/journal', ['text' => 'Second.']);
@@ -83,17 +83,51 @@ final class JournalControllerTest extends TestCase
         self::assertSame(200, $response->getStatusCode());
         $body = $this->decode($response);
 
-        self::assertCount(2, $body);
-        self::assertSame('Second.', $body[0]['text']);
-        self::assertSame('First.', $body[1]['text']);
+        self::assertArrayHasKey('items', $body);
+        self::assertNull($body['nextCursor']);
+        self::assertCount(2, $body['items']);
+        self::assertSame('Second.', $body['items'][0]['text']);
+        self::assertSame('First.', $body['items'][1]['text']);
     }
 
-    public function testIndexOnAnEmptyJournalReturnsEmptyArray(): void
+    public function testIndexOnAnEmptyJournalReturnsAnEmptyPage(): void
     {
         $response = $this->kernel->handle(Request::create('/api/journal', 'GET'));
 
         self::assertSame(200, $response->getStatusCode());
-        self::assertSame([], $this->decode($response));
+        self::assertSame(['items' => [], 'nextCursor' => null], $this->decode($response));
+    }
+
+    public function testIndexPaginatesWithTheCursorAcrossPagesWithNoGapsOrDuplicates(): void
+    {
+        for ($i = 1; $i <= 5; $i++) {
+            $this->postJson('/api/journal', ['text' => "Entry {$i}."]);
+        }
+
+        $seen = [];
+        $cursor = null;
+        $pages = 0;
+
+        do {
+            $url = '/api/journal?limit=2' . ($cursor !== null ? '&cursor=' . urlencode($cursor) : '');
+            $body = $this->decode($this->kernel->handle(Request::create($url, 'GET')));
+            self::assertLessThanOrEqual(2, count($body['items']));
+            foreach ($body['items'] as $item) {
+                $seen[] = $item['text'];
+            }
+            $cursor = $body['nextCursor'];
+            $pages++;
+        } while ($cursor !== null && $pages < 10);
+
+        self::assertSame(['Entry 5.', 'Entry 4.', 'Entry 3.', 'Entry 2.', 'Entry 1.'], $seen);
+        self::assertSame(count($seen), count(array_unique($seen)));
+    }
+
+    public function testIndexRejectsAMalformedCursorWith422(): void
+    {
+        $response = $this->kernel->handle(Request::create('/api/journal?cursor=%%%not-valid%%%', 'GET'));
+
+        self::assertSame(422, $response->getStatusCode());
     }
 
     /**

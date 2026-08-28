@@ -39,6 +39,41 @@ a.p-button:hover {
   }
 }
 
+/* Visually hidden but exposed to assistive tech (screen readers). Used for the live-region
+   announcer, per-line "Line N" legends on the casting form, and any label that would be
+   redundant visual clutter but still needs to be spoken (SPEC-039). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The skip link is `.sr-only` until it receives keyboard focus, at which point it becomes a
+   normal, visible control pinned to the top-left corner (SPEC-039, REQ-A11Y-001). */
+.skip-link:focus {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 1100;
+  width: auto;
+  height: auto;
+  padding: 0.5rem 0.75rem;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  background: var(--p-content-background);
+  color: var(--p-primary-color);
+  border: 1px solid var(--p-primary-color);
+  border-radius: var(--p-border-radius, 6px);
+}
+
 /* Page-level content containers. PrimeFlex's own `.max-w-*` scale stops at 30rem — nowhere near
    enough for a "sm" page container, let alone "md"/"lg" — so every page centers its content with
    one of these instead (values match the old Tailwind `max-w-screen-{sm,md,lg}` breakpoints they

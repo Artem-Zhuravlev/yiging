@@ -75,6 +75,37 @@ export interface Consultation extends ConsultationContext {
   favorite: boolean
 }
 
+/** The lean row shape `GET /api/consultations` returns per consultation (SPEC-041) — everything
+ * the History page's cards and date grouping need, without the notes/context/outcome/follow-up
+ * payload of a full `Consultation`. The full object is still fetched per-consultation on the
+ * detail page, and in bulk (via `/consultations/export`) for backup. */
+export interface ConsultationListItem {
+  id: string
+  question: string
+  method: CastingMethod
+  primaryHexagram: HexagramSummary
+  changingLinePositions: number[]
+  resultingHexagram: HexagramSummary
+  createdAt: string
+  tags: string[]
+  favorite: boolean
+}
+
+/** One page of `GET /api/consultations` (SPEC-041). `nextCursor` is non-null exactly when more
+ * rows exist after this page; pass it back as `cursor` to fetch the next one. */
+export interface ConsultationListPage {
+  items: ConsultationListItem[]
+  nextCursor: string | null
+}
+
+export interface ConsultationListParams {
+  limit?: number
+  cursor?: string | null
+  q?: string
+  tags?: string[]
+  favorite?: boolean
+}
+
 /** Other consultations sharing this one's primary hexagram, resulting hexagram, or exact
  * changing-line set (SPEC-023) — only present on the single-consultation detail response, never
  * on the list/create/update responses (see ConsultationDetail). */

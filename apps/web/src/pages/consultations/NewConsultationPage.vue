@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { announce } from '../../shared/lib/announce'
 import Textarea from 'primevue/textarea'
 import RadioButton from 'primevue/radiobutton'
 import Checkbox from 'primevue/checkbox'
@@ -9,8 +10,19 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Panel from 'primevue/panel'
 import { createConsultation, fetchConsultation } from '../../entities/consultation/api'
-import type { ManualLine, NewConsultationRequest, SelectableCastingMethod } from '../../entities/consultation/model'
+import type {
+  Consultation,
+  ManualLine,
+  NewConsultationRequest,
+  SelectableCastingMethod,
+} from '../../entities/consultation/model'
 import { ApiError } from '../../shared/api/http'
+import CastingReveal from '../../features/casting-reveal/CastingReveal.vue'
+import {
+  isCastingRevealEnabled,
+  prefersReducedMotion,
+  setCastingRevealEnabled,
+} from '../../features/casting-reveal/castingRevealPreference'
 
 type FormState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string }
 
@@ -33,9 +45,27 @@ const initialInterpretation = ref('')
 const followUpToConsultationId = ref<string | undefined>(undefined)
 const followUpToQuestion = ref<string | null>(null)
 
+// After a successful cast we either navigate straight to the detail page (reduced motion, or
+// the user opted out) or hand off to the reveal animation (SPEC-042), which does its own
+// navigation once it finishes / is skipped.
+const revealEnabled = ref(isCastingRevealEnabled())
+const castResult = ref<Consultation | null>(null)
+
 const route = useRoute()
 const router = useRouter()
 const { t } = useI18n()
+
+// The submit button also flips to a "Casting…" label, but that visual-only change is silent to a
+// screen reader; announce the transition and any resulting error explicitly (SPEC-039,
+// REQ-A11Y-005). Success navigates away, where the router's focus hook takes over.
+watch(
+  () => state.value.status,
+  (status, previous) => {
+    if (status === previous) return
+    if (status === 'submitting') announce(t('newConsultation.casting'))
+    else if (status === 'error') announce(t('newConsultation.createError'))
+  },
+)
 
 // Blank fields are omitted from the request entirely (undefined), rather than sent as empty
 // strings — an untouched optional field should look untouched to the API, not like the user
@@ -61,6 +91,10 @@ async function submit(): Promise<void> {
 
   try {
     const consultation = await createConsultation(request)
+    if (revealEnabled.value && !prefersReducedMotion()) {
+      castResult.value = consultation
+      return
+    }
     await router.push(`/consultations/${consultation.id}`)
   } catch (error) {
     state.value = {
@@ -90,14 +124,17 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="container-sm mx-auto p-4">
-    <h1 class="text-2xl font-semibold m-0">{{ t('newConsultation.title') }}</h1>
-    <p v-if="followUpToConsultationId" class="mt-1 text-sm text-color-secondary">
-      {{ t('newConsultation.followUpTo') }} <span v-if="followUpToQuestion">{{ followUpToQuestion }}</span>
-      <span v-else>…</span>
-    </p>
+  <main id="main" tabindex="-1" class="container-sm mx-auto p-4">
+    <CastingReveal v-if="castResult" :consultation="castResult" />
 
-    <form class="mt-4 flex flex-column gap-4" @submit.prevent="submit">
+    <template v-else>
+      <h1 class="text-2xl font-semibold m-0">{{ t('newConsultation.title') }}</h1>
+      <p v-if="followUpToConsultationId" class="mt-1 text-sm text-color-secondary">
+        {{ t('newConsultation.followUpTo') }} <span v-if="followUpToQuestion">{{ followUpToQuestion }}</span>
+        <span v-else>…</span>
+      </p>
+
+      <form class="mt-4 flex flex-column gap-4" @submit.prevent="submit">
       <div>
         <label for="question" class="mb-1 block text-sm font-medium">{{ t('newConsultation.question') }}</label>
         <Textarea id="question" v-model="question" rows="3" required maxlength="2000" class="w-full" />
@@ -117,12 +154,13 @@ onMounted(async () => {
 
       <fieldset v-if="method === 'manual'" class="flex flex-column gap-2 border-none p-0 m-0">
         <legend class="mb-2 text-sm font-medium">{{ t('hexagramEditor.linesTopToBottom') }}</legend>
-        <div
+        <fieldset
           v-for="position in [6, 5, 4, 3, 2, 1]"
           :key="position"
-          class="flex align-items-center gap-3"
+          class="flex align-items-center gap-3 border-none p-0 m-0"
           :data-position="position"
         >
+          <legend class="sr-only">{{ t('newConsultation.lineGroupLabel', { n: position }) }}</legend>
           <span class="w-2rem text-sm text-color-secondary">{{ position }}</span>
           <label class="inline-flex align-items-center gap-2">
             <RadioButton v-model="lines[position - 1]!.polarity" :name="`polarity-${position}`" value="yang" />
@@ -136,7 +174,7 @@ onMounted(async () => {
             <Checkbox v-model="lines[position - 1]!.changing" binary />
             {{ t('newConsultation.changing') }}
           </label>
-        </div>
+        </fieldset>
       </fieldset>
 
       <details>
@@ -187,14 +225,25 @@ onMounted(async () => {
         </Panel>
       </details>
 
-      <Message v-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
+      <Message v-if="state.status === 'error'" severity="error" role="alert">{{ state.message }}</Message>
+
+      <label class="inline-flex align-items-center gap-2 text-sm text-color-secondary">
+        <Checkbox
+          v-model="revealEnabled"
+          binary
+          @update:model-value="setCastingRevealEnabled($event as boolean)"
+        />
+        {{ t('newConsultation.showCastingAnimation') }}
+      </label>
 
       <Button
         type="submit"
         :disabled="state.status === 'submitting'"
+        :aria-busy="state.status === 'submitting'"
         :label="state.status === 'submitting' ? t('newConsultation.casting') : t('newConsultation.cast')"
         class="align-self-start"
       />
-    </form>
+      </form>
+    </template>
   </main>
 </template>

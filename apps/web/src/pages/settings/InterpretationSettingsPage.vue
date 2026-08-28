@@ -8,6 +8,7 @@ import Message from 'primevue/message'
 import { fetchInterpretationProfile, updateInterpretationProfile } from '../../entities/interpretation-profile/api'
 import { TONES, RESPONSE_LENGTHS } from '../../entities/interpretation-profile/model'
 import type { InterpretationProfile } from '../../entities/interpretation-profile/model'
+import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
 
 type State =
   | { status: 'loading' }
@@ -25,6 +26,8 @@ const toneOptions = computed(() => TONES.map((tone) => ({ label: t(`settings.ton
 const lengthOptions = computed(() =>
   RESPONSE_LENGTHS.map((length) => ({ label: t(`settings.lengthOptions.${length}`), value: length })),
 )
+
+useStatusAnnouncer(computed(() => state.value.status))
 
 onMounted(async () => {
   try {
@@ -62,11 +65,11 @@ async function save(): Promise<void> {
 </script>
 
 <template>
-  <main class="container-sm mx-auto p-4">
+  <main id="main" tabindex="-1" class="container-sm mx-auto p-4">
     <h1 class="text-2xl font-semibold mb-4">{{ t('settings.title') }}</h1>
 
     <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('common.loading') }}</p>
-    <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
+    <Message v-else-if="state.status === 'error'" severity="error" role="alert">{{ state.message }}</Message>
 
     <form v-else class="flex flex-column gap-4" @submit.prevent="save">
       <h2 class="text-sm font-medium text-color-secondary m-0">{{ t('settings.profileHeading') }}</h2>
@@ -103,7 +106,7 @@ async function save(): Promise<void> {
         <Textarea id="notes" v-model="form.notes" rows="3" maxlength="1000" :placeholder="t('settings.notesPlaceholder')" />
       </div>
 
-      <Message v-if="formState.status === 'error'" severity="error">{{ formState.message }}</Message>
+      <Message v-if="formState.status === 'error'" severity="error" role="alert">{{ formState.message }}</Message>
 
       <Button
         type="submit"

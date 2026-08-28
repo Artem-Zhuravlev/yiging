@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
@@ -9,6 +9,7 @@ import { fetchHexagram } from '../../entities/hexagram/api'
 import { hexagramOfTheDayNumber } from '../../entities/hexagram/hexagramOfTheDay'
 import type { Hexagram } from '../../entities/hexagram/model'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
+import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
 
 type State =
   | { status: 'loading' }
@@ -17,6 +18,8 @@ type State =
 
 const { t } = useI18n()
 const state = ref<State>({ status: 'loading' })
+
+useStatusAnnouncer(computed(() => state.value.status))
 
 onMounted(async () => {
   try {
@@ -33,6 +36,8 @@ onMounted(async () => {
 
 <template>
   <main
+    id="main"
+    tabindex="-1"
     class="container-sm mx-auto flex flex-column align-items-center justify-content-center gap-4 text-center p-4"
     style="min-height: calc(100vh - 5rem)"
   >
@@ -67,6 +72,6 @@ onMounted(async () => {
       <ProgressSpinner style="width: 1.5rem; height: 1.5rem" stroke-width="6" />
       <span class="text-sm text-color-secondary">{{ t('home.loadingHexagramOfTheDay') }}</span>
     </div>
-    <Message v-else-if="state.status === 'error'" severity="error" class="mt-3">{{ state.message }}</Message>
+    <Message v-else-if="state.status === 'error'" severity="error" role="alert" class="mt-3">{{ state.message }}</Message>
   </main>
 </template>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Readings;
 
+use App\Core\ListCursor;
 use PDO;
 use Yijing\Core\Hexagram;
 use Yijing\Core\Line;
@@ -58,6 +59,156 @@ final class SqliteConsultationRepository implements ConsultationRepository
         }
 
         return $consultations;
+    }
+
+    public function findListPage(ConsultationListQuery $query): ConsultationListPage
+    {
+        $where = [];
+        $params = [];
+
+        if ($query->cursor !== null) {
+            [$cursorAt, $cursorRowid] = ListCursor::decode($query->cursor);
+            $where[] = '(c.created_at < :cursor_at OR (c.created_at = :cursor_at AND c.rowid < :cursor_rowid))';
+            $params['cursor_at'] = $cursorAt;
+            $params['cursor_rowid'] = $cursorRowid;
+        }
+
+        if ($query->q !== null) {
+            $like = '%' . self::escapeLike($query->q) . '%';
+            $where[] = "(c.question LIKE :q ESCAPE '\\' OR EXISTS ("
+                . 'SELECT 1 FROM consultation_notes n '
+                . "WHERE n.consultation_id = c.id AND n.text LIKE :q ESCAPE '\\'))";
+            $params['q'] = $like;
+        }
+
+        if ($query->tags !== []) {
+            $placeholders = [];
+            foreach ($query->tags as $i => $tag) {
+                $placeholders[] = ":tag{$i}";
+                $params["tag{$i}"] = $tag;
+            }
+            $where[] = '(SELECT COUNT(DISTINCT t.name) FROM consultation_tags ct '
+                . 'JOIN tags t ON t.id = ct.tag_id '
+                . 'WHERE ct.consultation_id = c.id AND t.name IN (' . implode(', ', $placeholders) . ')) '
+                . '= :tag_count';
+            $params['tag_count'] = count($query->tags);
+        }
+
+        if ($query->favoriteOnly) {
+            $where[] = 'c.is_favorite = 1';
+        }
+
+        $whereSql = $where === [] ? '' : ' WHERE ' . implode(' AND ', $where);
+
+        // limit + 1: the extra row (if present) is not returned — it only tells us a next page
+        // exists, so nextCursor is non-null exactly when there is more after this page.
+        $sql = 'SELECT c.*, c.rowid AS row_id FROM consultations c'
+            . $whereSql
+            . ' ORDER BY c.created_at DESC, c.rowid DESC LIMIT :limit_plus_one';
+
+        $statement = $this->pdo->prepare($sql);
+        foreach ($params as $name => $value) {
+            $statement->bindValue(':' . $name, $value, is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR);
+        }
+        $statement->bindValue(':limit_plus_one', $query->limit + 1, PDO::PARAM_INT);
+        $statement->execute();
+
+        /** @var list<array<string, mixed>> $rows */
+        $rows = $statement->fetchAll();
+
+        $hasMore = count($rows) > $query->limit;
+        $pageRows = $hasMore ? array_slice($rows, 0, $query->limit) : $rows;
+
+        $tagsById = $this->loadTagsForIds(array_map(static fn (array $r): string => (string) $r['id'], $pageRows));
+
+        $items = array_map(
+            fn (array $row): ConsultationListItem => $this->toListItem($row, $tagsById[(string) $row['id']] ?? []),
+            $pageRows,
+        );
+
+        $nextCursor = null;
+        if ($hasMore && $pageRows !== []) {
+            $last = $pageRows[count($pageRows) - 1];
+            $nextCursor = ListCursor::encode((string) $last['created_at'], (int) $last['row_id']);
+        }
+
+        return new ConsultationListPage($items, $nextCursor);
+    }
+
+    public function allTagNames(): array
+    {
+        $statement = $this->pdo->query(
+            'SELECT DISTINCT t.name FROM tags t
+             INNER JOIN consultation_tags ct ON ct.tag_id = t.id
+             ORDER BY t.name ASC',
+        );
+
+        /** @var list<string> $names */
+        $names = $statement === false ? [] : array_map(strval(...), $statement->fetchAll(PDO::FETCH_COLUMN));
+
+        return $names;
+    }
+
+    /**
+     * @param list<string> $ids
+     *
+     * @return array<string, list<string>> consultation id => sorted tag names
+     */
+    private function loadTagsForIds(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $placeholders = implode(', ', array_fill(0, count($ids), '?'));
+        $statement = $this->pdo->prepare(
+            "SELECT ct.consultation_id, t.name FROM consultation_tags ct
+             INNER JOIN tags t ON t.id = ct.tag_id
+             WHERE ct.consultation_id IN ({$placeholders})
+             ORDER BY t.name ASC",
+        );
+        $statement->execute($ids);
+
+        $byId = [];
+        while (is_array($row = $statement->fetch())) {
+            $byId[(string) $row['consultation_id']][] = (string) $row['name'];
+        }
+
+        return $byId;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     * @param list<string>         $tags
+     */
+    private function toListItem(array $row, array $tags): ConsultationListItem
+    {
+        /** @var list<int> $changingLinePositions */
+        $changingLinePositions = json_decode((string) $row['changing_line_positions'], true, 512, JSON_THROW_ON_ERROR);
+
+        $primary = Hexagram::fromKingWenNumber((int) $row['primary_king_wen_number']);
+        $resulting = Hexagram::fromKingWenNumber((int) $row['resulting_king_wen_number']);
+
+        return new ConsultationListItem(
+            id: (string) $row['id'],
+            question: (string) $row['question'],
+            method: (string) $row['method'],
+            primaryKingWenNumber: $primary->kingWenNumber,
+            primaryChineseName: $primary->chineseName,
+            primaryPinyin: $primary->pinyin,
+            changingLinePositions: $changingLinePositions,
+            resultingKingWenNumber: $resulting->kingWenNumber,
+            resultingChineseName: $resulting->chineseName,
+            resultingPinyin: $resulting->pinyin,
+            createdAtAtom: (new \DateTimeImmutable((string) $row['created_at']))->format(DATE_ATOM),
+            tags: $tags,
+            favorite: (bool) $row['is_favorite'],
+        );
+    }
+
+    private static function escapeLike(string $value): string
+    {
+        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
     }
 
     private function upsertConsultation(Consultation $consultation): void

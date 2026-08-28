@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import RadioButton from 'primevue/radiobutton'
 import Message from 'primevue/message'
 import { computeHexagramFromLines } from '../../entities/hexagram/api'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
 import type { Hexagram, LinePolarity } from '../../entities/hexagram/model'
+import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
 
 type State =
   | { status: 'loading' }
@@ -18,6 +19,11 @@ type State =
 const { t } = useI18n()
 const lines = ref<LinePolarity[]>(Array.from({ length: 6 }, () => 'yang'))
 const state = ref<State>({ status: 'loading' })
+
+useStatusAnnouncer(
+  computed(() => state.value.status),
+  (status) => (status === 'loading' ? t('hexagramEditor.computing') : undefined),
+)
 
 watch(
   lines,
@@ -38,7 +44,7 @@ watch(
 </script>
 
 <template>
-  <main class="container-sm mx-auto p-4">
+  <main id="main" tabindex="-1" class="container-sm mx-auto p-4">
     <router-link to="/hexagrams" class="text-sm text-color-secondary">&larr; {{ t('nav.hexagrams') }}</router-link>
 
     <h1 class="mt-3 mb-4 text-2xl font-semibold">{{ t('hexagramEditor.title') }}</h1>
@@ -46,12 +52,13 @@ watch(
     <div class="flex flex-wrap align-items-start gap-6">
       <fieldset class="flex flex-column gap-2 border-none p-0 m-0">
         <legend class="mb-2 text-sm font-medium">{{ t('hexagramEditor.linesTopToBottom') }}</legend>
-        <div
+        <fieldset
           v-for="position in [6, 5, 4, 3, 2, 1]"
           :key="position"
-          class="flex align-items-center gap-3"
+          class="flex align-items-center gap-3 border-none p-0 m-0"
           :data-position="position"
         >
+          <legend class="sr-only">{{ t('newConsultation.lineGroupLabel', { n: position }) }}</legend>
           <span class="w-2rem text-sm text-color-secondary">{{ position }}</span>
           <label class="inline-flex align-items-center gap-2">
             <RadioButton v-model="lines[position - 1]" :name="`polarity-${position}`" value="yang" />
@@ -61,12 +68,12 @@ watch(
             <RadioButton v-model="lines[position - 1]" :name="`polarity-${position}`" value="yin" />
             {{ t('common.yin') }}
           </label>
-        </div>
+        </fieldset>
       </fieldset>
 
       <div>
         <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('hexagramEditor.computing') }}</p>
-        <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
+        <Message v-else-if="state.status === 'error'" severity="error" role="alert">{{ state.message }}</Message>
 
         <div v-else class="flex flex-column gap-4">
           <div class="flex align-items-center gap-4">

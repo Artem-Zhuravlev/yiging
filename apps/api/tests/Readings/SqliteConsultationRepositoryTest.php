@@ -614,4 +614,102 @@ final class SqliteConsultationRepositoryTest extends TestCase
         self::assertSame('consult-newer', $all[0]->id);
         self::assertSame('consult-older', $all[1]->id);
     }
+
+    public function testFindListPagePaginatesByCursorEvenWhenCreatedAtIsTied(): void
+    {
+        // Three consultations sharing the exact same createdAt second — only rowid distinguishes
+        // them, which is precisely what the cursor must carry to avoid skips/dupes (SPEC-041).
+        $sameInstant = new \DateTimeImmutable('2026-08-14T10:00:00+00:00');
+        foreach (['a', 'b', 'c'] as $suffix) {
+            $this->repository->save(Consultation::create(
+                'consult-' . $suffix,
+                "Question {$suffix}?",
+                CastingMethodName::Manual,
+                self::hexagramFromPattern('111111'),
+                $sameInstant,
+            ));
+        }
+
+        $first = $this->repository->findListPage(new \App\Readings\ConsultationListQuery(2, null, null, [], false));
+        self::assertCount(2, $first->items);
+        self::assertNotNull($first->nextCursor);
+        self::assertSame('consult-c', $first->items[0]->id);
+        self::assertSame('consult-b', $first->items[1]->id);
+
+        $second = $this->repository->findListPage(
+            new \App\Readings\ConsultationListQuery(2, $first->nextCursor, null, [], false),
+        );
+        self::assertCount(1, $second->items);
+        self::assertNull($second->nextCursor);
+        self::assertSame('consult-a', $second->items[0]->id);
+    }
+
+    public function testFindListPageFiltersByNoteTextSearchAndByTagAndFavorite(): void
+    {
+        $tagged = Consultation::create(
+            'consult-tagged',
+            'A plain question',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        )
+            ->withAddedNote(new ConsultationNote(
+                NoteLabel::After,
+                'a decisive breakthrough moment',
+                new \DateTimeImmutable('2026-08-14T11:00:00+00:00'),
+            ))
+            ->withAddedTag('career')
+            ->withFavorite(true);
+        $other = Consultation::create(
+            'consult-other',
+            'Another question entirely',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-15T10:00:00+00:00'),
+        );
+
+        $this->repository->save($tagged);
+        $this->repository->save($other);
+
+        $byNote = $this->repository->findListPage(
+            new \App\Readings\ConsultationListQuery(30, null, 'breakthrough', [], false),
+        );
+        self::assertCount(1, $byNote->items);
+        self::assertSame('consult-tagged', $byNote->items[0]->id);
+        self::assertSame(['career'], $byNote->items[0]->tags);
+
+        $byTag = $this->repository->findListPage(
+            new \App\Readings\ConsultationListQuery(30, null, null, ['career'], false),
+        );
+        self::assertCount(1, $byTag->items);
+
+        $favOnly = $this->repository->findListPage(
+            new \App\Readings\ConsultationListQuery(30, null, null, [], true),
+        );
+        self::assertCount(1, $favOnly->items);
+        self::assertSame('consult-tagged', $favOnly->items[0]->id);
+    }
+
+    public function testAllTagNamesReturnsDistinctUsedTagsSorted(): void
+    {
+        $a = Consultation::create(
+            'consult-a',
+            'Q?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-14T10:00:00+00:00'),
+        )->withAddedTag('work')->withAddedTag('money');
+        $b = Consultation::create(
+            'consult-b',
+            'Q?',
+            CastingMethodName::Manual,
+            self::hexagramFromPattern('111111'),
+            new \DateTimeImmutable('2026-08-15T10:00:00+00:00'),
+        )->withAddedTag('work');
+
+        $this->repository->save($a);
+        $this->repository->save($b);
+
+        self::assertSame(['money', 'work'], $this->repository->allTagNames());
+    }
 }

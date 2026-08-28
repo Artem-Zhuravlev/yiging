@@ -3,6 +3,8 @@ import type { en } from './en'
 export const uk: typeof en = {
   common: {
     loading: 'Завантаження…',
+    loadMore: 'Завантажити ще',
+    loadingMore: 'Завантаження…',
     viewFullPage: 'Переглянути повну сторінку',
     upperTrigram: 'Верхня триграма',
     lowerTrigram: 'Нижня триграма',
@@ -22,6 +24,13 @@ export const uk: typeof en = {
     settings: 'Налаштування',
     darkMode: 'Перемкнути на темну тему',
     lightMode: 'Перемкнути на світлу тему',
+    primaryLabel: 'Головна',
+    skipToContent: 'Перейти до основного вмісту',
+  },
+  a11y: {
+    loading: 'Завантаження…',
+    loaded: 'Вміст завантажено',
+    loadFailed: 'Не вдалося завантажити вміст',
   },
   home: {
     title: 'Yijing',
@@ -52,6 +61,10 @@ export const uk: typeof en = {
     yinYangRatio: 'Співвідношення інь / ян',
     yinYangLine: '{yin} інь / {yang} ян ({yinPercent}% / {yangPercent}%)',
     tagFrequency: 'Частота тегів',
+    andMore: '+{count} ще',
+  },
+  barChart: {
+    caption: 'Діаграма частот',
   },
   settings: {
     title: 'Налаштування',
@@ -161,6 +174,8 @@ export const uk: typeof en = {
     threeCoins: 'Три монети',
     manual: 'Вручну',
     changing: 'Змінна',
+    lineGroupLabel: 'Лінія {n}',
+    showCastingAnimation: 'Показувати анімацію кидання',
     addContext: 'Додати контекст (необов’язково)',
     cast: 'Кинути',
     casting: 'Кидання…',
@@ -170,6 +185,7 @@ export const uk: typeof en = {
     title: 'Історія',
     loadError: 'Не вдалося завантажити консультації.',
     exportBackup: 'Експорт резервної копії (JSON)',
+    exportError: 'Не вдалося експортувати резервну копію.',
     importBackup: 'Імпорт резервної копії (JSON)',
     imported: 'Імпортовано {count} консультацій.',
     invalidJson: 'Цей файл не є коректним JSON.',
@@ -184,6 +200,11 @@ export const uk: typeof en = {
   hexagramLines: {
     ariaLabel: 'Гексаграма з {count} ліній',
     changingLine: 'Змінна лінія',
+  },
+  castingReveal: {
+    casting: 'Кидання…',
+    skip: 'Пропустити',
+    continue: 'Продовжити',
   },
   consultationPage: {
     notFound: 'Консультацію не знайдено.',

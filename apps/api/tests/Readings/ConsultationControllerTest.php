@@ -199,7 +199,7 @@ final class ConsultationControllerTest extends TestCase
         self::assertSame(422, $response->getStatusCode());
     }
 
-    public function testIndexReturnsAllConsultationsNewestFirst(): void
+    public function testIndexReturnsAPageOfConsultationsNewestFirst(): void
     {
         $this->postJson('/api/consultations', ['question' => 'First?', 'method' => 'random']);
         $this->postJson('/api/consultations', ['question' => 'Second?', 'method' => 'random']);
@@ -209,9 +209,114 @@ final class ConsultationControllerTest extends TestCase
         self::assertSame(200, $response->getStatusCode());
         $body = $this->decode($response);
 
-        self::assertCount(2, $body);
-        self::assertSame('Second?', $body[0]['question']);
-        self::assertSame('First?', $body[1]['question']);
+        self::assertArrayHasKey('items', $body);
+        self::assertArrayHasKey('nextCursor', $body);
+        self::assertNull($body['nextCursor']);
+        self::assertCount(2, $body['items']);
+        self::assertSame('Second?', $body['items'][0]['question']);
+        self::assertSame('First?', $body['items'][1]['question']);
+        // Lean projection: no notes / context / outcome / follow-up fields on list items.
+        self::assertArrayNotHasKey('notes', $body['items'][0]);
+        self::assertArrayNotHasKey('outcome', $body['items'][0]);
+        self::assertArrayHasKey('tags', $body['items'][0]);
+        self::assertArrayHasKey('favorite', $body['items'][0]);
+    }
+
+    public function testIndexPaginatesWithTheOpaqueCursorAcrossMultiplePagesWithNoGapsOrDuplicates(): void
+    {
+        for ($i = 1; $i <= 5; $i++) {
+            $this->postJson('/api/consultations', ['question' => "Q{$i}?", 'method' => 'random']);
+        }
+
+        $seen = [];
+        $cursor = null;
+        $pages = 0;
+
+        do {
+            $url = '/api/consultations?limit=2' . ($cursor !== null ? '&cursor=' . urlencode($cursor) : '');
+            $body = $this->decode($this->kernel->handle(Request::create($url, 'GET')));
+            self::assertLessThanOrEqual(2, count($body['items']));
+            foreach ($body['items'] as $item) {
+                $seen[] = $item['question'];
+            }
+            $cursor = $body['nextCursor'];
+            $pages++;
+        } while ($cursor !== null && $pages < 10);
+
+        self::assertSame(['Q5?', 'Q4?', 'Q3?', 'Q2?', 'Q1?'], $seen);
+        self::assertSame(count($seen), count(array_unique($seen)));
+    }
+
+    public function testIndexRejectsAMalformedCursorWith422(): void
+    {
+        $response = $this->kernel->handle(Request::create('/api/consultations?cursor=not-a-real-cursor', 'GET'));
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testIndexClampsAnOutOfRangeLimitRatherThanRejectingIt(): void
+    {
+        for ($i = 0; $i < 3; $i++) {
+            $this->postJson('/api/consultations', ['question' => "Q{$i}?", 'method' => 'random']);
+        }
+
+        $body = $this->decode($this->kernel->handle(Request::create('/api/consultations?limit=0', 'GET')));
+        self::assertCount(1, $body['items']);
+
+        $body = $this->decode($this->kernel->handle(Request::create('/api/consultations?limit=9999', 'GET')));
+        self::assertCount(3, $body['items']);
+    }
+
+    public function testIndexSearchMatchesQuestionOrNoteTextAcrossTheWholeHistory(): void
+    {
+        $withNote = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Nothing special here',
+            'method' => 'random',
+        ]));
+        $this->patchJson('/api/consultations/' . $withNote['id'], [
+            'note' => ['label' => 'after', 'text' => 'a pivotal turning point'],
+        ]);
+        $this->postJson('/api/consultations', ['question' => 'Unrelated question about lunch', 'method' => 'random']);
+
+        $byNote = $this->decode($this->kernel->handle(Request::create('/api/consultations?q=pivotal', 'GET')));
+        self::assertCount(1, $byNote['items']);
+        self::assertSame($withNote['id'], $byNote['items'][0]['id']);
+
+        $byQuestion = $this->decode($this->kernel->handle(Request::create('/api/consultations?q=LUNCH', 'GET')));
+        self::assertCount(1, $byQuestion['items']);
+        self::assertSame('Unrelated question about lunch', $byQuestion['items'][0]['question']);
+    }
+
+    public function testIndexFiltersByTagsWithAndSemanticsAndByFavorite(): void
+    {
+        $a = $this->decode($this->postJson('/api/consultations', ['question' => 'A?', 'method' => 'random']));
+        $b = $this->decode($this->postJson('/api/consultations', ['question' => 'B?', 'method' => 'random']));
+
+        $this->patchJson('/api/consultations/' . $a['id'], ['tag' => 'career']);
+        $this->patchJson('/api/consultations/' . $a['id'], ['tag' => 'money']);
+        $this->patchJson('/api/consultations/' . $b['id'], ['tag' => 'career']);
+        $this->patchJson('/api/consultations/' . $b['id'], ['favorite' => true]);
+
+        $bothTags = $this->decode($this->kernel->handle(Request::create('/api/consultations?tags=career,money', 'GET')));
+        self::assertCount(1, $bothTags['items']);
+        self::assertSame($a['id'], $bothTags['items'][0]['id']);
+
+        $favOnly = $this->decode($this->kernel->handle(Request::create('/api/consultations?favorite=1', 'GET')));
+        self::assertCount(1, $favOnly['items']);
+        self::assertSame($b['id'], $favOnly['items'][0]['id']);
+    }
+
+    public function testTagsEndpointReturnsEveryDistinctUsedTagNameSorted(): void
+    {
+        $a = $this->decode($this->postJson('/api/consultations', ['question' => 'A?', 'method' => 'random']));
+        $b = $this->decode($this->postJson('/api/consultations', ['question' => 'B?', 'method' => 'random']));
+        $this->patchJson('/api/consultations/' . $a['id'], ['tag' => 'work']);
+        $this->patchJson('/api/consultations/' . $b['id'], ['tag' => 'work']);
+        $this->patchJson('/api/consultations/' . $b['id'], ['tag' => 'family']);
+
+        $body = $this->decode($this->kernel->handle(Request::create('/api/consultations/tags', 'GET')));
+
+        self::assertSame(['family', 'work'], $body);
     }
 
     public function testShowReturnsTheCreatedConsultation(): void
@@ -306,7 +411,7 @@ final class ConsultationControllerTest extends TestCase
         self::assertArrayNotHasKey('repeats', $created);
 
         $indexBody = $this->decode($this->kernel->handle(Request::create('/api/consultations', 'GET')));
-        self::assertArrayNotHasKey('repeats', $indexBody[0]);
+        self::assertArrayNotHasKey('repeats', $indexBody['items'][0]);
 
         $updated = $this->decode($this->patchJson('/api/consultations/' . $created['id'], ['tag' => 'x']));
         self::assertArrayNotHasKey('repeats', $updated);
@@ -893,7 +998,7 @@ final class ConsultationControllerTest extends TestCase
             'note' => ['label' => 'after', 'text' => 'Went well.'],
         ]);
         $this->patchJson('/api/consultations/' . $created['id'], ['whatActuallyHappened' => 'Took it.']);
-        $exported = $this->decode($this->kernel->handle(Request::create('/api/consultations', 'GET')))[0];
+        $exported = $this->decode($this->kernel->handle(Request::create('/api/consultations/export', 'GET')))[0];
 
         // Restore into a fresh database.
         $freshDatabasePath = tempnam(sys_get_temp_dir(), 'yijing_test_') . '.sqlite';
@@ -946,7 +1051,7 @@ final class ConsultationControllerTest extends TestCase
             'question' => 'Should I take the offer?',
             'method' => 'random',
         ]));
-        $exported = $this->decode($this->kernel->handle(Request::create('/api/consultations', 'GET')))[0];
+        $exported = $this->decode($this->kernel->handle(Request::create('/api/consultations/export', 'GET')))[0];
 
         $response = $this->kernel->handle(Request::create(
             '/api/consultations/import',
@@ -956,7 +1061,7 @@ final class ConsultationControllerTest extends TestCase
 
         self::assertSame(422, $response->getStatusCode());
         // Nothing was duplicated — still exactly the one original consultation.
-        $all = $this->decode($this->kernel->handle(Request::create('/api/consultations', 'GET')));
+        $all = $this->decode($this->kernel->handle(Request::create('/api/consultations/export', 'GET')));
         self::assertCount(1, $all);
         self::assertSame($created['id'], $all[0]['id']);
     }

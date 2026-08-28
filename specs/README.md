@@ -114,3 +114,8 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-036 | [Outcome-Interpretation Link](outcome-interpretation-link/spec.md) | `verified` |
 | SPEC-037 | [PrimeVue UI Overhaul](primevue-ui-overhaul/spec.md) | `verified` |
 | SPEC-038 | [Localization (English/Ukrainian)](localization-en-uk/spec.md) | `verified` |
+| SPEC-039 | [Accessibility Pass](accessibility-pass/spec.md) | `implemented` |
+| SPEC-040 | [Gemini API Contract Regression Test](gemini-contract-regression/spec.md) | `implemented` |
+| SPEC-041 | [History & Journal Pagination](history-journal-pagination/spec.md) | `implemented` |
+| SPEC-042 | [Casting Reveal Animation](casting-reveal-animation/spec.md) | `implemented` |
+| SPEC-043 | [Statistics Charts](statistics-charts/spec.md) | `implemented` |

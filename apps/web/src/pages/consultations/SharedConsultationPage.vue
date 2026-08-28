@@ -10,6 +10,7 @@ import { fetchHexagram } from '../../entities/hexagram/api'
 import type { HexagramLine } from '../../entities/hexagram/model'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
 import { ApiError } from '../../shared/api/http'
+import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
 
 type State =
   | { status: 'loading' }
@@ -26,6 +27,11 @@ const { t } = useI18n()
 const route = useRoute()
 const id = computed(() => String(route.params.id))
 const state = ref<State>({ status: 'loading' })
+
+useStatusAnnouncer(
+  computed(() => state.value.status),
+  (status) => (status === 'not-found' ? t('consultation.notFound') : undefined),
+)
 
 onMounted(async () => {
   try {
@@ -60,10 +66,10 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="container-sm mx-auto p-4">
+  <main id="main" tabindex="-1" class="container-sm mx-auto p-4">
     <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('common.loading') }}</p>
     <p v-else-if="state.status === 'not-found'" class="text-color-secondary">{{ t('consultation.notFound') }}</p>
-    <Message v-else-if="state.status === 'error'" severity="error">{{ state.message }}</Message>
+    <Message v-else-if="state.status === 'error'" severity="error" role="alert">{{ state.message }}</Message>
 
     <div v-else class="flex flex-column gap-5">
       <div>

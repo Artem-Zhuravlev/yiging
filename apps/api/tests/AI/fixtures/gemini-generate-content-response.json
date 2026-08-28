@@ -1,0 +1,26 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          {
+            "text": "{\n  \"summary\": \"Great strength is present, but the moment calls for measured restraint rather than a decisive move on the offer.\",\n  \"coreTheme\": \"Creative force at a threshold - power that is real but not yet ripe for action.\",\n  \"situation\": \"You hold genuine capability and initiative, yet the surrounding conditions are still forming; acting too early spends the strength without result.\",\n  \"changingLineMeaning\": \"The first line - a dragon lying hidden - marks potential that should not yet be displayed; the readiness is internal, not outward.\",\n  \"transition\": \"The shift toward the resulting hexagram softens the field: assertion gives way to receptivity, suggesting you prepare and yield rather than push.\",\n  \"practicalReflection\": \"Treat the offer as something to weigh quietly for now - gather information, test your footing, and let the timing prove itself before committing.\",\n  \"uncertainties\": [\n    \"The text does not say how long 'hidden' lasts, so the right moment to act is genuinely ambiguous.\",\n    \"This is an AI-assisted reading of canonical text, not an authoritative judgment; your own knowledge of the offer matters more.\"\n  ]\n}"
+          }
+        ]
+      },
+      "finishReason": "STOP",
+      "index": 0,
+      "safetyRatings": [
+        { "category": "HARM_CATEGORY_HATE_SPEECH", "probability": "NEGLIGIBLE" },
+        { "category": "HARM_CATEGORY_DANGEROUS_CONTENT", "probability": "NEGLIGIBLE" }
+      ]
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 412,
+    "candidatesTokenCount": 268,
+    "totalTokenCount": 680
+  },
+  "modelVersion": "gemini-3.6-flash"
+}

@@ -4,19 +4,23 @@ import ConsultationHistoryPage from './ConsultationHistoryPage.vue'
 import {
   exportConsultationsBackup,
   fetchConsultations,
+  fetchConsultationTags,
+  fetchConsultationsForExport,
   importConsultationsBackup,
 } from '../../entities/consultation/api'
-import type { Consultation } from '../../entities/consultation/model'
+import type { ConsultationListItem, ConsultationListPage } from '../../entities/consultation/model'
 
 vi.mock('../../entities/consultation/api', () => ({
   fetchConsultations: vi.fn(),
+  fetchConsultationTags: vi.fn(),
+  fetchConsultationsForExport: vi.fn(),
   exportConsultationsBackup: vi.fn(),
   importConsultationsBackup: vi.fn(),
 }))
 
 const stubs = { RouterLink: { template: '<a><slot /></a>' } }
 
-function sample(id: string, question: string, overrides: Partial<Consultation> = {}): Consultation {
+function item(id: string, question: string, overrides: Partial<ConsultationListItem> = {}): ConsultationListItem {
   return {
     id,
     question,
@@ -25,32 +29,29 @@ function sample(id: string, question: string, overrides: Partial<Consultation> =
     changingLinePositions: [],
     resultingHexagram: { kingWenNumber: 1, chineseName: '乾', pinyin: 'Qián' },
     createdAt: '2026-08-14T10:00:00+00:00',
-    notes: [],
     tags: [],
-    context: null,
-    whatHappenedBefore: null,
-    whatUserWantsToUnderstand: null,
-    backgroundInformation: null,
-    initialInterpretation: null,
-    outcome: null,
-    followUpTo: null,
-    followUps: [],
     favorite: false,
     ...overrides,
   }
 }
 
-describe('ConsultationHistoryPage', () => {
-  beforeEach(() => {
-    vi.mocked(exportConsultationsBackup).mockClear()
-    vi.mocked(importConsultationsBackup).mockClear()
-  })
+function page(items: ConsultationListItem[], nextCursor: string | null = null): ConsultationListPage {
+  return { items, nextCursor }
+}
 
-  it('renders every consultation, linking to its detail page', async () => {
-    vi.mocked(fetchConsultations).mockResolvedValue([
-      sample('1', 'First?'),
-      sample('2', 'Second?'),
-    ])
+const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+beforeEach(() => {
+  vi.mocked(fetchConsultations).mockReset()
+  vi.mocked(fetchConsultationTags).mockReset().mockResolvedValue([])
+  vi.mocked(fetchConsultationsForExport).mockReset()
+  vi.mocked(exportConsultationsBackup).mockClear()
+  vi.mocked(importConsultationsBackup).mockReset()
+})
+
+describe('ConsultationHistoryPage', () => {
+  it('renders the page the server returns, linking each to its detail page', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValue(page([item('1', 'First?'), item('2', 'Second?')]))
 
     const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
     await flushPromises()
@@ -60,8 +61,8 @@ describe('ConsultationHistoryPage', () => {
     expect(wrapper.text()).toContain('Second?')
   })
 
-  it('shows an empty state when there are no consultations', async () => {
-    vi.mocked(fetchConsultations).mockResolvedValue([])
+  it('shows the "cast your first one" empty state when the history is empty and no filter is active', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValue(page([]))
 
     const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
     await flushPromises()
@@ -69,7 +70,7 @@ describe('ConsultationHistoryPage', () => {
     expect(wrapper.text()).toContain('No consultations yet')
   })
 
-  it('shows an error message when the fetch fails', async () => {
+  it('shows an error message when the initial fetch fails', async () => {
     vi.mocked(fetchConsultations).mockRejectedValue(new Error('network down'))
 
     const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
@@ -79,27 +80,23 @@ describe('ConsultationHistoryPage', () => {
   })
 
   it('groups consultations under a heading per distinct local calendar day', async () => {
-    vi.mocked(fetchConsultations).mockResolvedValue([
-      sample('1', 'Same day, first', { createdAt: '2026-08-14T18:00:00+00:00' }),
-      sample('2', 'Same day, second', { createdAt: '2026-08-14T10:00:00+00:00' }),
-      sample('3', 'Different day', { createdAt: '2026-08-10T10:00:00+00:00' }),
-    ])
+    vi.mocked(fetchConsultations).mockResolvedValue(
+      page([
+        item('1', 'Same day, first', { createdAt: '2026-08-14T18:00:00+00:00' }),
+        item('2', 'Same day, second', { createdAt: '2026-08-14T10:00:00+00:00' }),
+        item('3', 'Different day', { createdAt: '2026-08-10T10:00:00+00:00' }),
+      ]),
+    )
 
     const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
     await flushPromises()
 
-    const headings = wrapper.findAll('h2')
-    expect(headings).toHaveLength(2)
-    expect(wrapper.text()).toContain('Same day, first')
-    expect(wrapper.text()).toContain('Same day, second')
-    expect(wrapper.text()).toContain('Different day')
+    expect(wrapper.findAll('h2')).toHaveLength(2)
   })
 
-  it('renders a tag chip per distinct tag, and none when nothing is tagged', async () => {
-    vi.mocked(fetchConsultations).mockResolvedValue([
-      sample('1', 'A', { tags: ['career', 'health'] }),
-      sample('2', 'B', { tags: ['career'] }),
-    ])
+  it('renders a tag chip per name returned by the tags endpoint', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValue(page([item('1', 'A')]))
+    vi.mocked(fetchConsultationTags).mockResolvedValue(['career', 'health'])
 
     const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
     await flushPromises()
@@ -108,149 +105,81 @@ describe('ConsultationHistoryPage', () => {
     expect(chips.map((c) => c.text())).toEqual(['career', 'health'])
   })
 
-  it('narrows the list to consultations having every selected tag (AND)', async () => {
-    vi.mocked(fetchConsultations).mockResolvedValue([
-      sample('1', 'Both tags', { tags: ['career', 'health'] }),
-      sample('2', 'Only career', { tags: ['career'] }),
-      sample('3', 'Only health', { tags: ['health'] }),
-    ])
+  it('refetches page 1 with the selected tags when a tag chip is toggled', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValue(page([item('1', 'A', { tags: ['career'] })]))
+    vi.mocked(fetchConsultationTags).mockResolvedValue(['career', 'health'])
 
     const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
     await flushPromises()
-
-    const tagChips = wrapper.findAll('button[aria-pressed]').filter((c) => !c.text().includes('Favorites'))
-    const [careerChip, healthChip] = tagChips
-    await careerChip!.trigger('click')
-    expect(wrapper.text()).toContain('Both tags')
-    expect(wrapper.text()).toContain('Only career')
-    expect(wrapper.text()).not.toContain('Only health')
-
-    await healthChip!.trigger('click')
-    expect(wrapper.text()).toContain('Both tags')
-    expect(wrapper.text()).not.toContain('Only career')
-    expect(wrapper.text()).not.toContain('Only health')
-
-    await careerChip!.trigger('click')
-    await healthChip!.trigger('click')
-    expect(wrapper.text()).toContain('Only career')
-    expect(wrapper.text()).toContain('Only health')
-  })
-
-  it('narrows the list to favorite consultations only, combining with an active tag filter', async () => {
-    vi.mocked(fetchConsultations).mockResolvedValue([
-      sample('1', 'Favorite, tagged', { favorite: true, tags: ['career'] }),
-      sample('2', 'Favorite, untagged', { favorite: true }),
-      sample('3', 'Not favorite, tagged', { favorite: false, tags: ['career'] }),
-    ])
-
-    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
-    await flushPromises()
-
-    const favoritesToggle = wrapper.findAll('button').find((b) => b.text().includes('Favorites only'))!
-    await favoritesToggle.trigger('click')
-
-    expect(wrapper.text()).toContain('Favorite, tagged')
-    expect(wrapper.text()).toContain('Favorite, untagged')
-    expect(wrapper.text()).not.toContain('Not favorite, tagged')
+    vi.mocked(fetchConsultations).mockClear()
 
     const careerChip = wrapper.findAll('button[aria-pressed]').find((b) => b.text() === 'career')!
     await careerChip.trigger('click')
+    await flushPromises()
 
-    expect(wrapper.text()).toContain('Favorite, tagged')
-    expect(wrapper.text()).not.toContain('Favorite, untagged')
-    expect(wrapper.text()).not.toContain('Not favorite, tagged')
+    expect(fetchConsultations).toHaveBeenCalledWith(
+      expect.objectContaining({ tags: ['career'], cursor: null }),
+    )
   })
 
-  it('shows the "Favorites only" toggle even when nothing is tagged', async () => {
-    vi.mocked(fetchConsultations).mockResolvedValue([sample('1', 'A')])
+  it('refetches page 1 with favorite=true when the favorites toggle is turned on', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValue(page([item('1', 'A', { favorite: true })]))
 
     const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
     await flushPromises()
-
-    expect(wrapper.findAll('button').some((b) => b.text().includes('Favorites only'))).toBe(true)
-  })
-
-  it('filters by question text, case-insensitively', async () => {
-    vi.mocked(fetchConsultations).mockResolvedValue([
-      sample('1', 'Should I take the new offer?'),
-      sample('2', 'Is this relationship healthy?'),
-    ])
-
-    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
-    await flushPromises()
-
-    await wrapper.find('input[type="search"]').setValue('OFFER')
-
-    expect(wrapper.text()).toContain('Should I take the new offer?')
-    expect(wrapper.text()).not.toContain('Is this relationship healthy?')
-  })
-
-  it('filters by note text', async () => {
-    vi.mocked(fetchConsultations).mockResolvedValue([
-      sample('1', 'First question?', {
-        notes: [{ label: 'after', text: 'It went great in the end.', createdAt: '2026-08-14T09:00:00+00:00' }],
-      }),
-      sample('2', 'Second question?'),
-    ])
-
-    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
-    await flushPromises()
-
-    await wrapper.find('input[type="search"]').setValue('went great')
-
-    expect(wrapper.text()).toContain('First question?')
-    expect(wrapper.text()).not.toContain('Second question?')
-  })
-
-  it('composes search with an active tag filter and favorites-only', async () => {
-    vi.mocked(fetchConsultations).mockResolvedValue([
-      sample('1', 'Offer from company A?', { favorite: true, tags: ['career'] }),
-      sample('2', 'Offer from company B?', { favorite: false, tags: ['career'] }),
-    ])
-
-    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
-    await flushPromises()
+    vi.mocked(fetchConsultations).mockClear()
 
     const favoritesToggle = wrapper.findAll('button').find((b) => b.text().includes('Favorites only'))!
     await favoritesToggle.trigger('click')
+    await flushPromises()
+
+    expect(fetchConsultations).toHaveBeenCalledWith(expect.objectContaining({ favorite: true }))
+  })
+
+  it('refetches page 1 with the debounced search query', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValue(page([item('1', 'Should I take the new offer?')]))
+
+    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
+    await flushPromises()
+    vi.mocked(fetchConsultations).mockClear()
+
     await wrapper.find('input[type="search"]').setValue('offer')
+    await wait(350)
+    await flushPromises()
 
-    expect(wrapper.text()).toContain('Offer from company A?')
-    expect(wrapper.text()).not.toContain('Offer from company B?')
+    expect(fetchConsultations).toHaveBeenCalledWith(expect.objectContaining({ q: 'offer' }))
   })
 
-  it('restores the full list when the search is cleared', async () => {
-    vi.mocked(fetchConsultations).mockResolvedValue([sample('1', 'A?'), sample('2', 'B?')])
+  it('shows the "nothing matches" empty state when a filter is active and the page is empty', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValueOnce(page([item('1', 'A')]))
 
     const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
     await flushPromises()
 
-    const input = wrapper.find('input[type="search"]')
-    await input.setValue('nonexistent')
-    expect(wrapper.text()).toContain('No consultations match the selected tags.')
-
-    await input.setValue('')
-    expect(wrapper.text()).toContain('A?')
-    expect(wrapper.text()).toContain('B?')
-  })
-
-  it('shows a distinct message when the tag filter matches nothing', async () => {
-    vi.mocked(fetchConsultations).mockResolvedValue([
-      sample('1', 'Only career', { tags: ['career'] }),
-      sample('2', 'Only health', { tags: ['health'] }),
-    ])
-
-    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
+    vi.mocked(fetchConsultations).mockResolvedValueOnce(page([]))
+    await wrapper.find('input[type="search"]').setValue('zzz-nope')
+    await wait(350)
     await flushPromises()
 
-    const tagChips = wrapper.findAll('button[aria-pressed]').filter((c) => !c.text().includes('Favorites'))
-    const [careerChip, healthChip] = tagChips
-    await careerChip!.trigger('click')
-    await healthChip!.trigger('click')
-
     expect(wrapper.text()).toContain('No consultations match the selected tags.')
-    expect(wrapper.text()).not.toContain('Only career')
     expect(wrapper.text()).not.toContain('No consultations yet')
+  })
+
+  it('appends the next page when "Load more" is clicked, passing the cursor', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValueOnce(page([item('1', 'Newest?')], 'cursor-abc'))
+
+    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
+    await flushPromises()
+
+    vi.mocked(fetchConsultations).mockResolvedValueOnce(page([item('2', 'Older?')], null))
+    const loadMore = wrapper.findAll('button').find((b) => b.text() === 'Load more')!
+    await loadMore.trigger('click')
+    await flushPromises()
+
+    expect(fetchConsultations).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: 'cursor-abc' }))
+    expect(wrapper.text()).toContain('Newest?')
+    expect(wrapper.text()).toContain('Older?')
+    expect(wrapper.findAll('button').some((b) => b.text() === 'Load more')).toBe(false)
   })
 
   async function selectFile(wrapper: ReturnType<typeof mount>, contents: string): Promise<void> {
@@ -261,30 +190,30 @@ describe('ConsultationHistoryPage', () => {
     await flushPromises()
   }
 
-  it('exports the currently loaded consultations', async () => {
-    const consultations = [sample('1', 'A?'), sample('2', 'B?')]
-    vi.mocked(fetchConsultations).mockResolvedValue(consultations)
+  it('exports the full history via the dedicated export endpoint', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValue(page([item('1', 'A?')]))
+    const fullBackup = [{ id: '1', question: 'A?' }] as never
+    vi.mocked(fetchConsultationsForExport).mockResolvedValue(fullBackup)
 
     const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
     await flushPromises()
 
     const button = wrapper.findAll('button').find((b) => b.text() === 'Export Backup (JSON)')!
     await button.trigger('click')
+    await flushPromises()
 
-    expect(exportConsultationsBackup).toHaveBeenCalledWith(consultations)
+    expect(fetchConsultationsForExport).toHaveBeenCalled()
+    expect(exportConsultationsBackup).toHaveBeenCalledWith(fullBackup)
   })
 
-  it('imports a valid backup file, shows a success message, and refreshes the list', async () => {
-    vi.mocked(fetchConsultations).mockResolvedValueOnce([sample('1', 'Original?')])
+  it('imports a valid backup file, shows a success message, and refreshes page 1', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValueOnce(page([item('1', 'Original?')]))
     vi.mocked(importConsultationsBackup).mockResolvedValue({ imported: 2 })
 
     const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
     await flushPromises()
 
-    vi.mocked(fetchConsultations).mockResolvedValueOnce([
-      sample('1', 'Original?'),
-      sample('2', 'Restored?'),
-    ])
+    vi.mocked(fetchConsultations).mockResolvedValueOnce(page([item('1', 'Original?'), item('2', 'Restored?')]))
     await selectFile(wrapper, '[{"id":"2","question":"Restored?"}]')
 
     expect(importConsultationsBackup).toHaveBeenCalledWith([{ id: '2', question: 'Restored?' }])
@@ -293,7 +222,7 @@ describe('ConsultationHistoryPage', () => {
   })
 
   it('shows an error and never calls the API when the selected file is not valid JSON', async () => {
-    vi.mocked(fetchConsultations).mockResolvedValue([sample('1', 'A?')])
+    vi.mocked(fetchConsultations).mockResolvedValue(page([item('1', 'A?')]))
 
     const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
     await flushPromises()
@@ -305,7 +234,7 @@ describe('ConsultationHistoryPage', () => {
   })
 
   it('shows an error and never calls the API when the file is valid JSON but not an array', async () => {
-    vi.mocked(fetchConsultations).mockResolvedValue([sample('1', 'A?')])
+    vi.mocked(fetchConsultations).mockResolvedValue(page([item('1', 'A?')]))
 
     const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
     await flushPromises()
@@ -317,7 +246,7 @@ describe('ConsultationHistoryPage', () => {
   })
 
   it('shows an inline error when the import API call fails', async () => {
-    vi.mocked(fetchConsultations).mockResolvedValue([sample('1', 'A?')])
+    vi.mocked(fetchConsultations).mockResolvedValue(page([item('1', 'A?')]))
     vi.mocked(importConsultationsBackup).mockRejectedValue(new Error('duplicate ids'))
 
     const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
