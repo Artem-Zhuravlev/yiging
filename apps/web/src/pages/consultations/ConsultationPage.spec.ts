@@ -334,6 +334,56 @@ describe('ConsultationPage', () => {
     expect(wrapper.text()).toContain('clipboard denied')
   })
 
+  it('copies the consultation as Markdown to the clipboard', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText } })
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    const button = wrapper.findAll('button').find((b) => b.text() === 'Copy as Markdown')!
+    await button.trigger('click')
+    await flushPromises()
+
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining(`# ${sampleConsultation.question}`))
+  })
+
+  it('shows an inline error when copying Markdown fails', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    Object.assign(navigator, {
+      clipboard: { writeText: vi.fn().mockRejectedValue(new Error('nope')) },
+    })
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Copy as Markdown')!.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Failed to copy Markdown.')
+  })
+
+  it('downloads the consultation as a .md file', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+    const createObjectURL = vi.fn().mockReturnValue('blob:md')
+    const revokeObjectURL = vi.fn()
+    Object.assign(URL, { createObjectURL, revokeObjectURL })
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text() === 'Download .md')!.trigger('click')
+
+    expect(createObjectURL).toHaveBeenCalled()
+    expect(clickSpy).toHaveBeenCalled()
+    clickSpy.mockRestore()
+  })
+
   it('pre-fills the context form from the loaded consultation', async () => {
     vi.mocked(fetchConsultation).mockResolvedValue({
       ...sampleConsultation,

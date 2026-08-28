@@ -18,6 +18,7 @@ import { ApiError } from '../../shared/api/http'
 import { announce } from '../../shared/lib/announce'
 import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
 import { useToastSuccess } from '../../shared/lib/useToastSuccess'
+import { consultationToMarkdown, slugifyForFilename } from '../../shared/lib/consultationMarkdown'
 import LoadingSkeleton from '../../shared/ui/LoadingSkeleton.vue'
 import Button from 'primevue/button'
 import Textarea from 'primevue/textarea'
@@ -301,6 +302,38 @@ function printPage(): void {
   window.print()
 }
 
+const markdownError = ref('')
+
+function currentMarkdown(): string | null {
+  return state.value.status === 'loaded' ? consultationToMarkdown(state.value.consultation, t) : null
+}
+
+async function copyMarkdown(): Promise<void> {
+  const md = currentMarkdown()
+  if (md === null) return
+  try {
+    await navigator.clipboard.writeText(md)
+    markdownError.value = ''
+    notifySaved('consultationPage.markdownCopied')
+  } catch {
+    markdownError.value = t('consultationPage.copyMarkdownError')
+  }
+}
+
+function downloadMarkdown(): void {
+  const md = currentMarkdown()
+  if (md === null || state.value.status !== 'loaded') return
+  const blob = new Blob([md], { type: 'text/markdown' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `yijing-${slugifyForFilename(state.value.consultation.question)}.md`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
 async function copyShareLink(): Promise<void> {
   try {
     await navigator.clipboard.writeText(shareUrl.value)
@@ -437,6 +470,8 @@ onMounted(async () => {
               @click="toggleFavorite"
             />
             <Button text size="small" :label="t('consultationPage.printExport')" @click="printPage" />
+            <Button text size="small" :label="t('consultationPage.copyMarkdown')" @click="copyMarkdown" />
+            <Button text size="small" :label="t('consultationPage.downloadMarkdown')" @click="downloadMarkdown" />
             <Button
               text
               size="small"
@@ -458,6 +493,7 @@ onMounted(async () => {
         <Message v-if="copyLinkState.status === 'error'" severity="error" role="alert" class="mt-1">
           {{ copyLinkState.message }}
         </Message>
+        <Message v-if="markdownError" severity="error" role="alert" class="mt-1">{{ markdownError }}</Message>
       </div>
 
       <div class="flex flex-wrap align-items-start gap-6">

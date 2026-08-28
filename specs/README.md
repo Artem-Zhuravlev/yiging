@@ -126,3 +126,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-048 | [Loading Skeletons](loading-skeletons/spec.md) | `implemented` |
 | SPEC-049 | [Trigram (Bagua) Explorer](trigram-explorer/spec.md) | `implemented` |
 | SPEC-050 | [Tag Management](tag-management/spec.md) | `implemented` |
+| SPEC-051 | [Single-Consultation Markdown Export](consultation-markdown-export/spec.md) | `implemented` |
