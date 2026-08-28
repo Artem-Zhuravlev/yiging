@@ -49,6 +49,16 @@ export const uk: typeof en = {
     viewAll: 'Переглянути всі',
     consultationsCast: 'Кинуто консультацій: {count}',
   },
+  trigramExplorer: {
+    title: 'Триграми (Багуа)',
+    link: 'Триграми',
+    loadError: 'Не вдалося завантажити триграми.',
+    arrangement: 'Посленебесне розташування',
+    image: 'Образ',
+    element: 'Стихія',
+    family: 'Родина',
+    direction: 'Напрямок',
+  },
   hexagramList: {
     title: 'Провідник гексаграм',
     visualEditor: 'Візуальний редактор',

@@ -47,12 +47,14 @@ describe('HexagramListPage', () => {
     vi.mocked(unmarkHexagramFavorite).mockClear().mockResolvedValue(undefined)
   })
 
-  it('links to the Visual Editor', () => {
+  it('links to the Visual Editor and the Trigram explorer', () => {
     vi.mocked(fetchHexagrams).mockReturnValue(new Promise(() => {}))
 
     const wrapper = mount(HexagramListPage, { global: { stubs } })
 
-    expect(wrapper.findAll('a').some((a) => a.text() === 'Visual Editor')).toBe(true)
+    const linkTexts = wrapper.findAll('a').map((a) => a.text())
+    expect(linkTexts).toContain('Visual Editor')
+    expect(linkTexts).toContain('Trigrams')
   })
 
   it('shows a loading state before the fetch resolves', () => {

@@ -38,6 +38,11 @@ const router = createRouter({
       component: () => import('../pages/hexagrams/HexagramDetailPage.vue'),
     },
     {
+      path: '/trigrams',
+      name: 'trigrams',
+      component: () => import('../pages/trigrams/TrigramExplorerPage.vue'),
+    },
+    {
       path: '/consultations/new',
       name: 'consultation-new',
       component: () => import('../pages/consultations/NewConsultationPage.vue'),

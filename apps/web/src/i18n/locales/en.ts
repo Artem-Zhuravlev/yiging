@@ -47,6 +47,16 @@ export const en = {
     viewAll: 'View all',
     consultationsCast: '{count} consultations cast',
   },
+  trigramExplorer: {
+    title: 'Trigrams (Bagua)',
+    link: 'Trigrams',
+    loadError: 'Failed to load trigrams.',
+    arrangement: 'Later Heaven arrangement',
+    image: 'Image',
+    element: 'Element',
+    family: 'Family',
+    direction: 'Direction',
+  },
   hexagramList: {
     title: 'Hexagram Explorer',
     visualEditor: 'Visual Editor',
