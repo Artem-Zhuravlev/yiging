@@ -122,3 +122,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-044 | [Interactive Hexagram Lines](interactive-hexagram-lines/spec.md) | `implemented` |
 | SPEC-045 | [Home Dashboard](home-dashboard/spec.md) | `implemented` |
 | SPEC-046 | [Responsive Navigation Menu](responsive-nav/spec.md) | `implemented` |
+| SPEC-047 | [Toast Notifications](toast-notifications/spec.md) | `implemented` |

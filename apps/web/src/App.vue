@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import Toolbar from 'primevue/toolbar'
 import Button from 'primevue/button'
 import Drawer from 'primevue/drawer'
+import Toast from 'primevue/toast'
 import { setLocale, SUPPORTED_LOCALES } from './i18n'
 import type { Locale } from './i18n'
 import { isDarkMode, setDarkMode } from './darkMode'
@@ -100,5 +101,6 @@ const links = computed(() => [
   </Drawer>
 
   <LiveRegion />
+  <Toast position="bottom-right" />
   <router-view />
 </template>

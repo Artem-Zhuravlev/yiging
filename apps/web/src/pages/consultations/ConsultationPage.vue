@@ -17,6 +17,7 @@ import type {
 import { ApiError } from '../../shared/api/http'
 import { announce } from '../../shared/lib/announce'
 import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
+import { useToastSuccess } from '../../shared/lib/useToastSuccess'
 import Button from 'primevue/button'
 import Textarea from 'primevue/textarea'
 import InputText from 'primevue/inputtext'
@@ -50,6 +51,7 @@ type FormState = { status: 'idle' } | { status: 'submitting' } | { status: 'erro
 type CopyLinkState = { status: 'idle' } | { status: 'copied' } | { status: 'error'; message: string }
 
 const { t, locale } = useI18n()
+const { notifySaved } = useToastSuccess()
 const route = useRoute()
 const id = computed(() => String(route.params.id))
 const shareUrl = computed(() => `${location.origin}/share/consultations/${id.value}`)
@@ -193,6 +195,7 @@ async function addNote(): Promise<void> {
     state.value = { ...loaded, consultation: updated }
     noteText.value = ''
     noteFormState.value = { status: 'idle' }
+    notifySaved('consultationPage.noteAdded')
   } catch (error) {
     noteFormState.value = {
       status: 'error',
@@ -214,6 +217,7 @@ async function addTag(): Promise<void> {
     state.value = { ...loaded, consultation: updated }
     tagText.value = ''
     tagFormState.value = { status: 'idle' }
+    notifySaved('consultationPage.tagAdded')
   } catch (error) {
     tagFormState.value = {
       status: 'error',
@@ -250,6 +254,7 @@ async function saveContext(): Promise<void> {
     state.value = { ...loaded, consultation: updated }
     contextForm.value = contextFormFrom(updated)
     contextFormState.value = { status: 'idle' }
+    notifySaved('consultationPage.contextSaved')
   } catch (error) {
     contextFormState.value = {
       status: 'error',
@@ -282,6 +287,7 @@ async function saveOutcome(): Promise<void> {
     state.value = { ...loaded, consultation: updated }
     outcomeForm.value = outcomeFormFrom(updated)
     outcomeFormState.value = { status: 'idle' }
+    notifySaved('consultationPage.outcomeSaved')
   } catch (error) {
     outcomeFormState.value = {
       status: 'error',

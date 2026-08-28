@@ -34,6 +34,9 @@ export const uk: typeof en = {
     loaded: 'Вміст завантажено',
     loadFailed: 'Не вдалося завантажити вміст',
   },
+  toast: {
+    saved: 'Збережено',
+  },
   home: {
     title: 'Yijing',
     tagline: 'Цифрова платформа для вивчення та практики І-цзін.',
@@ -75,6 +78,7 @@ export const uk: typeof en = {
     title: 'Налаштування',
     loadError: 'Не вдалося завантажити профіль інтерпретації.',
     saveError: 'Не вдалося зберегти профіль інтерпретації.',
+    saved: 'Профіль інтерпретації збережено',
     profileHeading: 'Профіль інтерпретації',
     profileDescription: 'Впливає на кожну ІІ-інтерпретацію та відповідь на уточнення відтепер.',
     tone: 'Тон',
@@ -235,6 +239,10 @@ export const uk: typeof en = {
     addTagError: 'Не вдалося додати тег.',
     saveContext: 'Зберегти контекст',
     saveContextError: 'Не вдалося зберегти контекст.',
+    contextSaved: 'Контекст збережено',
+    outcomeSaved: 'Результат збережено',
+    noteAdded: 'Нотатку додано',
+    tagAdded: 'Тег додано',
     saving: 'Збереження…',
     lastRecorded: 'Востаннє записано {date}',
     linkedPrefix: 'Пов’язано:',

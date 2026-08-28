@@ -9,6 +9,7 @@ import { fetchInterpretationProfile, updateInterpretationProfile } from '../../e
 import { TONES, RESPONSE_LENGTHS } from '../../entities/interpretation-profile/model'
 import type { InterpretationProfile } from '../../entities/interpretation-profile/model'
 import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
+import { useToastSuccess } from '../../shared/lib/useToastSuccess'
 
 type State =
   | { status: 'loading' }
@@ -18,6 +19,7 @@ type State =
 type FormState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string }
 
 const { t } = useI18n()
+const { notifySaved } = useToastSuccess()
 const state = ref<State>({ status: 'loading' })
 const formState = ref<FormState>({ status: 'idle' })
 const form = ref({ tone: 'neutral' as InterpretationProfile['tone'], length: 'standard' as InterpretationProfile['length'], notes: '' })
@@ -55,6 +57,7 @@ async function save(): Promise<void> {
     })
     state.value = { status: 'loaded', profile }
     formState.value = { status: 'idle' }
+    notifySaved('settings.saved')
   } catch (error) {
     formState.value = {
       status: 'error',

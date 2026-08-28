@@ -1,5 +1,6 @@
 import { config } from '@vue/test-utils'
 import PrimeVue from 'primevue/config'
+import ToastService from 'primevue/toastservice'
 import { appTheme } from './theme'
 import { i18n } from './i18n'
 
@@ -31,4 +32,5 @@ config.global.plugins.push([
     },
   },
 ])
+config.global.plugins.push(ToastService)
 config.global.plugins.push(i18n)

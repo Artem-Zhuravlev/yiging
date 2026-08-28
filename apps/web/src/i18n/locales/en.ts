@@ -32,6 +32,9 @@ export const en = {
     loaded: 'Content loaded',
     loadFailed: 'Failed to load content',
   },
+  toast: {
+    saved: 'Saved',
+  },
   home: {
     title: 'Yijing',
     tagline: 'Digital I Ching study & practice platform.',
@@ -73,6 +76,7 @@ export const en = {
     title: 'Settings',
     loadError: 'Failed to load interpretation profile.',
     saveError: 'Failed to save interpretation profile.',
+    saved: 'Interpretation profile saved',
     profileHeading: 'Interpretation Profile',
     profileDescription: 'Shapes every AI interpretation and follow-up answer from now on.',
     tone: 'Tone',
@@ -233,6 +237,10 @@ export const en = {
     addTagError: 'Failed to add tag.',
     saveContext: 'Save Context',
     saveContextError: 'Failed to save context.',
+    contextSaved: 'Context saved',
+    outcomeSaved: 'Outcome saved',
+    noteAdded: 'Note added',
+    tagAdded: 'Tag added',
     saving: 'Saving…',
     lastRecorded: 'Last recorded {date}',
     linkedPrefix: 'Linked:',
