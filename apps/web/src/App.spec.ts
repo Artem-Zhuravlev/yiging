@@ -59,4 +59,25 @@ describe('App', () => {
     expect(nav.exists()).toBe(true)
     expect(nav.attributes('aria-label')).toBeTruthy()
   })
+
+  it('renders a hamburger menu button on a normal route, collapsed by default', async () => {
+    route.meta = {}
+
+    const wrapper = mount(App, { global: { stubs } })
+
+    const hamburger = wrapper.findAll('button').find((b) => b.attributes('aria-label') === 'Menu')
+    expect(hamburger).toBeTruthy()
+    expect(hamburger!.attributes('aria-expanded')).toBe('false')
+
+    await hamburger!.trigger('click')
+    expect(hamburger!.attributes('aria-expanded')).toBe('true')
+  })
+
+  it('renders no hamburger menu button on a public route', () => {
+    route.meta = { public: true }
+
+    const wrapper = mount(App, { global: { stubs } })
+
+    expect(wrapper.findAll('button').some((b) => b.attributes('aria-label') === 'Menu')).toBe(false)
+  })
 })

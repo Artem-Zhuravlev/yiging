@@ -27,6 +27,7 @@ export const uk: typeof en = {
     lightMode: 'Перемкнути на світлу тему',
     primaryLabel: 'Головна',
     skipToContent: 'Перейти до основного вмісту',
+    menu: 'Меню',
   },
   a11y: {
     loading: 'Завантаження…',

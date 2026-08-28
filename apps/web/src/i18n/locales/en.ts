@@ -25,6 +25,7 @@ export const en = {
     lightMode: 'Switch to light mode',
     primaryLabel: 'Primary',
     skipToContent: 'Skip to main content',
+    menu: 'Menu',
   },
   a11y: {
     loading: 'Loading…',

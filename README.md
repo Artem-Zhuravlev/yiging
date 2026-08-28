@@ -121,6 +121,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-043 | [Statistics Charts](specs/statistics-charts/spec.md) | `implemented` |
 | SPEC-044 | [Interactive Hexagram Lines](specs/interactive-hexagram-lines/spec.md) | `implemented` |
 | SPEC-045 | [Home Dashboard](specs/home-dashboard/spec.md) | `implemented` |
+| SPEC-046 | [Responsive Navigation Menu](specs/responsive-nav/spec.md) | `implemented` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
