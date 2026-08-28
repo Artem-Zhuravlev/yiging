@@ -141,9 +141,64 @@ final class ConsultationController
         ]);
     }
 
-    public function tags(): Response
+    public function tags(Request $request): Response
     {
+        $counts = $request->query->get('counts');
+
+        if (is_string($counts) && in_array(strtolower($counts), ['1', 'true', 'yes'], true)) {
+            return new JsonResponse($this->repository->allTagsWithCounts());
+        }
+
         return new JsonResponse($this->repository->allTagNames());
+    }
+
+    /**
+     * @param array<string, string> $vars
+     */
+    public function renameTag(Request $request, array $vars): Response
+    {
+        $name = $vars['name'];
+
+        try {
+            $body = $this->decodeJsonBody($request);
+        } catch (\JsonException) {
+            return $this->errorResponse('Malformed JSON body.', Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $newName = is_string($body['newName'] ?? null) ? trim($body['newName']) : '';
+
+        if ($newName === '') {
+            return $this->errorResponse('"newName" must be a non-empty string.', Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        if (!$this->repository->tagExists($name)) {
+            return $this->errorResponse('Not Found', Response::HTTP_NOT_FOUND);
+        }
+
+        if ($newName === $name) {
+            return new JsonResponse(['renamed' => true, 'merged' => false]);
+        }
+
+        $merged = $this->repository->tagExists($newName);
+        $this->repository->renameOrMergeTag($name, $newName);
+
+        return new JsonResponse(['renamed' => true, 'merged' => $merged]);
+    }
+
+    /**
+     * @param array<string, string> $vars
+     */
+    public function deleteTag(Request $request, array $vars): Response
+    {
+        $name = $vars['name'];
+
+        if (!$this->repository->tagExists($name)) {
+            return $this->errorResponse('Not Found', Response::HTTP_NOT_FOUND);
+        }
+
+        $this->repository->deleteTag($name);
+
+        return new Response('', Response::HTTP_NO_CONTENT);
     }
 
     /**

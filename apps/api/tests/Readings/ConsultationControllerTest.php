@@ -319,6 +319,109 @@ final class ConsultationControllerTest extends TestCase
         self::assertSame(['family', 'work'], $body);
     }
 
+    public function testTagsEndpointWithCountsReturnsNameAndCountSorted(): void
+    {
+        $a = $this->decode($this->postJson('/api/consultations', ['question' => 'A?', 'method' => 'random']));
+        $b = $this->decode($this->postJson('/api/consultations', ['question' => 'B?', 'method' => 'random']));
+        $this->patchJson('/api/consultations/' . $a['id'], ['tag' => 'work']);
+        $this->patchJson('/api/consultations/' . $b['id'], ['tag' => 'work']);
+        $this->patchJson('/api/consultations/' . $b['id'], ['tag' => 'family']);
+
+        $body = $this->decode($this->kernel->handle(Request::create('/api/consultations/tags?counts=1', 'GET')));
+
+        self::assertSame([
+            ['name' => 'family', 'count' => 1],
+            ['name' => 'work', 'count' => 2],
+        ], $body);
+    }
+
+    public function testRenameTagToAFreshNameRenamesItEverywhere(): void
+    {
+        $a = $this->decode($this->postJson('/api/consultations', ['question' => 'A?', 'method' => 'random']));
+        $this->patchJson('/api/consultations/' . $a['id'], ['tag' => 'carrer']);
+
+        $response = $this->patchJson('/api/consultations/tags/carrer', ['newName' => 'career']);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame(['renamed' => true, 'merged' => false], $this->decode($response));
+
+        $tags = $this->decode($this->kernel->handle(Request::create('/api/consultations/tags', 'GET')));
+        self::assertSame(['career'], $tags);
+
+        $shown = $this->decode($this->kernel->handle(Request::create('/api/consultations/' . $a['id'], 'GET')));
+        self::assertSame(['career'], $shown['tags']);
+    }
+
+    public function testRenameTagIntoAnExistingTagMergesWithoutDuplicates(): void
+    {
+        $a = $this->decode($this->postJson('/api/consultations', ['question' => 'A?', 'method' => 'random']));
+        $b = $this->decode($this->postJson('/api/consultations', ['question' => 'B?', 'method' => 'random']));
+        $this->patchJson('/api/consultations/' . $a['id'], ['tag' => 'work']);
+        $this->patchJson('/api/consultations/' . $a['id'], ['tag' => 'job']);
+        $this->patchJson('/api/consultations/' . $b['id'], ['tag' => 'job']);
+
+        $response = $this->patchJson('/api/consultations/tags/job', ['newName' => 'work']);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame(['renamed' => true, 'merged' => true], $this->decode($response));
+
+        self::assertSame(['work'], $this->decode($this->kernel->handle(Request::create('/api/consultations/tags', 'GET'))));
+
+        $aShown = $this->decode($this->kernel->handle(Request::create('/api/consultations/' . $a['id'], 'GET')));
+        self::assertSame(['work'], $aShown['tags']);
+        $bShown = $this->decode($this->kernel->handle(Request::create('/api/consultations/' . $b['id'], 'GET')));
+        self::assertSame(['work'], $bShown['tags']);
+    }
+
+    public function testRenameTagToTheSameNameIsANoOp(): void
+    {
+        $a = $this->decode($this->postJson('/api/consultations', ['question' => 'A?', 'method' => 'random']));
+        $this->patchJson('/api/consultations/' . $a['id'], ['tag' => 'work']);
+
+        $response = $this->patchJson('/api/consultations/tags/work', ['newName' => 'work']);
+
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame(['renamed' => true, 'merged' => false], $this->decode($response));
+        self::assertSame(['work'], $this->decode($this->kernel->handle(Request::create('/api/consultations/tags', 'GET'))));
+    }
+
+    public function testRenameTagRejectsABlankNewNameWith422(): void
+    {
+        $a = $this->decode($this->postJson('/api/consultations', ['question' => 'A?', 'method' => 'random']));
+        $this->patchJson('/api/consultations/' . $a['id'], ['tag' => 'work']);
+
+        self::assertSame(422, $this->patchJson('/api/consultations/tags/work', ['newName' => '  '])->getStatusCode());
+        self::assertSame(422, $this->patchJson('/api/consultations/tags/work', [])->getStatusCode());
+    }
+
+    public function testRenameOrDeleteAnUnknownTagReturns404(): void
+    {
+        self::assertSame(
+            404,
+            $this->patchJson('/api/consultations/tags/nope', ['newName' => 'x'])->getStatusCode(),
+        );
+        self::assertSame(
+            404,
+            $this->kernel->handle(Request::create('/api/consultations/tags/nope', 'DELETE'))->getStatusCode(),
+        );
+    }
+
+    public function testDeleteTagRemovesItFromEveryConsultationButKeepsTheConsultations(): void
+    {
+        $a = $this->decode($this->postJson('/api/consultations', ['question' => 'A?', 'method' => 'random']));
+        $this->patchJson('/api/consultations/' . $a['id'], ['tag' => 'work']);
+        $this->patchJson('/api/consultations/' . $a['id'], ['tag' => 'keep']);
+
+        $response = $this->kernel->handle(Request::create('/api/consultations/tags/work', 'DELETE'));
+        self::assertSame(204, $response->getStatusCode());
+
+        self::assertSame(['keep'], $this->decode($this->kernel->handle(Request::create('/api/consultations/tags', 'GET'))));
+
+        $shown = $this->decode($this->kernel->handle(Request::create('/api/consultations/' . $a['id'], 'GET')));
+        self::assertSame(200, $this->kernel->handle(Request::create('/api/consultations/' . $a['id'], 'GET'))->getStatusCode());
+        self::assertSame(['keep'], $shown['tags']);
+    }
+
     public function testShowReturnsTheCreatedConsultation(): void
     {
         $created = $this->decode($this->postJson('/api/consultations', [

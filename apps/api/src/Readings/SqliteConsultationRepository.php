@@ -149,6 +149,93 @@ final class SqliteConsultationRepository implements ConsultationRepository
         return $names;
     }
 
+    public function allTagsWithCounts(): array
+    {
+        $statement = $this->pdo->query(
+            'SELECT t.name AS name, COUNT(ct.consultation_id) AS count
+             FROM tags t
+             INNER JOIN consultation_tags ct ON ct.tag_id = t.id
+             GROUP BY t.id
+             ORDER BY t.name ASC',
+        );
+
+        if ($statement === false) {
+            return [];
+        }
+
+        $result = [];
+        while (is_array($row = $statement->fetch())) {
+            $result[] = ['name' => (string) $row['name'], 'count' => (int) $row['count']];
+        }
+
+        return $result;
+    }
+
+    public function tagExists(string $name): bool
+    {
+        $statement = $this->pdo->prepare('SELECT 1 FROM tags WHERE name = :name LIMIT 1');
+        $statement->execute(['name' => $name]);
+
+        return $statement->fetchColumn() !== false;
+    }
+
+    public function renameOrMergeTag(string $from, string $to): void
+    {
+        $this->pdo->beginTransaction();
+
+        try {
+            $fromId = $this->tagIdByName($from);
+            $toId = $this->tagIdByName($to);
+
+            if ($toId === null) {
+                $update = $this->pdo->prepare('UPDATE tags SET name = :to WHERE id = :id');
+                $update->execute(['to' => $to, 'id' => $fromId]);
+            } else {
+                // Move every link off the old tag onto the target, deduping on the composite PK.
+                $move = $this->pdo->prepare(
+                    'INSERT OR IGNORE INTO consultation_tags (consultation_id, tag_id)
+                     SELECT consultation_id, :to_id FROM consultation_tags WHERE tag_id = :from_id',
+                );
+                $move->execute(['to_id' => $toId, 'from_id' => $fromId]);
+
+                // Dropping the tags row cascades away the now-superseded tag_id = fromId links.
+                $delete = $this->pdo->prepare('DELETE FROM tags WHERE id = :id');
+                $delete->execute(['id' => $fromId]);
+            }
+
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+
+            throw $e;
+        }
+    }
+
+    public function deleteTag(string $name): void
+    {
+        $this->pdo->beginTransaction();
+
+        try {
+            $statement = $this->pdo->prepare('DELETE FROM tags WHERE name = :name');
+            $statement->execute(['name' => $name]);
+
+            $this->pdo->commit();
+        } catch (\Throwable $e) {
+            $this->pdo->rollBack();
+
+            throw $e;
+        }
+    }
+
+    private function tagIdByName(string $name): ?int
+    {
+        $statement = $this->pdo->prepare('SELECT id FROM tags WHERE name = :name');
+        $statement->execute(['name' => $name]);
+        $id = $statement->fetchColumn();
+
+        return $id === false ? null : (int) $id;
+    }
+
     /**
      * @param list<string> $ids
      *

@@ -30,6 +30,27 @@ interface ConsultationRepository
      */
     public function allTagNames(): array;
 
+    /**
+     * @return list<array{name: string, count: int}> every used tag with the number of
+     *     consultations carrying it, sorted by name (SPEC-050)
+     */
+    public function allTagsWithCounts(): array;
+
+    public function tagExists(string $name): bool;
+
+    /**
+     * Renames tag $from to $to (SPEC-050). If a tag named $to already exists, the two are
+     * merged: every consultation on $from is moved onto $to (no duplicate links) and the $from
+     * tag row is removed. One transaction. Caller MUST have verified $from exists.
+     */
+    public function renameOrMergeTag(string $from, string $to): void;
+
+    /**
+     * Deletes tag $name and every consultation's link to it (via ON DELETE CASCADE). No
+     * consultation row is affected. Caller MUST have verified the tag exists.
+     */
+    public function deleteTag(string $name): void;
+
     public function findSummaryById(string $id): ?ConsultationSummary;
 
     /**

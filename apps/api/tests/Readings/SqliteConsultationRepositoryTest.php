@@ -690,6 +690,64 @@ final class SqliteConsultationRepositoryTest extends TestCase
         self::assertSame('consult-tagged', $favOnly->items[0]->id);
     }
 
+    public function testRenameOrMergeTagMergesEveryLinkOntoTheTargetWithoutDuplicates(): void
+    {
+        $a = Consultation::create('c-a', 'A?', CastingMethodName::Manual, self::hexagramFromPattern('111111'), new \DateTimeImmutable('2026-08-14T10:00:00+00:00'))
+            ->withAddedTag('work')->withAddedTag('job');
+        $b = Consultation::create('c-b', 'B?', CastingMethodName::Manual, self::hexagramFromPattern('111111'), new \DateTimeImmutable('2026-08-15T10:00:00+00:00'))
+            ->withAddedTag('job');
+        $this->repository->save($a);
+        $this->repository->save($b);
+
+        self::assertTrue($this->repository->tagExists('job'));
+        $this->repository->renameOrMergeTag('job', 'work');
+
+        self::assertFalse($this->repository->tagExists('job'));
+        self::assertSame(['work'], $this->repository->allTagNames());
+        self::assertSame(['work'], $this->repository->findById('c-a')?->tags);
+        self::assertSame(['work'], $this->repository->findById('c-b')?->tags);
+    }
+
+    public function testRenameOrMergeTagToAFreshNameJustRenames(): void
+    {
+        $a = Consultation::create('c-a', 'A?', CastingMethodName::Manual, self::hexagramFromPattern('111111'), new \DateTimeImmutable('2026-08-14T10:00:00+00:00'))
+            ->withAddedTag('carrer');
+        $this->repository->save($a);
+
+        $this->repository->renameOrMergeTag('carrer', 'career');
+
+        self::assertSame(['career'], $this->repository->allTagNames());
+        self::assertSame(['career'], $this->repository->findById('c-a')?->tags);
+    }
+
+    public function testDeleteTagRemovesTheLinksAndKeepsTheConsultation(): void
+    {
+        $a = Consultation::create('c-a', 'A?', CastingMethodName::Manual, self::hexagramFromPattern('111111'), new \DateTimeImmutable('2026-08-14T10:00:00+00:00'))
+            ->withAddedTag('work')->withAddedTag('keep');
+        $this->repository->save($a);
+
+        $this->repository->deleteTag('work');
+
+        self::assertFalse($this->repository->tagExists('work'));
+        self::assertSame(['keep'], $this->repository->allTagNames());
+        self::assertSame(['keep'], $this->repository->findById('c-a')?->tags);
+    }
+
+    public function testAllTagsWithCountsReturnsUsedTagsWithCountsSorted(): void
+    {
+        $a = Consultation::create('c-a', 'A?', CastingMethodName::Manual, self::hexagramFromPattern('111111'), new \DateTimeImmutable('2026-08-14T10:00:00+00:00'))
+            ->withAddedTag('work')->withAddedTag('money');
+        $b = Consultation::create('c-b', 'B?', CastingMethodName::Manual, self::hexagramFromPattern('111111'), new \DateTimeImmutable('2026-08-15T10:00:00+00:00'))
+            ->withAddedTag('work');
+        $this->repository->save($a);
+        $this->repository->save($b);
+
+        self::assertSame(
+            [['name' => 'money', 'count' => 1], ['name' => 'work', 'count' => 2]],
+            $this->repository->allTagsWithCounts(),
+        );
+    }
+
     public function testAllTagNamesReturnsDistinctUsedTagsSorted(): void
     {
         $a = Consultation::create(

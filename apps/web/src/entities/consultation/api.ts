@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost } from '../../shared/api/http'
+import { apiDelete, apiGet, apiPatch, apiPost } from '../../shared/api/http'
 import type {
   Consultation,
   ConsultationDetail,
@@ -6,6 +6,7 @@ import type {
   ConsultationListParams,
   ConsultationPatch,
   NewConsultationRequest,
+  TagWithCount,
 } from './model'
 
 export function createConsultation(request: NewConsultationRequest): Promise<Consultation> {
@@ -30,6 +31,24 @@ export function fetchConsultations(params: ConsultationListParams = {}): Promise
  * chips, which must show the full vocabulary, not just tags on the loaded page. */
 export function fetchConsultationTags(): Promise<string[]> {
   return apiGet<string[]>('/consultations/tags')
+}
+
+/** Every used tag with its consultation count — for the "Manage tags" panel (SPEC-050). */
+export function fetchTagsWithCounts(): Promise<TagWithCount[]> {
+  return apiGet<TagWithCount[]>('/consultations/tags?counts=1')
+}
+
+/** Renames a tag; if `newName` already names a tag the two are merged (SPEC-050). */
+export function renameTag(name: string, newName: string): Promise<{ renamed: boolean; merged: boolean }> {
+  return apiPatch<{ renamed: boolean; merged: boolean }>(
+    `/consultations/tags/${encodeURIComponent(name)}`,
+    { newName },
+  )
+}
+
+/** Removes a tag and every consultation's link to it (SPEC-050). */
+export function deleteTag(name: string): Promise<void> {
+  return apiDelete(`/consultations/tags/${encodeURIComponent(name)}`)
 }
 
 /** The full, fully-populated history — for the "Export Backup (JSON)" download only (SPEC-028/041).

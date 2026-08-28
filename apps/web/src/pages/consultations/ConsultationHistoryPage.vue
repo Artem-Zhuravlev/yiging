@@ -5,14 +5,18 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import {
+  deleteTag,
   exportConsultationsBackup,
   fetchConsultations,
   fetchConsultationTags,
   fetchConsultationsForExport,
+  fetchTagsWithCounts,
   importConsultationsBackup,
+  renameTag,
 } from '../../entities/consultation/api'
-import type { ConsultationListItem } from '../../entities/consultation/model'
+import type { ConsultationListItem, TagWithCount } from '../../entities/consultation/model'
 import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
+import { useToastSuccess } from '../../shared/lib/useToastSuccess'
 import LoadingSkeleton from '../../shared/ui/LoadingSkeleton.vue'
 
 type Status = 'loading' | 'error' | 'ready'
@@ -29,6 +33,7 @@ interface ConsultationGroup {
 }
 
 const { t } = useI18n()
+const { notifySaved } = useToastSuccess()
 
 const status = ref<Status>('loading')
 const errorMessage = ref('')
@@ -44,6 +49,13 @@ const allTags = ref<string[]>([])
 
 const importState = ref<ImportState>({ status: 'idle' })
 const exporting = ref(false)
+
+// "Manage tags" panel (SPEC-050) — collapsed by default.
+const tagCounts = ref<TagWithCount[]>([])
+const editingTag = ref<string | null>(null)
+const editName = ref('')
+const confirmingDelete = ref<string | null>(null)
+const manageError = ref('')
 
 useStatusAnnouncer(computed(() => status.value))
 
@@ -89,6 +101,14 @@ async function load(reset: boolean): Promise<void> {
   }
 }
 
+async function loadTagCounts(): Promise<void> {
+  try {
+    tagCounts.value = await fetchTagsWithCounts()
+  } catch {
+    // The manage panel just shows nothing.
+  }
+}
+
 onMounted(async () => {
   await load(true)
   try {
@@ -96,6 +116,7 @@ onMounted(async () => {
   } catch {
     // The chips just won't render — the list itself still works.
   }
+  void loadTagCounts()
 })
 
 // Any filter change restarts paging from page 1 with the new server-side params.
@@ -120,6 +141,62 @@ function toggleTag(tag: string): void {
   if (next.has(tag)) next.delete(tag)
   else next.add(tag)
   selectedTags.value = next
+}
+
+function startRename(name: string): void {
+  editingTag.value = name
+  editName.value = name
+  confirmingDelete.value = null
+  manageError.value = ''
+}
+
+// A rename or delete may have changed which consultations match the current filters, and may
+// have removed a tag that's in `selectedTags` — refresh the vocabulary, the counts, and the list.
+async function refreshTagsAfterMutation(goneOrOldName: string): Promise<void> {
+  try {
+    allTags.value = await fetchConsultationTags()
+  } catch {
+    /* keep the old chip list */
+  }
+  await loadTagCounts()
+
+  if (selectedTags.value.has(goneOrOldName)) {
+    const next = new Set(selectedTags.value)
+    next.delete(goneOrOldName)
+    selectedTags.value = next // the watch on selectedTags re-runs load(true)
+  } else {
+    await load(true)
+  }
+}
+
+async function saveRename(): Promise<void> {
+  const from = editingTag.value
+  const to = editName.value.trim()
+  if (from === null) return
+  if (to === '' || to === from) {
+    editingTag.value = null
+    return
+  }
+
+  try {
+    const { merged } = await renameTag(from, to)
+    editingTag.value = null
+    notifySaved(merged ? 'history.tagMerged' : 'history.tagRenamed')
+    await refreshTagsAfterMutation(from)
+  } catch (error) {
+    manageError.value = error instanceof Error ? error.message : t('history.tagOpError')
+  }
+}
+
+async function removeTag(name: string): Promise<void> {
+  try {
+    await deleteTag(name)
+    confirmingDelete.value = null
+    notifySaved('history.tagDeleted')
+    await refreshTagsAfterMutation(name)
+  } catch (error) {
+    manageError.value = error instanceof Error ? error.message : t('history.tagOpError')
+  }
 }
 
 async function exportBackup(): Promise<void> {
@@ -165,6 +242,7 @@ async function handleImportFile(event: Event): Promise<void> {
     } catch {
       /* keep whatever tag list we had */
     }
+    void loadTagCounts()
   } catch (error) {
     importState.value = {
       status: 'error',
@@ -217,6 +295,40 @@ async function handleImportFile(event: Event): Promise<void> {
         :placeholder="t('history.searchPlaceholder')"
         class="mb-4 w-full"
       />
+
+      <details v-if="tagCounts.length > 0" class="mb-4">
+        <summary class="cursor-pointer text-sm font-medium">{{ t('history.manageTags') }}</summary>
+        <div class="mt-3 flex flex-column gap-2">
+          <Message v-if="manageError" severity="error" role="alert">{{ manageError }}</Message>
+          <div
+            v-for="tag in tagCounts"
+            :key="tag.name"
+            class="flex flex-wrap align-items-center gap-2 border-round border-1 surface-border p-2"
+          >
+            <template v-if="editingTag === tag.name">
+              <InputText v-model="editName" class="flex-1" @keyup.enter="saveRename" />
+              <Button size="small" :label="t('common.save')" @click="saveRename" />
+              <Button size="small" text :label="t('common.cancel')" @click="editingTag = null" />
+            </template>
+            <template v-else-if="confirmingDelete === tag.name">
+              <span class="flex-1 text-sm">{{ t('history.confirmDeleteTag', { name: tag.name }) }}</span>
+              <Button size="small" severity="danger" :label="t('history.deleteTag')" @click="removeTag(tag.name)" />
+              <Button size="small" text :label="t('common.cancel')" @click="confirmingDelete = null" />
+            </template>
+            <template v-else>
+              <span class="flex-1 text-sm">{{ tag.name }} <span class="text-color-secondary">({{ tag.count }})</span></span>
+              <Button size="small" text :label="t('history.rename')" @click="startRename(tag.name)" />
+              <Button
+                size="small"
+                text
+                severity="danger"
+                :label="t('history.deleteTag')"
+                @click="(confirmingDelete = tag.name), (editingTag = null), (manageError = '')"
+              />
+            </template>
+          </div>
+        </div>
+      </details>
 
       <div class="mb-5 flex flex-wrap gap-2">
         <Button

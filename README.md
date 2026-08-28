@@ -125,6 +125,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-047 | [Toast Notifications](specs/toast-notifications/spec.md) | `implemented` |
 | SPEC-048 | [Loading Skeletons](specs/loading-skeletons/spec.md) | `implemented` |
 | SPEC-049 | [Trigram (Bagua) Explorer](specs/trigram-explorer/spec.md) | `implemented` |
+| SPEC-050 | [Tag Management](specs/tag-management/spec.md) | `implemented` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`

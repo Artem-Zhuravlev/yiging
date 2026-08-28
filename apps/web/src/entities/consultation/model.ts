@@ -106,6 +106,12 @@ export interface ConsultationListParams {
   favorite?: boolean
 }
 
+/** A tag plus how many consultations carry it — for the "Manage tags" panel (SPEC-050). */
+export interface TagWithCount {
+  name: string
+  count: number
+}
+
 /** Other consultations sharing this one's primary hexagram, resulting hexagram, or exact
  * changing-line set (SPEC-023) — only present on the single-consultation detail response, never
  * on the list/create/update responses (see ConsultationDetail). */

@@ -2,11 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import ConsultationHistoryPage from './ConsultationHistoryPage.vue'
 import {
+  deleteTag,
   exportConsultationsBackup,
   fetchConsultations,
   fetchConsultationTags,
   fetchConsultationsForExport,
+  fetchTagsWithCounts,
   importConsultationsBackup,
+  renameTag,
 } from '../../entities/consultation/api'
 import type { ConsultationListItem, ConsultationListPage } from '../../entities/consultation/model'
 
@@ -14,6 +17,9 @@ vi.mock('../../entities/consultation/api', () => ({
   fetchConsultations: vi.fn(),
   fetchConsultationTags: vi.fn(),
   fetchConsultationsForExport: vi.fn(),
+  fetchTagsWithCounts: vi.fn(),
+  renameTag: vi.fn(),
+  deleteTag: vi.fn(),
   exportConsultationsBackup: vi.fn(),
   importConsultationsBackup: vi.fn(),
 }))
@@ -45,6 +51,9 @@ beforeEach(() => {
   vi.mocked(fetchConsultations).mockReset()
   vi.mocked(fetchConsultationTags).mockReset().mockResolvedValue([])
   vi.mocked(fetchConsultationsForExport).mockReset()
+  vi.mocked(fetchTagsWithCounts).mockReset().mockResolvedValue([])
+  vi.mocked(renameTag).mockReset().mockResolvedValue({ renamed: true, merged: false })
+  vi.mocked(deleteTag).mockReset().mockResolvedValue(undefined)
   vi.mocked(exportConsultationsBackup).mockClear()
   vi.mocked(importConsultationsBackup).mockReset()
 })
@@ -180,6 +189,45 @@ describe('ConsultationHistoryPage', () => {
     expect(wrapper.text()).toContain('Newest?')
     expect(wrapper.text()).toContain('Older?')
     expect(wrapper.findAll('button').some((b) => b.text() === 'Load more')).toBe(false)
+  })
+
+  it('renames a tag from the Manage tags panel and refreshes the tag list', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValue(page([item('1', 'A')]))
+    vi.mocked(fetchConsultationTags).mockResolvedValue(['carrer'])
+    vi.mocked(fetchTagsWithCounts).mockResolvedValue([{ name: 'carrer', count: 3 }])
+
+    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('carrer (3)')
+
+    const renameBtn = wrapper.findAll('button').find((b) => b.text() === 'Rename')!
+    await renameBtn.trigger('click')
+    const input = wrapper.findAll('input').find((i) => (i.element as HTMLInputElement).value === 'carrer')!
+    await input.setValue('career')
+    vi.mocked(fetchConsultationTags).mockClear()
+    await wrapper.findAll('button').find((b) => b.text() === 'Save')!.trigger('click')
+    await flushPromises()
+
+    expect(renameTag).toHaveBeenCalledWith('carrer', 'career')
+    expect(fetchConsultationTags).toHaveBeenCalled()
+  })
+
+  it('deletes a tag after an inline confirm', async () => {
+    vi.mocked(fetchConsultations).mockResolvedValue(page([item('1', 'A')]))
+    vi.mocked(fetchConsultationTags).mockResolvedValue(['stale'])
+    vi.mocked(fetchTagsWithCounts).mockResolvedValue([{ name: 'stale', count: 1 }])
+
+    const wrapper = mount(ConsultationHistoryPage, { global: { stubs } })
+    await flushPromises()
+
+    // The row's Delete button (there's a "Delete? …" confirm before the API is hit).
+    await wrapper.findAll('button').find((b) => b.text() === 'Delete')!.trigger('click')
+    expect(deleteTag).not.toHaveBeenCalled()
+    await wrapper.findAll('button').filter((b) => b.text() === 'Delete').at(-1)!.trigger('click')
+    await flushPromises()
+
+    expect(deleteTag).toHaveBeenCalledWith('stale')
   })
 
   async function selectFile(wrapper: ReturnType<typeof mount>, contents: string): Promise<void> {
