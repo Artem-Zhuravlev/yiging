@@ -39,6 +39,9 @@ export const en = {
     hexagramOfTheDay: 'Hexagram of the Day',
     loadingHexagramOfTheDay: 'Loading hexagram of the day…',
     loadError: 'Failed to load the hexagram of the day.',
+    recent: 'Recent',
+    viewAll: 'View all',
+    consultationsCast: '{count} consultations cast',
   },
   hexagramList: {
     title: 'Hexagram Explorer',

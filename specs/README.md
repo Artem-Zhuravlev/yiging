@@ -120,3 +120,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-042 | [Casting Reveal Animation](casting-reveal-animation/spec.md) | `implemented` |
 | SPEC-043 | [Statistics Charts](statistics-charts/spec.md) | `implemented` |
 | SPEC-044 | [Interactive Hexagram Lines](interactive-hexagram-lines/spec.md) | `implemented` |
+| SPEC-045 | [Home Dashboard](home-dashboard/spec.md) | `implemented` |

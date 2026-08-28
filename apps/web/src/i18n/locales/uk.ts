@@ -41,6 +41,9 @@ export const uk: typeof en = {
     hexagramOfTheDay: 'Гексаграма дня',
     loadingHexagramOfTheDay: 'Завантаження гексаграми дня…',
     loadError: 'Не вдалося завантажити гексаграму дня.',
+    recent: 'Останні',
+    viewAll: 'Переглянути всі',
+    consultationsCast: 'Кинуто консультацій: {count}',
   },
   hexagramList: {
     title: 'Провідник гексаграм',

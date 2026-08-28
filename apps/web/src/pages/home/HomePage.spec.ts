@@ -2,12 +2,35 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import HomePage from './HomePage.vue'
 import { fetchHexagram } from '../../entities/hexagram/api'
+import { fetchConsultations } from '../../entities/consultation/api'
+import { fetchStatistics } from '../../entities/statistics/api'
 import type { Hexagram } from '../../entities/hexagram/model'
+import type { ConsultationListItem } from '../../entities/consultation/model'
 import { liveMessage } from '../../shared/lib/announce'
 
 vi.mock('../../entities/hexagram/api', () => ({
   fetchHexagram: vi.fn(),
 }))
+vi.mock('../../entities/consultation/api', () => ({
+  fetchConsultations: vi.fn(),
+}))
+vi.mock('../../entities/statistics/api', () => ({
+  fetchStatistics: vi.fn(),
+}))
+
+function recentItem(id: string, question: string): ConsultationListItem {
+  return {
+    id,
+    question,
+    method: 'three_coins',
+    primaryHexagram: { kingWenNumber: 1, chineseName: '乾', pinyin: 'Qián' },
+    changingLinePositions: [],
+    resultingHexagram: { kingWenNumber: 2, chineseName: '坤', pinyin: 'Kūn' },
+    createdAt: '2026-08-14T10:00:00+00:00',
+    tags: [],
+    favorite: false,
+  }
+}
 
 const stubs = { RouterLink: { template: '<a><slot /></a>' } }
 
@@ -33,6 +56,13 @@ const sampleHexagram: Hexagram = {
 describe('HomePage', () => {
   beforeEach(() => {
     liveMessage.value = ''
+    vi.mocked(fetchConsultations).mockReset().mockResolvedValue({ items: [], nextCursor: null })
+    vi.mocked(fetchStatistics).mockReset().mockResolvedValue({
+      totalConsultations: 0,
+      hexagramFrequency: [],
+      yinYangRatio: { yin: 0, yang: 0 },
+      tagFrequency: [],
+    })
   })
 
   it('renders the project title and core navigation links', () => {
@@ -74,6 +104,60 @@ describe('HomePage', () => {
 
     expect(wrapper.text()).toContain('network down')
     expect(wrapper.text()).toContain('Cast a new consultation')
+  })
+
+  it('shows recent consultations and a total-cast line when there is history', async () => {
+    vi.mocked(fetchHexagram).mockResolvedValue(sampleHexagram)
+    vi.mocked(fetchConsultations).mockResolvedValue({
+      items: [recentItem('a', 'First question?'), recentItem('b', 'Second question?')],
+      nextCursor: null,
+    })
+    vi.mocked(fetchStatistics).mockResolvedValue({
+      totalConsultations: 12,
+      hexagramFrequency: [],
+      yinYangRatio: { yin: 30, yang: 42 },
+      tagFrequency: [],
+    })
+
+    const wrapper = mount(HomePage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Recent')
+    const firstLink = wrapper.findAll('a').find((a) => a.text().includes('First question?'))
+    expect(firstLink?.attributes('to')).toBe('/consultations/a')
+    expect(wrapper.findAll('a').some((a) => a.text() === 'View all')).toBe(true)
+    const castLine = wrapper.findAll('a').find((a) => a.text() === '12 consultations cast')
+    expect(castLine?.attributes('to')).toBe('/statistics')
+  })
+
+  it('keeps the count line and hexagram of the day when the recent fetch fails', async () => {
+    vi.mocked(fetchHexagram).mockResolvedValue(sampleHexagram)
+    vi.mocked(fetchConsultations).mockRejectedValue(new Error('recent boom'))
+    vi.mocked(fetchStatistics).mockResolvedValue({
+      totalConsultations: 3,
+      hexagramFrequency: [],
+      yinYangRatio: { yin: 9, yang: 9 },
+      tagFrequency: [],
+    })
+
+    const wrapper = mount(HomePage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Recent')
+    expect(wrapper.text()).toContain('3 consultations cast')
+    expect(wrapper.text()).toContain('Hexagram of the Day')
+  })
+
+  it('is the plain splash (no dashboard sections) on an empty history', async () => {
+    vi.mocked(fetchHexagram).mockResolvedValue(sampleHexagram)
+
+    const wrapper = mount(HomePage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Recent')
+    expect(wrapper.text()).not.toContain('consultations cast')
+    expect(wrapper.text()).toContain('Cast a new consultation')
+    expect(wrapper.text()).toContain('Hexagram of the Day')
   })
 
   it('announces the load transition in the live region', async () => {

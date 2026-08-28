@@ -9,6 +9,9 @@ import { fetchHexagram } from '../../entities/hexagram/api'
 import { hexagramOfTheDayNumber } from '../../entities/hexagram/hexagramOfTheDay'
 import type { Hexagram } from '../../entities/hexagram/model'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
+import { fetchConsultations } from '../../entities/consultation/api'
+import type { ConsultationListItem } from '../../entities/consultation/model'
+import { fetchStatistics } from '../../entities/statistics/api'
 import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
 
 type State =
@@ -19,18 +22,42 @@ type State =
 const { t } = useI18n()
 const state = ref<State>({ status: 'loading' })
 
+// Two secondary dashboard sections, each loading independently of the Hexagram of the Day and
+// of each other; a failed fetch just leaves its section hidden (SPEC-045).
+const recent = ref<ConsultationListItem[]>([])
+const totalCast = ref<number | null>(null)
+
 useStatusAnnouncer(computed(() => state.value.status))
 
-onMounted(async () => {
-  try {
-    const hexagram = await fetchHexagram(hexagramOfTheDayNumber())
-    state.value = { status: 'loaded', hexagram }
-  } catch (error) {
-    state.value = {
-      status: 'error',
-      message: error instanceof Error ? error.message : t('home.loadError'),
-    }
-  }
+onMounted(() => {
+  fetchHexagram(hexagramOfTheDayNumber())
+    .then((hexagram) => {
+      state.value = { status: 'loaded', hexagram }
+    })
+    .catch((error: unknown) => {
+      state.value = {
+        status: 'error',
+        message: error instanceof Error ? error.message : t('home.loadError'),
+      }
+    })
+
+  fetchConsultations({ limit: 4 })
+    .then((page) => {
+      recent.value = page.items
+    })
+    .catch(() => {
+      /* Recent section stays hidden. */
+    })
+
+  fetchStatistics()
+    .then((statistics) => {
+      if (statistics.totalConsultations > 0) {
+        totalCast.value = statistics.totalConsultations
+      }
+    })
+    .catch(() => {
+      /* At-a-glance line stays hidden. */
+    })
 })
 </script>
 
@@ -73,5 +100,36 @@ onMounted(async () => {
       <span class="text-sm text-color-secondary">{{ t('home.loadingHexagramOfTheDay') }}</span>
     </div>
     <Message v-else-if="state.status === 'error'" severity="error" role="alert" class="mt-3">{{ state.message }}</Message>
+
+    <section v-if="recent.length > 0" class="mt-4 w-full text-left" style="max-width: 24rem">
+      <h2 class="mb-2 text-sm font-medium text-color-secondary">{{ t('home.recent') }}</h2>
+      <ul class="flex flex-column gap-2 list-none p-0 m-0">
+        <li v-for="consultation in recent" :key="consultation.id">
+          <router-link
+            :to="`/consultations/${consultation.id}`"
+            class="flex flex-column gap-1 border-round border-1 surface-border p-2 no-underline text-color home-recent-card"
+          >
+            <span class="text-sm font-medium">{{ consultation.question }}</span>
+            <span class="text-xs text-color-secondary">
+              {{ consultation.primaryHexagram.kingWenNumber }}. {{ consultation.primaryHexagram.chineseName }}
+              &rarr;
+              {{ consultation.resultingHexagram.kingWenNumber }}. {{ consultation.resultingHexagram.chineseName }}
+              &middot; {{ new Date(consultation.createdAt).toLocaleDateString() }}
+            </span>
+          </router-link>
+        </li>
+      </ul>
+      <router-link to="/consultations" class="mt-2 inline-block text-sm">{{ t('home.viewAll') }}</router-link>
+    </section>
+
+    <p v-if="totalCast !== null" class="m-0 text-sm">
+      <router-link to="/statistics">{{ t('home.consultationsCast', { count: totalCast }) }}</router-link>
+    </p>
   </main>
 </template>
+
+<style scoped>
+.home-recent-card:hover {
+  border-color: var(--p-primary-color);
+}
+</style>
