@@ -34,6 +34,20 @@ const state = ref<State>({ status: 'loading' })
 const kingWenNumber = computed(() => Number(route.params.number))
 const favoriteFormState = ref<FavoriteFormState>({ status: 'idle' })
 
+// The line the user has selected in the diagram to read inline (SPEC-044); null = none.
+const selectedLine = ref<number | null>(null)
+
+function toggleLine(position: number): void {
+  selectedLine.value = selectedLine.value === position ? null : position
+}
+
+const selectedLineText = computed<string | null>(() => {
+  if (state.value.status !== 'loaded' || selectedLine.value === null) {
+    return null
+  }
+  return state.value.hexagram.lineStatements?.[selectedLine.value - 1] ?? null
+})
+
 useStatusAnnouncer(
   computed(() => state.value.status),
   (status) => (status === 'not-found' ? t('hexagramDetail.notFound') : undefined),
@@ -80,6 +94,7 @@ watch(
   kingWenNumber,
   async (number) => {
     state.value = { status: 'loading' }
+    selectedLine.value = null
     try {
       const hexagram = await fetchHexagram(number)
       state.value = { status: 'loaded', hexagram }
@@ -108,10 +123,15 @@ watch(
     </p>
     <Message v-else-if="state.status === 'error'" severity="error" role="alert" class="mt-4">{{ state.message }}</Message>
 
-    <div v-else class="mt-4 flex flex-column gap-5">
+    <div v-else class="mt-4 flex flex-column gap-5" @keydown.esc="selectedLine = null">
       <div class="flex align-items-start justify-content-between gap-4">
         <div class="flex align-items-center gap-4">
-          <HexagramLines :lines="state.hexagram.lines" />
+          <HexagramLines
+            :lines="state.hexagram.lines"
+            :interactive="state.hexagram.lineStatements !== null"
+            :selected-position="selectedLine"
+            @select="toggleLine"
+          />
           <div>
             <h1 class="text-2xl font-semibold m-0">
               <span class="mr-2 text-3xl" aria-hidden="true">{{ state.hexagram.symbol }}</span>
@@ -132,6 +152,27 @@ watch(
             {{ favoriteFormState.message }}
           </Message>
         </div>
+      </div>
+
+      <div
+        v-if="selectedLine !== null && selectedLineText !== null"
+        class="flex align-items-start justify-content-between gap-3 border-round border-1 surface-border p-3"
+      >
+        <div>
+          <h3 class="mt-0 mb-1 text-xs font-medium text-color-secondary uppercase">
+            {{ t('hexagramDetail.line', { position: selectedLine }) }}
+          </h3>
+          <p class="m-0">{{ selectedLineText }}</p>
+        </div>
+        <Button
+          text
+          rounded
+          size="small"
+          icon="pi pi-times"
+          :aria-label="t('common.close')"
+          class="flex-shrink-0"
+          @click="selectedLine = null"
+        />
       </div>
 
       <dl class="grid m-0">
@@ -177,7 +218,12 @@ watch(
         <h2 class="mb-2 text-sm font-medium text-color-secondary">{{ t('hexagramDetail.lineTexts') }}</h2>
         <p v-if="state.hexagram.lineStatements === null" class="mt-0">{{ t('common.notAvailable') }}</p>
         <ol v-else class="flex flex-column gap-2 p-0 m-0">
-          <li v-for="(text, index) in [...state.hexagram.lineStatements].reverse()" :key="index" class="list-none">
+          <li
+            v-for="(text, index) in [...state.hexagram.lineStatements].reverse()"
+            :key="index"
+            class="list-none line-text"
+            :class="{ 'line-text-selected': state.hexagram.lineStatements!.length - index === selectedLine }"
+          >
             <span class="text-xs tracking-wide text-color-secondary uppercase">
               {{ t('hexagramDetail.line', { position: state.hexagram.lineStatements!.length - index }) }}
             </span>
@@ -192,3 +238,28 @@ watch(
     </div>
   </main>
 </template>
+
+<style scoped>
+.line-text {
+  padding: 0.25rem 0.5rem;
+  margin: 0 -0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.line-text-selected {
+  background: var(--p-primary-color);
+  color: var(--p-primary-contrast-color, #fff);
+}
+
+.line-text-selected .text-color-secondary {
+  color: inherit;
+  opacity: 0.85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .line-text {
+    transition: none;
+  }
+}
+</style>

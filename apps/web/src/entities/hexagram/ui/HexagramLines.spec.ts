@@ -61,4 +61,25 @@ describe('HexagramLines', () => {
     expect(wrapper.find('[data-position="1"]').attributes('data-changing')).toBe('true')
     expect(wrapper.find('[data-position="2"]').attributes('data-changing')).toBeUndefined()
   })
+
+  it('renders plain <div> rows by default (no interactive prop)', () => {
+    const wrapper = mount(HexagramLines, { props: { lines: allLines } })
+    expect(wrapper.find('[data-position="3"]').element.tagName).toBe('DIV')
+    expect(wrapper.find('button').exists()).toBe(false)
+  })
+
+  it('renders each line as a labelled button in interactive mode and emits select on click', async () => {
+    const wrapper = mount(HexagramLines, {
+      props: { lines: allLines, interactive: true, selectedPosition: 4 },
+    })
+
+    const row3 = wrapper.find('[data-position="3"]')
+    expect(row3.element.tagName).toBe('BUTTON')
+    expect(row3.attributes('aria-label')).toBe('Line 3')
+    expect(row3.attributes('aria-pressed')).toBe('false')
+    expect(wrapper.find('[data-position="4"]').attributes('aria-pressed')).toBe('true')
+
+    await row3.trigger('click')
+    expect(wrapper.emitted('select')).toEqual([[3]])
+  })
 })

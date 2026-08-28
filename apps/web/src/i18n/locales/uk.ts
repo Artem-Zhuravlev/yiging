@@ -5,6 +5,7 @@ export const uk: typeof en = {
     loading: 'Завантаження…',
     loadMore: 'Завантажити ще',
     loadingMore: 'Завантаження…',
+    close: 'Закрити',
     viewFullPage: 'Переглянути повну сторінку',
     upperTrigram: 'Верхня триграма',
     lowerTrigram: 'Нижня триграма',
@@ -200,6 +201,7 @@ export const uk: typeof en = {
   hexagramLines: {
     ariaLabel: 'Гексаграма з {count} ліній',
     changingLine: 'Змінна лінія',
+    lineAriaLabel: 'Лінія {position}',
   },
   castingReveal: {
     casting: 'Кидання…',

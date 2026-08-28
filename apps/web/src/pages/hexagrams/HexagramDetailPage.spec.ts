@@ -185,6 +185,43 @@ describe('HexagramDetailPage', () => {
     expect(wrapper.text()).toContain('favorite toggle failed')
   })
 
+  it('reveals a line statement inline when its diagram line is clicked, and hides it on a second click', async () => {
+    vi.mocked(fetchHexagram).mockResolvedValue({
+      ...sampleHexagram,
+      lineStatements: ['first', 'second', 'third', 'fourth', 'fifth', 'sixth'],
+    })
+
+    wrapper = mount(HexagramDetailPage, { global: { stubs } })
+    await flushPromises()
+
+    const lineButtons = wrapper.findAll('button[aria-label^="Line "]')
+    expect(lineButtons).toHaveLength(6)
+
+    // Buttons render top-to-bottom: index 0 is line 6, index 4 is line 2.
+    const lineTwo = lineButtons.find((b) => b.attributes('aria-label') === 'Line 2')!
+    await lineTwo.trigger('click')
+
+    const panel = wrapper.findAll('h3').find((h) => h.text() === 'Line 2')!.element.parentElement!
+    expect(panel.textContent).toContain('second')
+    expect(lineTwo.attributes('aria-pressed')).toBe('true')
+    // The matching entry in the bottom list is highlighted.
+    const highlighted = wrapper.findAll('ol li').filter((li) => li.classes().includes('line-text-selected'))
+    expect(highlighted).toHaveLength(1)
+    expect(highlighted[0]!.text()).toContain('Line 2')
+
+    await lineTwo.trigger('click')
+    expect(wrapper.findAll('h3').some((h) => h.text() === 'Line 2')).toBe(false)
+  })
+
+  it('does not make the diagram interactive when the hexagram has no classical line text', async () => {
+    vi.mocked(fetchHexagram).mockResolvedValue(sampleHexagram)
+
+    wrapper = mount(HexagramDetailPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.findAll('button[aria-label^="Line "]')).toHaveLength(0)
+  })
+
   it('shows a not-found state on a 404', async () => {
     vi.mocked(fetchHexagram).mockRejectedValue(new ApiError(404, 'Not Found'))
 

@@ -3,6 +3,7 @@ export const en = {
     loading: 'Loading…',
     loadMore: 'Load more',
     loadingMore: 'Loading…',
+    close: 'Close',
     viewFullPage: 'View full page',
     upperTrigram: 'Upper trigram',
     lowerTrigram: 'Lower trigram',
@@ -198,6 +199,7 @@ export const en = {
   hexagramLines: {
     ariaLabel: 'Hexagram with {count} lines',
     changingLine: 'Changing line',
+    lineAriaLabel: 'Line {position}',
   },
   castingReveal: {
     casting: 'Casting…',
