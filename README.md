@@ -123,6 +123,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-045 | [Home Dashboard](specs/home-dashboard/spec.md) | `implemented` |
 | SPEC-046 | [Responsive Navigation Menu](specs/responsive-nav/spec.md) | `implemented` |
 | SPEC-047 | [Toast Notifications](specs/toast-notifications/spec.md) | `implemented` |
+| SPEC-048 | [Loading Skeletons](specs/loading-skeletons/spec.md) | `implemented` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`

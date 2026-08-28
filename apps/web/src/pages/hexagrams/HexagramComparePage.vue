@@ -8,6 +8,7 @@ import { compareHexagrams } from '../../entities/hexagram/api'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
 import type { HexagramComparison } from '../../entities/hexagram/model'
 import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
+import LoadingSkeleton from '../../shared/ui/LoadingSkeleton.vue'
 
 const RELATIONSHIP_KEYS = ['nuclear', 'reversed', 'complement'] as const
 
@@ -105,7 +106,7 @@ const relationshipNote = computed<string | null>(() => {
       <Button type="submit" :label="t('hexagramCompare.compare')" />
     </form>
 
-    <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('common.loading') }}</p>
+    <LoadingSkeleton v-if="state.status === 'loading'" :lines="5" />
     <Message v-else-if="state.status === 'error'" severity="error" role="alert">{{ state.message }}</Message>
 
     <div v-else class="flex flex-column gap-5">

@@ -13,6 +13,7 @@ import {
 } from '../../entities/consultation/api'
 import type { ConsultationListItem } from '../../entities/consultation/model'
 import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
+import LoadingSkeleton from '../../shared/ui/LoadingSkeleton.vue'
 
 type Status = 'loading' | 'error' | 'ready'
 
@@ -206,7 +207,7 @@ async function handleImportFile(event: Event): Promise<void> {
       {{ importState.message }}
     </Message>
 
-    <p v-if="status === 'loading'" class="text-color-secondary">{{ t('common.loading') }}</p>
+    <LoadingSkeleton v-if="status === 'loading'" :lines="6" />
     <Message v-else-if="status === 'error'" severity="error" role="alert">{{ errorMessage }}</Message>
 
     <template v-else>

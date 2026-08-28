@@ -12,6 +12,7 @@ import {
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
 import type { Hexagram } from '../../entities/hexagram/model'
 import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
+import LoadingSkeleton from '../../shared/ui/LoadingSkeleton.vue'
 
 type State =
   | { status: 'loading' }
@@ -80,7 +81,7 @@ async function toggleFavorite(hexagram: Hexagram): Promise<void> {
       <router-link to="/hexagrams/editor" class="text-sm">{{ t('hexagramList.visualEditor') }}</router-link>
     </div>
 
-    <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('hexagramList.loading') }}</p>
+    <LoadingSkeleton v-if="state.status === 'loading'" :lines="8" />
     <Message v-else-if="state.status === 'error'" severity="error" role="alert">{{ state.message }}</Message>
 
     <template v-else>

@@ -11,6 +11,7 @@ import type { HexagramLine } from '../../entities/hexagram/model'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
 import { ApiError } from '../../shared/api/http'
 import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
+import LoadingSkeleton from '../../shared/ui/LoadingSkeleton.vue'
 
 type State =
   | { status: 'loading' }
@@ -67,7 +68,7 @@ onMounted(async () => {
 
 <template>
   <main id="main" tabindex="-1" class="container-sm mx-auto p-4">
-    <p v-if="state.status === 'loading'" class="text-color-secondary">{{ t('common.loading') }}</p>
+    <LoadingSkeleton v-if="state.status === 'loading'" :lines="5" />
     <p v-else-if="state.status === 'not-found'" class="text-color-secondary">{{ t('consultation.notFound') }}</p>
     <Message v-else-if="state.status === 'error'" severity="error" role="alert">{{ state.message }}</Message>
 

@@ -123,3 +123,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-045 | [Home Dashboard](home-dashboard/spec.md) | `implemented` |
 | SPEC-046 | [Responsive Navigation Menu](responsive-nav/spec.md) | `implemented` |
 | SPEC-047 | [Toast Notifications](toast-notifications/spec.md) | `implemented` |
+| SPEC-048 | [Loading Skeletons](loading-skeletons/spec.md) | `implemented` |

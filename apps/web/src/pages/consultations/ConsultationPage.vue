@@ -18,6 +18,7 @@ import { ApiError } from '../../shared/api/http'
 import { announce } from '../../shared/lib/announce'
 import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
 import { useToastSuccess } from '../../shared/lib/useToastSuccess'
+import LoadingSkeleton from '../../shared/ui/LoadingSkeleton.vue'
 import Button from 'primevue/button'
 import Textarea from 'primevue/textarea'
 import InputText from 'primevue/inputtext'
@@ -417,7 +418,7 @@ onMounted(async () => {
       &larr; {{ t('history.title') }}
     </router-link>
 
-    <p v-if="state.status === 'loading'" class="mt-4 text-color-secondary">{{ t('common.loading') }}</p>
+    <LoadingSkeleton v-if="state.status === 'loading'" :lines="6" class="mt-4" />
     <p v-else-if="state.status === 'not-found'" class="mt-4 text-color-secondary">
       {{ t('consultationPage.notFound') }}
     </p>

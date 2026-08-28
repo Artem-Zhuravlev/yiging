@@ -8,6 +8,7 @@ import Card from 'primevue/card'
 import { createJournalEntry, fetchJournalEntries } from '../../entities/journal/api'
 import type { JournalEntry } from '../../entities/journal/model'
 import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
+import LoadingSkeleton from '../../shared/ui/LoadingSkeleton.vue'
 
 type Status = 'loading' | 'error' | 'ready'
 
@@ -97,7 +98,7 @@ async function addEntry(): Promise<void> {
   <main id="main" tabindex="-1" class="container-sm mx-auto p-4">
     <h1 class="text-2xl font-semibold mb-4">{{ t('journal.title') }}</h1>
 
-    <p v-if="status === 'loading'" class="text-color-secondary">{{ t('common.loading') }}</p>
+    <LoadingSkeleton v-if="status === 'loading'" :lines="4" />
     <Message v-else-if="status === 'error'" severity="error" role="alert">{{ errorMessage }}</Message>
 
     <template v-else>
