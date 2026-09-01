@@ -131,6 +131,7 @@ describe('NewConsultationPage', () => {
       id: 'original-id',
       question: 'Original?',
       repeats: { primaryHexagram: [], resultingHexagram: [], changingLines: [] },
+      readingGuidance: { changingLineCount: 0, rule: 'no-changing-lines', refs: [], specialText: null },
     })
     vi.mocked(createConsultation).mockResolvedValue(sample)
 

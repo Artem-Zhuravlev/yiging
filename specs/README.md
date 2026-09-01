@@ -127,3 +127,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-049 | [Trigram (Bagua) Explorer](trigram-explorer/spec.md) | `implemented` |
 | SPEC-050 | [Tag Management](tag-management/spec.md) | `implemented` |
 | SPEC-051 | [Single-Consultation Markdown Export](consultation-markdown-export/spec.md) | `implemented` |
+| SPEC-052 | [Operative Text Guidance](operative-text-guidance/spec.md) | `implemented` |

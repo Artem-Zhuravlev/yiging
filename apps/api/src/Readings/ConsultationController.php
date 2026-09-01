@@ -14,6 +14,9 @@ use App\Core\Database;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Yijing\Core\CastReading;
+use Yijing\Core\CastReadingRef;
+use Yijing\Core\Data\HexagramTextCatalog;
 use Yijing\Core\Hexagram;
 use Yijing\Core\Line;
 use Yijing\Core\LinePolarity;
@@ -764,7 +767,48 @@ final class ConsultationController
                     $this->repository->findByChangingLinePositions($changingLinePositions, $consultation->id),
                 ),
             ],
+            'readingGuidance' => $this->readingGuidanceToJson(
+                CastReading::forCast($consultation->primaryHexagram, $changingLinePositions),
+                $consultation,
+            ),
         ];
+    }
+
+    /**
+     * Resolves a {@see CastReading} (SPEC-052) into JSON with the actual classical text for each
+     * ref pulled from this consultation's primary / resulting hexagram.
+     *
+     * @return array<string, mixed>
+     */
+    private function readingGuidanceToJson(CastReading $reading, Consultation $consultation): array
+    {
+        $json = $reading->toArray();
+
+        $json['refs'] = array_map(
+            function (CastReadingRef $ref) use ($consultation): array {
+                $hexagram = $ref->hexagram === 'primary'
+                    ? $consultation->primaryHexagram
+                    : $consultation->resultingHexagram;
+
+                if ($ref->kind === 'judgment') {
+                    $text = $hexagram->judgment;
+                } else {
+                    $position = $ref->position ?? throw new \LogicException('A line ref always has a position.');
+                    $text = $hexagram->lineStatements[$position - 1];
+                }
+
+                return $ref->toArray() + ['text' => $text];
+            },
+            $reading->refs,
+        );
+
+        if ($reading->specialText !== null) {
+            $json['specialTextContent'] = HexagramTextCatalog::specialTextFor(
+                $consultation->primaryHexagram->kingWenNumber,
+            );
+        }
+
+        return $json;
     }
 
     /**

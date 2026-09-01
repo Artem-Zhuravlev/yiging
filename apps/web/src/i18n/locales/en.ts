@@ -259,6 +259,26 @@ export const en = {
     skip: 'Skip',
     continue: 'Continue',
   },
+  readingGuidance: {
+    title: 'How to read this cast',
+    primary: 'Primary',
+    resulting: 'Resulting',
+    judgment: 'Judgment',
+    governing: 'governing',
+    useNine: 'Use Nine',
+    useSix: 'Use Six',
+    rule: {
+      'no-changing-lines': 'No changing lines — read the Judgment of the primary hexagram.',
+      'one-changing-line': 'One changing line — read its line statement in the primary hexagram.',
+      'two-changing-lines': 'Two changing lines — read both line statements in the primary; the upper line governs.',
+      'three-changing-lines': 'Three changing lines — read both Judgments; the primary hexagram governs.',
+      'four-changing-lines':
+        'Four changing lines — read the two unchanged line statements of the resulting hexagram; the lower line governs.',
+      'five-changing-lines': 'Five changing lines — read the one unchanged line statement of the resulting hexagram.',
+      'six-changing-lines': 'All six lines change — read the Judgment of the resulting hexagram.',
+      'six-changing-special': 'All six lines change — read the special text below.',
+    },
+  },
   consultationPage: {
     notFound: 'Consultation not found.',
     loadError: 'Failed to load consultation.',

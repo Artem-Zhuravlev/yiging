@@ -52,4 +52,20 @@ final class HexagramTextCatalogTest extends TestCase
         self::assertStringContainsString('dragon lying hid', $text['lineStatements'][0]);
         self::assertStringContainsString('dragon exceeding the proper limits', $text['lineStatements'][5]);
     }
+
+    public function testSpecialTextExistsOnlyForHexagramsOneAndTwo(): void
+    {
+        $useNine = HexagramTextCatalog::specialTextFor(1);
+        $useSix = HexagramTextCatalog::specialTextFor(2);
+
+        self::assertNotNull($useNine);
+        self::assertNotNull($useSix);
+        self::assertStringContainsString('number NINE', $useNine);
+        self::assertStringContainsString('number SIX', $useSix);
+        self::assertNotSame($useNine, $useSix);
+
+        foreach ([3, 20, 44, 63, 64] as $kingWenNumber) {
+            self::assertNull(HexagramTextCatalog::specialTextFor($kingWenNumber));
+        }
+    }
 }

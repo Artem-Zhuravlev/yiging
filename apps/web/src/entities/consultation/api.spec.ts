@@ -34,6 +34,7 @@ const sample: Consultation = {
 const sampleDetail: ConsultationDetail = {
   ...sample,
   repeats: { primaryHexagram: [], resultingHexagram: [], changingLines: [] },
+  readingGuidance: { changingLineCount: 0, rule: 'no-changing-lines', refs: [], specialText: null },
 }
 
 describe('entities/consultation api', () => {

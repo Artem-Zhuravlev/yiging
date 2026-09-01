@@ -437,6 +437,89 @@ final class ConsultationControllerTest extends TestCase
         self::assertSame('Round trip?', $body['question']);
     }
 
+    public function testShowIncludesReadingGuidanceForANoChangingLineCast(): void
+    {
+        $allYang = array_fill(0, 6, ['polarity' => 'yang', 'changing' => false]);
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'No changes?',
+            'method' => 'manual',
+            'lines' => $allYang,
+        ]));
+
+        $body = $this->decode($this->kernel->handle(Request::create('/api/consultations/' . $created['id'], 'GET')));
+        $guidance = $body['readingGuidance'];
+
+        self::assertSame(0, $guidance['changingLineCount']);
+        self::assertSame('no-changing-lines', $guidance['rule']);
+        self::assertNull($guidance['specialText']);
+        self::assertCount(1, $guidance['refs']);
+        self::assertSame('primary', $guidance['refs'][0]['hexagram']);
+        self::assertSame('judgment', $guidance['refs'][0]['kind']);
+        self::assertTrue($guidance['refs'][0]['governing']);
+        self::assertSame($body['primaryHexagram']['kingWenNumber'], 1);
+        self::assertStringContainsString('great and originating', $guidance['refs'][0]['text']);
+    }
+
+    public function testShowIncludesReadingGuidanceForAOneChangingLineCast(): void
+    {
+        $lines = array_fill(0, 6, ['polarity' => 'yang', 'changing' => false]);
+        $lines[2] = ['polarity' => 'yang', 'changing' => true]; // line 3 changes
+
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'One change?',
+            'method' => 'manual',
+            'lines' => $lines,
+        ]));
+
+        $guidance = $this->decode(
+            $this->kernel->handle(Request::create('/api/consultations/' . $created['id'], 'GET')),
+        )['readingGuidance'];
+
+        self::assertSame('one-changing-line', $guidance['rule']);
+        self::assertSame(
+            [['hexagram' => 'primary', 'kind' => 'line', 'position' => 3, 'governing' => true, 'text' => self::qianLine(3)]],
+            $guidance['refs'],
+        );
+    }
+
+    public function testShowGivesUseNineForAnAllChangingQianCast(): void
+    {
+        $lines = array_fill(0, 6, ['polarity' => 'yang', 'changing' => true]);
+
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Everything moves?',
+            'method' => 'manual',
+            'lines' => $lines,
+        ]));
+
+        $guidance = $this->decode(
+            $this->kernel->handle(Request::create('/api/consultations/' . $created['id'], 'GET')),
+        )['readingGuidance'];
+
+        self::assertSame('six-changing-lines', $guidance['rule']);
+        self::assertSame('use-nine', $guidance['specialText']);
+        self::assertSame([], $guidance['refs']);
+        self::assertStringContainsString('number NINE', $guidance['specialTextContent']);
+    }
+
+    public function testReadingGuidanceIsDetailOnly(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Detail only?',
+            'method' => 'three_coins',
+        ]));
+
+        self::assertArrayNotHasKey('readingGuidance', $created);
+
+        $list = $this->decode($this->kernel->handle(Request::create('/api/consultations', 'GET')));
+        self::assertArrayNotHasKey('readingGuidance', $list['items'][0]);
+    }
+
+    private static function qianLine(int $position): string
+    {
+        return \Yijing\Core\Data\HexagramTextCatalog::textFor(1)['lineStatements'][$position - 1];
+    }
+
     public function testShowReturns404ForAMissingConsultation(): void
     {
         $response = $this->kernel->handle(Request::create('/api/consultations/does-not-exist', 'GET'));

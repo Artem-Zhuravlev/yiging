@@ -127,6 +127,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-049 | [Trigram (Bagua) Explorer](specs/trigram-explorer/spec.md) | `implemented` |
 | SPEC-050 | [Tag Management](specs/tag-management/spec.md) | `implemented` |
 | SPEC-051 | [Single-Consultation Markdown Export](specs/consultation-markdown-export/spec.md) | `implemented` |
+| SPEC-052 | [Operative Text Guidance](specs/operative-text-guidance/spec.md) | `implemented` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`

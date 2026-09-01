@@ -73,6 +73,7 @@ const sampleConsultation: ConsultationDetail = {
   followUps: [],
   favorite: false,
   repeats: { primaryHexagram: [], resultingHexagram: [], changingLines: [] },
+  readingGuidance: { changingLineCount: 0, rule: 'no-changing-lines', refs: [], specialText: null },
 }
 
 const sampleInterpretation: Interpretation = {
@@ -539,6 +540,51 @@ describe('ConsultationPage', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('No changing lines')
+  })
+
+  it('shows the reading-guidance panel with the rule sentence and the governing line text', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue({
+      ...sampleConsultation,
+      readingGuidance: {
+        changingLineCount: 2,
+        rule: 'two-changing-lines',
+        refs: [
+          { hexagram: 'primary', kind: 'line', position: 2, governing: false, text: 'Lower line text.' },
+          { hexagram: 'primary', kind: 'line', position: 5, governing: true, text: 'Upper line text.' },
+        ],
+        specialText: null,
+      },
+    })
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('How to read this cast')
+    expect(wrapper.text()).toContain('the upper line governs')
+    expect(wrapper.text()).toContain('Upper line text.')
+    expect(wrapper.text()).toContain('Lower line text.')
+    expect(wrapper.find('.reading-ref-governing').text()).toContain('Upper line text.')
+  })
+
+  it('shows the "Use Nine" special text when all six lines change on Qian', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue({
+      ...sampleConsultation,
+      readingGuidance: {
+        changingLineCount: 6,
+        rule: 'six-changing-lines',
+        refs: [],
+        specialText: 'use-nine',
+        specialTextContent: 'The use of the number NINE …',
+      },
+    })
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Use Nine')
+    expect(wrapper.text()).toContain('The use of the number NINE')
   })
 
   it('shows a not-found state on a 404', async () => {

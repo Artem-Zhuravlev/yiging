@@ -73,6 +73,7 @@ const sampleConsultation: ConsultationDetail = {
     resultingHexagram: [],
     changingLines: [],
   },
+  readingGuidance: { changingLineCount: 1, rule: 'one-changing-line', refs: [], specialText: null },
 }
 
 describe('SharedConsultationPage', () => {

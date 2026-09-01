@@ -3,7 +3,12 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { fetchConsultation, updateConsultation } from '../../entities/consultation/api'
-import type { Consultation, ConsultationRepeats } from '../../entities/consultation/model'
+import type {
+  Consultation,
+  ConsultationRepeats,
+  ReadingGuidance,
+  ReadingGuidanceRef,
+} from '../../entities/consultation/model'
 import { fetchHexagram } from '../../entities/hexagram/api'
 import type { HexagramLine } from '../../entities/hexagram/model'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
@@ -74,6 +79,28 @@ const interpretationState = computed<InterpretationState>(() => interpretationSt
 // context, or outcome are edited via PATCH (the hexagrams/changing lines never change), matching
 // the pattern above for `interpretationState`.
 const repeats = ref<ConsultationRepeats | null>(null)
+const readingGuidance = ref<ReadingGuidance | null>(null)
+
+function refLabel(ref: ReadingGuidanceRef): string {
+  const hex = t(`readingGuidance.${ref.hexagram}`)
+  const what =
+    ref.kind === 'judgment'
+      ? t('readingGuidance.judgment')
+      : t('hexagramDetail.line', { position: ref.position ?? 0 })
+  const parts = [hex, what]
+  if (ref.governing && readingGuidance.value && readingGuidance.value.refs.length > 1) {
+    parts.push(t('readingGuidance.governing'))
+  }
+  return parts.join(' · ')
+}
+
+const specialLabel = computed<string>(() => {
+  const g = readingGuidance.value
+  if (!g?.specialText) return ''
+  return `${t('readingGuidance.primary')} · ${t(
+    g.specialText === 'use-nine' ? 'readingGuidance.useNine' : 'readingGuidance.useSix',
+  )}`
+})
 const copyLinkState = ref<CopyLinkState>({ status: 'idle' })
 
 // Page-level load (SPEC-039, REQ-A11Y-004).
@@ -430,6 +457,7 @@ onMounted(async () => {
       resultingLines: resultingHexagram.lines,
     }
     repeats.value = consultation.repeats
+    readingGuidance.value = consultation.readingGuidance
     contextForm.value = contextFormFrom(consultation)
     outcomeForm.value = outcomeFormFrom(consultation)
   } catch (error) {
@@ -535,6 +563,35 @@ onMounted(async () => {
       <p v-else class="text-color-secondary">
         {{ t('consultation.changingLines', { list: state.consultation.changingLinePositions.join(', ') }) }}
       </p>
+
+      <section
+        v-if="readingGuidance"
+        class="border-round border-1 surface-border p-3 flex flex-column gap-3"
+      >
+        <h2 class="m-0 text-sm font-medium text-color-secondary">{{ t('readingGuidance.title') }}</h2>
+        <p class="m-0">
+          {{
+            readingGuidance.specialText
+              ? t('readingGuidance.rule.six-changing-special')
+              : t(`readingGuidance.rule.${readingGuidance.rule}`)
+          }}
+        </p>
+
+        <div
+          v-for="(guidanceRef, i) in readingGuidance.refs"
+          :key="i"
+          class="reading-ref"
+          :class="{ 'reading-ref-governing': guidanceRef.governing && readingGuidance.refs.length > 1 }"
+        >
+          <h3 class="mt-0 mb-1 text-xs font-medium text-color-secondary uppercase">{{ refLabel(guidanceRef) }}</h3>
+          <p class="m-0">{{ guidanceRef.text }}</p>
+        </div>
+
+        <div v-if="readingGuidance.specialText" class="reading-ref reading-ref-governing">
+          <h3 class="mt-0 mb-1 text-xs font-medium text-color-secondary uppercase">{{ specialLabel }}</h3>
+          <p class="m-0">{{ readingGuidance.specialTextContent }}</p>
+        </div>
+      </section>
 
       <div>
         <p v-if="state.consultation.followUpTo" class="text-sm text-color-secondary">
@@ -932,3 +989,14 @@ onMounted(async () => {
     </div>
   </main>
 </template>
+
+<style scoped>
+.reading-ref {
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--p-content-border-color);
+}
+
+.reading-ref-governing {
+  border-left-color: var(--p-primary-color);
+}
+</style>

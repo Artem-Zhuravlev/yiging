@@ -121,10 +121,31 @@ export interface ConsultationRepeats {
   changingLines: ConsultationSummary[]
 }
 
-/** The shape `GET /api/consultations/{id}` returns — a `Consultation` plus `repeats`, computed
- * only for the single-detail endpoint (SPEC-023). */
+/** One text a cast tells you to read (SPEC-052) — a hexagram's Judgment or a line statement,
+ * with the classical text resolved server-side. `governing` marks the principal one. */
+export interface ReadingGuidanceRef {
+  hexagram: 'primary' | 'resulting'
+  kind: 'judgment' | 'line'
+  position: number | null
+  governing: boolean
+  text: string
+}
+
+/** Which classical text is the operative answer for this cast, by number of changing lines
+ * (SPEC-052, the standard Song-dynasty synthesis). Detail-endpoint only, like `repeats`. */
+export interface ReadingGuidance {
+  changingLineCount: number
+  rule: string
+  refs: ReadingGuidanceRef[]
+  specialText: 'use-nine' | 'use-six' | null
+  specialTextContent?: string
+}
+
+/** The shape `GET /api/consultations/{id}` returns — a `Consultation` plus `repeats` and
+ * `readingGuidance`, computed only for the single-detail endpoint (SPEC-023, SPEC-052). */
 export interface ConsultationDetail extends Consultation {
   repeats: ConsultationRepeats
+  readingGuidance: ReadingGuidance
 }
 
 export type NewConsultationRequest = (

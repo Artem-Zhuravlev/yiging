@@ -789,6 +789,23 @@ final class HexagramTextCatalog
     ];
 
     /**
+     * The special "Use Nine" (用九) / "Use Six" (用六) texts — a seventh statement that exists
+     * only for hexagrams 1 (Qian) and 2 (Kun), read when all six lines change (SPEC-052).
+     * Same source/provenance as the rest of this catalog (Legge 1899; baharna.com digitization,
+     * cross-checked against ctext.org).
+     *
+     * @var array<int, string>
+     */
+    private const SPECIAL = [
+        1 => '(The lines of this hexagram are all strong and undivided, as appears from) the use '
+            . 'of the number NINE. If the host of dragons (thus) appearing were to divest '
+            . 'themselves of their heads, there would be good fortune.',
+        2 => '(The lines of this hexagram are all weak and divided, as appears from) the use of '
+            . 'the number SIX. If those (represented here) will maintain a firm and correct '
+            . 'persistence, there will be advantage.',
+    ];
+
+    /**
      * @return HexagramText
      */
     public static function textFor(int $kingWenNumber): array
@@ -798,5 +815,13 @@ final class HexagramTextCatalog
         }
 
         return self::ENTRIES[$kingWenNumber];
+    }
+
+    /**
+     * The "Use Nine" / "Use Six" text for hexagrams 1 / 2, or null for the other 62.
+     */
+    public static function specialTextFor(int $kingWenNumber): ?string
+    {
+        return self::SPECIAL[$kingWenNumber] ?? null;
     }
 }
