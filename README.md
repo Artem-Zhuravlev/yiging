@@ -132,6 +132,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-054 | [Reflection Reminders](specs/reflection-reminders/spec.md) | `implemented` |
 | SPEC-055 | [Yarrow-Stalk Casting Method](specs/yarrow-stalk-method/spec.md) | `implemented` |
 | SPEC-056 | [Sequence of the Hexagrams (Xu Gua)](specs/hexagram-sequence/spec.md) | `implemented` |
+| SPEC-057 | [Ukrainian Classical Text](specs/ukrainian-classical-text/spec.md) | `implemented` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`

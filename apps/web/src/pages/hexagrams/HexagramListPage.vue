@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
@@ -19,16 +19,17 @@ type State =
   | { status: 'error'; message: string }
   | { status: 'loaded'; hexagrams: Hexagram[] }
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const state = ref<State>({ status: 'loading' })
 const searchQuery = ref('')
 const favoritesOnly = ref(false)
 
 useStatusAnnouncer(computed(() => state.value.status))
 
-onMounted(async () => {
+async function load(): Promise<void> {
+  state.value = { status: 'loading' }
   try {
-    const hexagrams = await fetchHexagrams()
+    const hexagrams = await fetchHexagrams(locale.value)
     state.value = { status: 'loaded', hexagrams }
   } catch (error) {
     state.value = {
@@ -36,7 +37,12 @@ onMounted(async () => {
       message: error instanceof Error ? error.message : t('hexagramList.loadError'),
     }
   }
-})
+}
+
+onMounted(load)
+// The list carries the Judgment / Image text used by search (SPEC-057) — re-fetch on a
+// language switch so the search corpus matches the shown language.
+watch(locale, load)
 
 function matchesSearch(hexagram: Hexagram, query: string): boolean {
   return (

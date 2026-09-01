@@ -59,8 +59,9 @@ export function fetchConsultationsForExport(): Promise<Consultation[]> {
   return apiGet<Consultation[]>('/consultations/export')
 }
 
-export function fetchConsultation(id: string): Promise<ConsultationDetail> {
-  return apiGet<ConsultationDetail>(`/consultations/${id}`)
+export function fetchConsultation(id: string, lang = 'en'): Promise<ConsultationDetail> {
+  const q = lang && lang !== 'en' ? `?lang=${lang}` : ''
+  return apiGet<ConsultationDetail>(`/consultations/${id}${q}`)
 }
 
 export function updateConsultation(id: string, patch: ConsultationPatch): Promise<Consultation> {

@@ -124,6 +124,17 @@ describe('entities/consultation api', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/consultations/abc-123')
   })
 
+  it('fetchConsultation appends ?lang= only for a non-English locale', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(sampleDetail) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await fetchConsultation('abc-123', 'uk')
+    await fetchConsultation('abc-123', 'en')
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/consultations/abc-123?lang=uk')
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/consultations/abc-123')
+  })
+
   it('updateConsultation patches /consultations/{id} and resolves the updated consultation', async () => {
     const updated = { ...sample, tags: ['career'] }
     const fetchMock = vi.fn().mockResolvedValue({

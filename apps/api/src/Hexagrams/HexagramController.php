@@ -6,11 +6,13 @@ namespace App\Hexagrams;
 
 use App\Core\Config;
 use App\Core\Database;
+use App\Core\RequestLocale;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Yijing\Core\Data\HexagramCatalog;
 use Yijing\Core\Data\HexagramSequenceCatalog;
+use Yijing\Core\Data\HexagramTextCatalog;
 use Yijing\Core\Hexagram;
 use Yijing\Core\HexagramComparator;
 use Yijing\Core\Line;
@@ -29,14 +31,16 @@ final class HexagramController
         $this->favorites = new SqliteHexagramFavoritesRepository(Database::connect($config));
     }
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $locale = RequestLocale::from($request);
         $favoriteNumbers = $this->favorites->allFavoriteNumbers();
 
         $hexagrams = array_map(
             fn (int $kingWenNumber): array => $this->toJson(
                 Hexagram::fromKingWenNumber($kingWenNumber),
                 in_array($kingWenNumber, $favoriteNumbers, true),
+                locale: $locale,
             ),
             array_keys(HexagramCatalog::all()),
         );
@@ -55,7 +59,12 @@ final class HexagramController
             return new JsonResponse(['error' => 'Not Found'], Response::HTTP_NOT_FOUND);
         }
 
-        return new JsonResponse($this->toJson($hexagram, $this->favorites->isFavorite($hexagram->kingWenNumber), includeDynamics: true));
+        return new JsonResponse($this->toJson(
+            $hexagram,
+            $this->favorites->isFavorite($hexagram->kingWenNumber),
+            includeDynamics: true,
+            locale: RequestLocale::from($request),
+        ));
     }
 
     /**
@@ -98,7 +107,12 @@ final class HexagramController
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        return new JsonResponse($this->toJson(Hexagram::fromLines($lines), false, includeDynamics: true));
+        return new JsonResponse($this->toJson(
+            Hexagram::fromLines($lines),
+            false,
+            includeDynamics: true,
+            locale: RequestLocale::from($request),
+        ));
     }
 
     public function compare(Request $request): Response
@@ -117,9 +131,11 @@ final class HexagramController
             return new JsonResponse(['error' => 'Not Found'], Response::HTTP_NOT_FOUND);
         }
 
+        $locale = RequestLocale::from($request);
+
         return new JsonResponse([
-            'a' => $this->toJson($a, false),
-            'b' => $this->toJson($b, false),
+            'a' => $this->toJson($a, false, locale: $locale),
+            'b' => $this->toJson($b, false, locale: $locale),
             'lineComparisons' => array_map(
                 static fn (LineComparison $c): array => [
                     'position' => $c->position,
@@ -184,8 +200,18 @@ final class HexagramController
     /**
      * @return array<string, mixed>
      */
-    private function toJson(Hexagram $hexagram, bool $favorite, bool $includeDynamics = false): array
-    {
+    private function toJson(
+        Hexagram $hexagram,
+        bool $favorite,
+        bool $includeDynamics = false,
+        string $locale = 'en',
+    ): array {
+        // The Hexagram value object carries the canonical English text; for a non-English
+        // locale, overlay the localized classical text from the catalog (SPEC-057).
+        $text = $locale === 'en'
+            ? ['judgment' => $hexagram->judgment, 'image' => $hexagram->image, 'lineStatements' => $hexagram->lineStatements]
+            : HexagramTextCatalog::textFor($hexagram->kingWenNumber, $locale);
+
         $json = [
             'kingWenNumber' => $hexagram->kingWenNumber,
             'chineseName' => $hexagram->chineseName,
@@ -200,9 +226,9 @@ final class HexagramController
             ),
             'upperTrigram' => $this->trigramToJson($hexagram->getUpperTrigram()),
             'lowerTrigram' => $this->trigramToJson($hexagram->getLowerTrigram()),
-            'judgment' => $hexagram->judgment,
-            'image' => $hexagram->image,
-            'lineStatements' => $hexagram->lineStatements,
+            'judgment' => $text['judgment'],
+            'image' => $text['image'],
+            'lineStatements' => $text['lineStatements'],
             'relationships' => $this->relationshipsToJson($hexagram),
             'favorite' => $favorite,
         ];
@@ -211,7 +237,10 @@ final class HexagramController
         // 64-item list response stays lean (SPEC-053, SPEC-056).
         if ($includeDynamics) {
             $json['lineDynamics'] = LineDynamics::of($hexagram)->toArray();
-            $json['sequencePrecedent'] = HexagramSequenceCatalog::precedentFor($hexagram->kingWenNumber);
+            $json['sequencePrecedent'] = HexagramSequenceCatalog::precedentFor(
+                $hexagram->kingWenNumber,
+                $locale,
+            );
         }
 
         return $json;

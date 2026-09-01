@@ -17,7 +17,7 @@ type State =
   | { status: 'error'; message: string }
   | { status: 'loaded'; comparison: HexagramComparison }
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const state = ref<State>({ status: 'loading' })
@@ -42,13 +42,15 @@ function submit(): void {
 }
 
 watch(
-  [queryA, queryB],
-  async ([a, b]) => {
+  [queryA, queryB, locale],
+  async () => {
+    const a = queryA.value
+    const b = queryB.value
     formA.value = a
     formB.value = b
     state.value = { status: 'loading' }
     try {
-      const comparison = await compareHexagrams(a, b)
+      const comparison = await compareHexagrams(a, b, locale.value)
       state.value = { status: 'loaded', comparison }
     } catch (error) {
       state.value = {

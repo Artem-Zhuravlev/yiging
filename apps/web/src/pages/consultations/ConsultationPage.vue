@@ -501,7 +501,7 @@ async function askFollowUp(): Promise<void> {
 
 onMounted(async () => {
   try {
-    const consultation = await fetchConsultation(id.value)
+    const consultation = await fetchConsultation(id.value, locale.value)
     const [primaryHexagram, resultingHexagram] = await Promise.all([
       fetchHexagram(consultation.primaryHexagram.kingWenNumber),
       fetchHexagram(consultation.resultingHexagram.kingWenNumber),
@@ -532,6 +532,19 @@ onMounted(async () => {
       status: 'error',
       message: error instanceof Error ? error.message : t('consultationPage.loadError'),
     }
+  }
+})
+
+// The reading-guidance quotations are served per-locale (SPEC-057); on a language switch,
+// re-fetch just the consultation and refresh the guidance panel without disturbing the rest.
+watch(locale, async () => {
+  if (state.value.status !== 'loaded') return
+  try {
+    const consultation = await fetchConsultation(id.value, locale.value)
+    state.value = { ...state.value, consultation }
+    readingGuidance.value = consultation.readingGuidance
+  } catch {
+    /* Keep the currently displayed guidance on a transient refresh failure. */
   }
 })
 </script>

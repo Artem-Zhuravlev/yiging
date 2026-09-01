@@ -55,6 +55,21 @@ describe('entities/hexagram api', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/hexagrams/11')
   })
 
+  it('appends ?lang= only for a non-English locale', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(sample) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await fetchHexagram(11, 'uk')
+    await fetchHexagrams('uk')
+    await compareHexagrams(1, 2, 'uk')
+    await fetchHexagram(11, 'en')
+
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/api/hexagrams/11?lang=uk')
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/api/hexagrams?lang=uk')
+    expect(fetchMock).toHaveBeenNthCalledWith(3, '/api/hexagrams/compare?a=1&b=2&lang=uk')
+    expect(fetchMock).toHaveBeenNthCalledWith(4, '/api/hexagrams/11')
+  })
+
   it('computeHexagramFromLines gets /hexagrams/from-lines with a comma-separated query', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

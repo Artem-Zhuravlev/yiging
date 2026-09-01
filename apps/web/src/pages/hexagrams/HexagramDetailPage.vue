@@ -29,7 +29,7 @@ interface RelatedHexagram {
   isSelf: boolean
 }
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const route = useRoute()
 const state = ref<State>({ status: 'loading' })
 const kingWenNumber = computed(() => Number(route.params.number))
@@ -126,13 +126,15 @@ const relatedHexagrams = computed<RelatedHexagram[]>(() => {
   ].map((entry) => ({ ...entry, isSelf: entry.summary.kingWenNumber === current }))
 })
 
+// Re-runs on either the route hexagram OR the app language changing — the classical text is
+// served per-locale (SPEC-057), so a language switch must re-fetch.
 watch(
-  kingWenNumber,
-  async (number) => {
+  [kingWenNumber, locale],
+  async ([number]) => {
     state.value = { status: 'loading' }
     selectedLine.value = null
     try {
-      const hexagram = await fetchHexagram(number)
+      const hexagram = await fetchHexagram(number, locale.value)
       state.value = { status: 'loaded', hexagram }
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {

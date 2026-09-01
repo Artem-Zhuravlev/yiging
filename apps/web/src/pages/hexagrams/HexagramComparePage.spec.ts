@@ -70,7 +70,7 @@ describe('HexagramComparePage', () => {
     wrapper = mount(HexagramComparePage, { global: { stubs } })
     await flushPromises()
 
-    expect(compareHexagrams).toHaveBeenCalledWith(1, 2)
+    expect(compareHexagrams).toHaveBeenCalledWith(1, 2, 'en')
   })
 
   it('compares the hexagrams named in the query and renders the line table', async () => {
@@ -80,7 +80,7 @@ describe('HexagramComparePage', () => {
     wrapper = mount(HexagramComparePage, { global: { stubs } })
     await flushPromises()
 
-    expect(compareHexagrams).toHaveBeenCalledWith(11, 54)
+    expect(compareHexagrams).toHaveBeenCalledWith(11, 54, 'en')
     expect(wrapper.text()).toContain('泰')
     expect(wrapper.text()).toContain('歸妹')
     expect(wrapper.findAll('tbody tr')).toHaveLength(6)

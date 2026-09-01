@@ -162,6 +162,63 @@ final class HexagramControllerTest extends TestCase
         self::assertStringContainsString('Zhun', $body['sequencePrecedent']);
     }
 
+    private static function hasCyrillic(string $value): bool
+    {
+        return preg_match('/\p{Cyrillic}/u', $value) === 1;
+    }
+
+    public function testShowReturnsUkrainianClassicalTextWithLangUk(): void
+    {
+        // Hexagram 2 has no sequencePrecedent (the sequence opens with 1 & 2); check its text
+        // fields here and the precedent on hexagram 4.
+        $two = $this->decode($this->kernel->handle(Request::create('/api/hexagrams/2?lang=uk', 'GET')));
+        self::assertTrue(self::hasCyrillic($two['judgment']));
+        self::assertTrue(self::hasCyrillic($two['image']));
+        self::assertTrue(self::hasCyrillic($two['lineStatements'][0]));
+        self::assertNull($two['sequencePrecedent']);
+
+        $four = $this->decode($this->kernel->handle(Request::create('/api/hexagrams/4?lang=uk', 'GET')));
+        self::assertTrue(self::hasCyrillic($four['sequencePrecedent']));
+    }
+
+    public function testShowReturnsEnglishByDefaultAndForUnrecognisedLang(): void
+    {
+        $default = $this->decode($this->kernel->handle(Request::create('/api/hexagrams/1', 'GET')));
+        $en = $this->decode($this->kernel->handle(Request::create('/api/hexagrams/1?lang=en', 'GET')));
+        $fr = $this->decode($this->kernel->handle(Request::create('/api/hexagrams/1?lang=fr', 'GET')));
+
+        self::assertStringContainsString('Khien', $default['judgment']);
+        self::assertSame($default['judgment'], $en['judgment']);
+        self::assertSame($default['judgment'], $fr['judgment']);
+    }
+
+    public function testIndexHonoursLangUk(): void
+    {
+        $body = $this->decode($this->kernel->handle(Request::create('/api/hexagrams?lang=uk', 'GET')));
+
+        self::assertTrue(self::hasCyrillic($body[0]['judgment']));
+        self::assertArrayNotHasKey('sequencePrecedent', $body[0]);
+    }
+
+    public function testFromLinesHonoursLangUk(): void
+    {
+        $body = $this->decode($this->kernel->handle(
+            Request::create('/api/hexagrams/from-lines?lines=yang,yang,yang,yang,yang,yang&lang=uk', 'GET'),
+        ));
+
+        self::assertTrue(self::hasCyrillic($body['judgment']));
+    }
+
+    public function testCompareHonoursLangUk(): void
+    {
+        $body = $this->decode($this->kernel->handle(
+            Request::create('/api/hexagrams/compare?a=1&b=2&lang=uk', 'GET'),
+        ));
+
+        self::assertTrue(self::hasCyrillic($body['a']['judgment']));
+        self::assertTrue(self::hasCyrillic($body['b']['judgment']));
+    }
+
     public function testSequencePrecedentIsNullForHexagramOne(): void
     {
         $body = $this->decode($this->kernel->handle(Request::create('/api/hexagrams/1', 'GET')));

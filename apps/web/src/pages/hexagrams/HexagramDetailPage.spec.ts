@@ -9,6 +9,7 @@ import {
 } from '../../entities/hexagram/api'
 import { ApiError } from '../../shared/api/http'
 import type { Hexagram } from '../../entities/hexagram/model'
+import { i18n } from '../../i18n'
 
 vi.mock('../../entities/hexagram/api', () => ({
   fetchHexagram: vi.fn(),
@@ -153,7 +154,7 @@ describe('HexagramDetailPage', () => {
     await flushPromises()
     await flushPromises()
 
-    expect(fetchHexagram).toHaveBeenCalledWith(54)
+    expect(fetchHexagram).toHaveBeenCalledWith(54, 'en')
     expect(wrapper.find('h1').text()).toBe('䷻ 54. 歸妹')
   })
 
@@ -267,6 +268,23 @@ describe('HexagramDetailPage', () => {
     expect(wrapper.text()).toContain('Place in the sequence')
     expect(wrapper.text()).toContain('Hence Zhun is followed by Meng.')
     expect(wrapper.findAll('a').some((a) => a.text().includes('Hexagram 3'))).toBe(true)
+  })
+
+  it('re-fetches the hexagram in the new language when the app locale changes', async () => {
+    vi.mocked(fetchHexagram).mockResolvedValue(sampleHexagram)
+
+    wrapper = mount(HexagramDetailPage, { global: { stubs } })
+    await flushPromises()
+    expect(fetchHexagram).toHaveBeenLastCalledWith(1, 'en')
+
+    i18n.global.locale.value = 'uk'
+    await flushPromises()
+
+    try {
+      expect(fetchHexagram).toHaveBeenLastCalledWith(1, 'uk')
+    } finally {
+      i18n.global.locale.value = 'en'
+    }
   })
 
   it('omits the "Place in the sequence" section when sequencePrecedent is null', async () => {

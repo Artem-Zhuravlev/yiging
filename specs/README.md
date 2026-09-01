@@ -132,3 +132,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-054 | [Reflection Reminders](reflection-reminders/spec.md) | `implemented` |
 | SPEC-055 | [Yarrow-Stalk Casting Method](yarrow-stalk-method/spec.md) | `implemented` |
 | SPEC-056 | [Sequence of the Hexagrams (Xu Gua)](hexagram-sequence/spec.md) | `implemented` |
+| SPEC-057 | [Ukrainian Classical Text](ukrainian-classical-text/spec.md) | `implemented` |

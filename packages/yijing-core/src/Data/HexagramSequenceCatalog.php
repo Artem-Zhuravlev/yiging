@@ -92,8 +92,18 @@ final class HexagramSequenceCatalog
         64 => 'But the succession of events cannot come to an end, and therefore Ji Ji is succeeded by Wei Ji, with which (the hexagrams) come to a close.',
     ];
 
-    public static function precedentFor(int $kingWenNumber): ?string
+    /**
+     * @param string $locale 'uk' for the Ukrainian rendering (SPEC-057), anything else for the
+     *                        canonical English
+     */
+    public static function precedentFor(int $kingWenNumber, string $locale = 'en'): ?string
     {
+        if ($locale === 'uk') {
+            return HexagramSequenceCatalogUk::ENTRIES[$kingWenNumber]
+                ?? self::ENTRIES[$kingWenNumber]
+                ?? null;
+        }
+
         return self::ENTRIES[$kingWenNumber] ?? null;
     }
 }

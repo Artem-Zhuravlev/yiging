@@ -806,12 +806,21 @@ final class HexagramTextCatalog
     ];
 
     /**
+     * @param string $locale 'uk' for the Ukrainian rendering (SPEC-057), anything else for the
+     *                        canonical English
+     *
      * @return HexagramText
      */
-    public static function textFor(int $kingWenNumber): array
+    public static function textFor(int $kingWenNumber, string $locale = 'en'): array
     {
         if (!isset(self::ENTRIES[$kingWenNumber])) {
             throw new \InvalidArgumentException("No hexagram text for King Wen number {$kingWenNumber}.");
+        }
+
+        if ($locale === 'uk') {
+            // The uk catalog mirrors this one for all 64 hexagrams (guaranteed by
+            // HexagramTextCatalogUkTest); no English fallback path is reachable here.
+            return HexagramTextCatalogUk::ENTRIES[$kingWenNumber];
         }
 
         return self::ENTRIES[$kingWenNumber];
@@ -820,8 +829,12 @@ final class HexagramTextCatalog
     /**
      * The "Use Nine" / "Use Six" text for hexagrams 1 / 2, or null for the other 62.
      */
-    public static function specialTextFor(int $kingWenNumber): ?string
+    public static function specialTextFor(int $kingWenNumber, string $locale = 'en'): ?string
     {
+        if ($locale === 'uk') {
+            return HexagramTextCatalogUk::SPECIAL[$kingWenNumber] ?? self::SPECIAL[$kingWenNumber] ?? null;
+        }
+
         return self::SPECIAL[$kingWenNumber] ?? null;
     }
 }

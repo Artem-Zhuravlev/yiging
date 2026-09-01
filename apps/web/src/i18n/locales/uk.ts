@@ -192,7 +192,8 @@ export const uk: typeof en = {
     lineTexts: 'Тексти ліній',
     line: 'Лінія {position}',
     sourcePrefix: 'Джерело:',
-    sourceSuffix: 'Джеймса Легга (1899), суспільне надбання.',
+    sourceSuffix:
+      'Джеймса Легга (1899), суспільне надбання. Український текст — переклад з англійського видання Легга.',
   },
   contextFields: {
     context: 'Контекст',

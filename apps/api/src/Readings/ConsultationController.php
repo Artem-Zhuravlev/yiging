@@ -13,6 +13,7 @@ use App\Casting\ThreeCoinsMethod;
 use App\Casting\YarrowStalkMethod;
 use App\Core\Config;
 use App\Core\Database;
+use App\Core\RequestLocale;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -300,7 +301,7 @@ final class ConsultationController
             return $this->errorResponse('Not Found', Response::HTTP_NOT_FOUND);
         }
 
-        return new JsonResponse($this->toJsonWithRepeats($consultation));
+        return new JsonResponse($this->toJsonWithRepeats($consultation, RequestLocale::from($request)));
     }
 
     /**
@@ -822,7 +823,7 @@ final class ConsultationController
     /**
      * @return array<string, mixed>
      */
-    private function toJsonWithRepeats(Consultation $consultation): array
+    private function toJsonWithRepeats(Consultation $consultation, string $locale = 'en'): array
     {
         $changingLinePositions = $consultation->changingLinePositions();
 
@@ -847,6 +848,7 @@ final class ConsultationController
             'readingGuidance' => $this->readingGuidanceToJson(
                 CastReading::forCast($consultation->primaryHexagram, $changingLinePositions),
                 $consultation,
+                $locale,
             ),
             'reminder' => $this->reminderToJson($consultation->id),
         ];
@@ -868,21 +870,26 @@ final class ConsultationController
      *
      * @return array<string, mixed>
      */
-    private function readingGuidanceToJson(CastReading $reading, Consultation $consultation): array
-    {
+    private function readingGuidanceToJson(
+        CastReading $reading,
+        Consultation $consultation,
+        string $locale = 'en',
+    ): array {
         $json = $reading->toArray();
 
         $json['refs'] = array_map(
-            function (CastReadingRef $ref) use ($consultation): array {
+            function (CastReadingRef $ref) use ($consultation, $locale): array {
                 $hexagram = $ref->hexagram === 'primary'
                     ? $consultation->primaryHexagram
                     : $consultation->resultingHexagram;
 
+                $hexagramText = HexagramTextCatalog::textFor($hexagram->kingWenNumber, $locale);
+
                 if ($ref->kind === 'judgment') {
-                    $text = $hexagram->judgment;
+                    $text = $hexagramText['judgment'];
                 } else {
                     $position = $ref->position ?? throw new \LogicException('A line ref always has a position.');
-                    $text = $hexagram->lineStatements[$position - 1];
+                    $text = $hexagramText['lineStatements'][$position - 1];
                 }
 
                 return $ref->toArray() + ['text' => $text];
@@ -893,6 +900,7 @@ final class ConsultationController
         if ($reading->specialText !== null) {
             $json['specialTextContent'] = HexagramTextCatalog::specialTextFor(
                 $consultation->primaryHexagram->kingWenNumber,
+                $locale,
             );
         }
 

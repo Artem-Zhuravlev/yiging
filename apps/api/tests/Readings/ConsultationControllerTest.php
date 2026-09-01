@@ -519,6 +519,45 @@ final class ConsultationControllerTest extends TestCase
         self::assertStringContainsString('number NINE', $guidance['specialTextContent']);
     }
 
+    public function testShowReturnsUkrainianReadingGuidanceTextWithLangUk(): void
+    {
+        $lines = array_fill(0, 6, ['polarity' => 'yang', 'changing' => false]);
+        $lines[2] = ['polarity' => 'yang', 'changing' => true]; // line 3 changes
+
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Одна змінна?',
+            'method' => 'manual',
+            'lines' => $lines,
+        ]));
+
+        $uk = $this->decode($this->kernel->handle(
+            Request::create('/api/consultations/' . $created['id'] . '?lang=uk', 'GET'),
+        ))['readingGuidance'];
+        $en = $this->decode($this->kernel->handle(
+            Request::create('/api/consultations/' . $created['id'], 'GET'),
+        ))['readingGuidance'];
+
+        self::assertSame(1, preg_match('/\p{Cyrillic}/u', $uk['refs'][0]['text']));
+        self::assertNotSame($en['refs'][0]['text'], $uk['refs'][0]['text']);
+    }
+
+    public function testShowReturnsUkrainianUseNineSpecialTextWithLangUk(): void
+    {
+        $lines = array_fill(0, 6, ['polarity' => 'yang', 'changing' => true]);
+
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Усе рухається?',
+            'method' => 'manual',
+            'lines' => $lines,
+        ]));
+
+        $uk = $this->decode($this->kernel->handle(
+            Request::create('/api/consultations/' . $created['id'] . '?lang=uk', 'GET'),
+        ))['readingGuidance'];
+
+        self::assertSame(1, preg_match('/\p{Cyrillic}/u', $uk['specialTextContent']));
+    }
+
     public function testReadingGuidanceIsDetailOnly(): void
     {
         $created = $this->decode($this->postJson('/api/consultations', [
