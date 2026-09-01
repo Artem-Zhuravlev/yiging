@@ -154,6 +154,41 @@ final class HexagramControllerTest extends TestCase
         self::assertTrue($body['lineDynamics'][0]['correctPosition']); // yang at position 1
     }
 
+    public function testShowIncludesTheSequencePrecedent(): void
+    {
+        $body = $this->decode($this->kernel->handle(Request::create('/api/hexagrams/3', 'GET')));
+
+        self::assertIsString($body['sequencePrecedent']);
+        self::assertStringContainsString('Zhun', $body['sequencePrecedent']);
+    }
+
+    public function testSequencePrecedentIsNullForHexagramOne(): void
+    {
+        $body = $this->decode($this->kernel->handle(Request::create('/api/hexagrams/1', 'GET')));
+
+        self::assertArrayHasKey('sequencePrecedent', $body);
+        self::assertNull($body['sequencePrecedent']);
+    }
+
+    public function testIndexDoesNotIncludeTheSequencePrecedent(): void
+    {
+        $body = $this->decode($this->kernel->handle(Request::create('/api/hexagrams', 'GET')));
+
+        self::assertArrayNotHasKey('sequencePrecedent', $body[0]);
+    }
+
+    public function testFromLinesIncludesTheSequencePrecedent(): void
+    {
+        // yin,yang,yin,yin,yin,yang bottom-to-top (Kan below, Gen above) is hexagram 4 (Meng).
+        $body = $this->decode($this->kernel->handle(
+            Request::create('/api/hexagrams/from-lines?lines=yin,yang,yin,yin,yin,yang', 'GET'),
+        ));
+
+        self::assertSame(4, $body['kingWenNumber']);
+        self::assertIsString($body['sequencePrecedent']);
+        self::assertStringContainsString('Meng', $body['sequencePrecedent']);
+    }
+
     public function testIndexIncludesRelationshipsPerEntry(): void
     {
         $response = $this->kernel->handle(Request::create('/api/hexagrams', 'GET'));

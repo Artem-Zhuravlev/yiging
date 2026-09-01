@@ -131,3 +131,4 @@ No `update`, `changes`, `fix stuff`, or other content-free messages.
 | SPEC-053 | [Line Dynamics](line-dynamics/spec.md) | `implemented` |
 | SPEC-054 | [Reflection Reminders](reflection-reminders/spec.md) | `implemented` |
 | SPEC-055 | [Yarrow-Stalk Casting Method](yarrow-stalk-method/spec.md) | `implemented` |
+| SPEC-056 | [Sequence of the Hexagrams (Xu Gua)](hexagram-sequence/spec.md) | `implemented` |

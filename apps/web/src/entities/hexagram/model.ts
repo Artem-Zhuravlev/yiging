@@ -57,6 +57,9 @@ export interface Hexagram {
   favorite: boolean
   /** 6 entries, position order — only on `GET /api/hexagrams/{id}` and `.../from-lines`. */
   lineDynamics?: LineDynamic[]
+  /** The 序卦傳 (Xù Guà) sentence on why this hexagram follows the one before it (SPEC-056) —
+   * `null` for hexagrams 1 and 2; only on `GET /api/hexagrams/{id}` and `.../from-lines`. */
+  sequencePrecedent?: string | null
 }
 
 export interface LineComparison {

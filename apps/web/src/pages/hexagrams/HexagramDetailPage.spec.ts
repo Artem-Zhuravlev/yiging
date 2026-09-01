@@ -251,6 +251,33 @@ describe('HexagramDetailPage', () => {
     expect(rowFive.text()).toContain('correct (當位)')
   })
 
+  it('renders the "Place in the sequence" section with a link to the predecessor hexagram', async () => {
+    vi.mocked(fetchHexagram).mockResolvedValue({
+      ...sampleHexagram,
+      kingWenNumber: 4,
+      chineseName: '蒙',
+      pinyin: 'Méng',
+      sequencePrecedent:
+        'Zhun is descriptive of things on their first production. Hence Zhun is followed by Meng.',
+    })
+
+    wrapper = mount(HexagramDetailPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Place in the sequence')
+    expect(wrapper.text()).toContain('Hence Zhun is followed by Meng.')
+    expect(wrapper.findAll('a').some((a) => a.text().includes('Hexagram 3'))).toBe(true)
+  })
+
+  it('omits the "Place in the sequence" section when sequencePrecedent is null', async () => {
+    vi.mocked(fetchHexagram).mockResolvedValue({ ...sampleHexagram, sequencePrecedent: null })
+
+    wrapper = mount(HexagramDetailPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Place in the sequence')
+  })
+
   it('does not make the diagram interactive when the hexagram has no classical line text', async () => {
     vi.mocked(fetchHexagram).mockResolvedValue(sampleHexagram)
 

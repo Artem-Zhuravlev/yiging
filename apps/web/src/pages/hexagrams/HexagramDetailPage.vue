@@ -106,6 +106,13 @@ function adjacencyLabel(row: { ridesFirmBelow: boolean; supportsFirmAbove: boole
   return parts.length > 0 ? parts.join(' · ') : '—'
 }
 
+// The predecessor in the King Wen order (SPEC-056). Only read when `sequencePrecedent` is
+// non-null, which the API guarantees means kingWenNumber >= 3, so N - 1 is always a valid target.
+const sequencePredecessor = computed<number | null>(() => {
+  if (state.value.status !== 'loaded' || state.value.hexagram.sequencePrecedent == null) return null
+  return state.value.hexagram.kingWenNumber - 1
+})
+
 const relatedHexagrams = computed<RelatedHexagram[]>(() => {
   if (state.value.status !== 'loaded') {
     return []
@@ -310,6 +317,18 @@ watch(
         </table>
 
         <p class="mt-2 mb-0 text-xs text-color-secondary">{{ t('lineDynamics.help') }}</p>
+      </div>
+
+      <div v-if="state.hexagram.sequencePrecedent" class="hexagram-sequence">
+        <h2 class="mb-1 text-sm font-medium text-color-secondary">{{ t('hexagramSequence.title') }}</h2>
+        <p class="mt-0 mb-1 text-sm">
+          {{ t('hexagramSequence.heading', { n: state.hexagram.kingWenNumber, name: state.hexagram.chineseName }) }}
+          <router-link v-if="sequencePredecessor" :to="`/hexagrams/${sequencePredecessor}`">
+            {{ t('hexagramSequence.predecessorLink', { prev: sequencePredecessor }) }}
+          </router-link>
+        </p>
+        <p class="mt-1 mb-0">{{ state.hexagram.sequencePrecedent }}</p>
+        <p class="mt-2 mb-0 text-xs text-color-secondary">{{ t('hexagramSequence.source') }}</p>
       </div>
 
       <p class="text-xs text-color-secondary">

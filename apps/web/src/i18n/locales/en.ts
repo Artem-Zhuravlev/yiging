@@ -294,6 +294,13 @@ export const en = {
     rides: 'rides the firm (乘剛)',
     supports: 'supports the firm (承)',
   },
+  hexagramSequence: {
+    title: 'Place in the sequence',
+    heading: 'Why {n}. {name} follows the hexagram before it:',
+    predecessorLink: '← Hexagram {prev} in the King Wen order',
+    source:
+      "From the 序卦傳 (Xù Guà, 'Treatise on the Orderly Sequence of the Hexagrams'), one of the Ten Wings — James Legge's translation, 1899.",
+  },
   readingGuidance: {
     title: 'How to read this cast',
     primary: 'Primary',

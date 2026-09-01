@@ -10,6 +10,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Yijing\Core\Data\HexagramCatalog;
+use Yijing\Core\Data\HexagramSequenceCatalog;
 use Yijing\Core\Hexagram;
 use Yijing\Core\HexagramComparator;
 use Yijing\Core\Line;
@@ -207,9 +208,10 @@ final class HexagramController
         ];
 
         // Detail-only (single hexagram / editor preview), like SPEC-052's readingGuidance — the
-        // 64-item list response stays lean (SPEC-053).
+        // 64-item list response stays lean (SPEC-053, SPEC-056).
         if ($includeDynamics) {
             $json['lineDynamics'] = LineDynamics::of($hexagram)->toArray();
+            $json['sequencePrecedent'] = HexagramSequenceCatalog::precedentFor($hexagram->kingWenNumber);
         }
 
         return $json;
