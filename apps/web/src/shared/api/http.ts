@@ -70,6 +70,18 @@ export async function apiPut(path: string): Promise<void> {
   return handleNoContentResponse(path, response)
 }
 
+/** PUT with a JSON body and a JSON response — for idempotent upserts that return the stored
+ * resource (unlike apiPut, which is the bodyless 204 variant). */
+export async function apiPutJson<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  return handleResponse<T>(path, response)
+}
+
 export async function apiDelete(path: string): Promise<void> {
   const response = await fetch(`${BASE_URL}${path}`, { method: 'DELETE' })
 

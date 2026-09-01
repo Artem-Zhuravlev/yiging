@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import ConsultationPage from './ConsultationPage.vue'
-import { fetchConsultation, updateConsultation } from '../../entities/consultation/api'
+import {
+  fetchConsultation,
+  updateConsultation,
+  setReflectionReminder,
+  clearReflectionReminder,
+} from '../../entities/consultation/api'
 import { fetchHexagram } from '../../entities/hexagram/api'
 import { requestFollowUp, requestInterpretation } from '../../entities/interpretation/api'
 import { ApiError } from '../../shared/api/http'
@@ -12,6 +17,8 @@ import type { Interpretation } from '../../entities/interpretation/model'
 vi.mock('../../entities/consultation/api', () => ({
   fetchConsultation: vi.fn(),
   updateConsultation: vi.fn(),
+  setReflectionReminder: vi.fn(),
+  clearReflectionReminder: vi.fn(),
 }))
 
 vi.mock('../../entities/hexagram/api', () => ({
@@ -74,6 +81,7 @@ const sampleConsultation: ConsultationDetail = {
   favorite: false,
   repeats: { primaryHexagram: [], resultingHexagram: [], changingLines: [] },
   readingGuidance: { changingLineCount: 0, rule: 'no-changing-lines', refs: [], specialText: null },
+  reminder: null,
 }
 
 const sampleInterpretation: Interpretation = {
@@ -102,6 +110,8 @@ describe('ConsultationPage', () => {
     vi.mocked(requestInterpretation).mockClear()
     vi.mocked(requestFollowUp).mockClear()
     vi.mocked(updateConsultation).mockClear()
+    vi.mocked(setReflectionReminder).mockReset().mockResolvedValue({ remindAt: '2026-09-15T00:00:00+00:00' })
+    vi.mocked(clearReflectionReminder).mockReset().mockResolvedValue(undefined)
   })
 
   it('renders the consultation with both hexagram diagrams and marks changing lines', async () => {
@@ -924,5 +934,44 @@ describe('ConsultationPage', () => {
 
     expect(wrapper.text()).toContain('tag rejected')
     expect(wrapper.text()).toContain('Should I take the offer?')
+  })
+
+  it('sets a reflection reminder from the date input while there is no outcome', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue(sampleConsultation)
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    const dateInput = wrapper.find('#reflection-reminder')
+    expect(dateInput.exists()).toBe(true)
+
+    await dateInput.setValue('2026-09-15')
+    const setButton = wrapper.findAll('button').find((b) => b.text() === 'Set reminder')!
+    await setButton.trigger('click')
+    await flushPromises()
+
+    expect(setReflectionReminder).toHaveBeenCalledWith('abc-123', '2026-09-15')
+    expect(wrapper.text()).toContain('Reminder set for')
+  })
+
+  it('hides the reflection reminder control once an outcome is recorded', async () => {
+    vi.mocked(fetchConsultation).mockResolvedValue({
+      ...sampleConsultation,
+      outcome: {
+        whatActuallyHappened: 'Took the job.',
+        outcome: 'Good.',
+        reflection: null,
+        recordedAt: '2026-09-01T10:00:00+00:00',
+        interpretationLens: null,
+        interpretationSummary: null,
+      },
+    })
+    vi.mocked(fetchHexagram).mockImplementation((n: number) => Promise.resolve(sampleHexagram(n)))
+
+    const wrapper = mount(ConsultationPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.find('#reflection-reminder').exists()).toBe(false)
   })
 })

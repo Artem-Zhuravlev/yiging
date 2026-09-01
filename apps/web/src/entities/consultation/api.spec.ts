@@ -7,6 +7,9 @@ import {
   fetchConsultation,
   updateConsultation,
   importConsultationsBackup,
+  fetchDueReminders,
+  setReflectionReminder,
+  clearReflectionReminder,
 } from './api'
 import type { Consultation, ConsultationDetail } from './model'
 
@@ -35,6 +38,7 @@ const sampleDetail: ConsultationDetail = {
   ...sample,
   repeats: { primaryHexagram: [], resultingHexagram: [], changingLines: [] },
   readingGuidance: { changingLineCount: 0, rule: 'no-changing-lines', refs: [], specialText: null },
+  reminder: null,
 }
 
 describe('entities/consultation api', () => {
@@ -134,6 +138,57 @@ describe('entities/consultation api', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/consultations/abc-123',
       expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ tag: 'career' }) }),
+    )
+  })
+
+  it('fetchDueReminders gets /consultations/reminders', async () => {
+    const due = [
+      {
+        id: 'abc-123',
+        question: 'Should I take the offer?',
+        primaryHexagram: { kingWenNumber: 1, chineseName: '乾', pinyin: 'Qián' },
+        resultingHexagram: { kingWenNumber: 2, chineseName: '坤', pinyin: 'Kūn' },
+        remindAt: '2026-08-01T00:00:00+00:00',
+        createdAt: '2026-07-01T00:00:00+00:00',
+      },
+    ]
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(due) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await fetchDueReminders()
+
+    expect(result).toEqual(due)
+    expect(fetchMock).toHaveBeenCalledWith('/api/consultations/reminders')
+  })
+
+  it('setReflectionReminder PUTs the date to /consultations/{id}/reminder', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ remindAt: '2026-09-15T00:00:00+00:00' }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await setReflectionReminder('abc-123', '2026-09-15')
+
+    expect(result).toEqual({ remindAt: '2026-09-15T00:00:00+00:00' })
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/consultations/abc-123/reminder',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ remindAt: '2026-09-15' }),
+      }),
+    )
+  })
+
+  it('clearReflectionReminder DELETEs /consultations/{id}/reminder', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await clearReflectionReminder('abc-123')
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/consultations/abc-123/reminder',
+      expect.objectContaining({ method: 'DELETE' }),
     )
   })
 

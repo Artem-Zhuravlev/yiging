@@ -1,11 +1,13 @@
-import { apiDelete, apiGet, apiPatch, apiPost } from '../../shared/api/http'
+import { apiDelete, apiGet, apiPatch, apiPost, apiPutJson } from '../../shared/api/http'
 import type {
   Consultation,
   ConsultationDetail,
   ConsultationListPage,
   ConsultationListParams,
   ConsultationPatch,
+  DueReminder,
   NewConsultationRequest,
+  ReflectionReminder,
   TagWithCount,
 } from './model'
 
@@ -63,6 +65,23 @@ export function fetchConsultation(id: string): Promise<ConsultationDetail> {
 
 export function updateConsultation(id: string, patch: ConsultationPatch): Promise<Consultation> {
   return apiPatch<Consultation>(`/consultations/${id}`, patch)
+}
+
+/** The due reflection reminders (SPEC-054) — consultations whose reminder date has passed and
+ * which still have no recorded outcome, oldest first. For the Home dashboard. */
+export function fetchDueReminders(): Promise<DueReminder[]> {
+  return apiGet<DueReminder[]>('/consultations/reminders')
+}
+
+/** Sets (or replaces) the reflection reminder for a consultation (SPEC-054). `remindAt` may be
+ * a `YYYY-MM-DD` date or a full ISO-8601 instant. */
+export function setReflectionReminder(id: string, remindAt: string): Promise<ReflectionReminder> {
+  return apiPutJson<ReflectionReminder>(`/consultations/${id}/reminder`, { remindAt })
+}
+
+/** Clears the reflection reminder for a consultation (SPEC-054). Not an error when none is set. */
+export function clearReflectionReminder(id: string): Promise<void> {
+  return apiDelete(`/consultations/${id}/reminder`)
 }
 
 /** Downloads the given consultations as a JSON file — pure client-side, no request (SPEC-028).

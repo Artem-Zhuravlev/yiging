@@ -1367,6 +1367,148 @@ final class ConsultationControllerTest extends TestCase
         self::assertSame(['error' => 'Not Found'], $this->decode($response));
     }
 
+    public function testPutReminderThenShowRoundTripsTheDate(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Reminder round-trip?',
+            'method' => 'three_coins',
+        ]));
+
+        $put = $this->putJson('/api/consultations/' . $created['id'] . '/reminder', [
+            'remindAt' => '2026-09-15',
+        ]);
+        self::assertSame(200, $put->getStatusCode());
+        self::assertStringStartsWith('2026-09-15', $this->decode($put)['remindAt']);
+
+        $shown = $this->decode($this->kernel->handle(
+            Request::create('/api/consultations/' . $created['id'], 'GET'),
+        ));
+        self::assertStringStartsWith('2026-09-15', $shown['reminder']['remindAt']);
+    }
+
+    public function testPutReminderReplacesAnExistingDate(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Reminder replace?',
+            'method' => 'three_coins',
+        ]));
+
+        $this->putJson('/api/consultations/' . $created['id'] . '/reminder', ['remindAt' => '2026-09-15']);
+        $this->putJson('/api/consultations/' . $created['id'] . '/reminder', ['remindAt' => '2026-10-20']);
+
+        $shown = $this->decode($this->kernel->handle(
+            Request::create('/api/consultations/' . $created['id'], 'GET'),
+        ));
+        self::assertStringStartsWith('2026-10-20', $shown['reminder']['remindAt']);
+    }
+
+    public function testDeleteReminderClearsIt(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Reminder delete?',
+            'method' => 'three_coins',
+        ]));
+
+        $this->putJson('/api/consultations/' . $created['id'] . '/reminder', ['remindAt' => '2026-09-15']);
+
+        $deleted = $this->kernel->handle(
+            Request::create('/api/consultations/' . $created['id'] . '/reminder', 'DELETE'),
+        );
+        self::assertSame(204, $deleted->getStatusCode());
+
+        $shown = $this->decode($this->kernel->handle(
+            Request::create('/api/consultations/' . $created['id'], 'GET'),
+        ));
+        self::assertNull($shown['reminder']);
+    }
+
+    public function testRemindersEndpointReturnsOnlyPastDueOutcomeLessOrderedByDate(): void
+    {
+        $earlier = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Earlier due',
+            'method' => 'three_coins',
+        ]));
+        $later = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Later due',
+            'method' => 'three_coins',
+        ]));
+        $future = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Not due yet',
+            'method' => 'three_coins',
+        ]));
+        $recorded = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Past due but outcome recorded',
+            'method' => 'three_coins',
+        ]));
+
+        $this->putJson('/api/consultations/' . $earlier['id'] . '/reminder', ['remindAt' => '2000-01-01']);
+        $this->putJson('/api/consultations/' . $later['id'] . '/reminder', ['remindAt' => '2000-06-01']);
+        $this->putJson('/api/consultations/' . $future['id'] . '/reminder', ['remindAt' => '2999-01-01']);
+        $this->putJson('/api/consultations/' . $recorded['id'] . '/reminder', ['remindAt' => '2000-01-01']);
+        $this->patchJson('/api/consultations/' . $recorded['id'], ['outcome' => 'It resolved well.']);
+
+        $due = $this->decode($this->kernel->handle(Request::create('/api/consultations/reminders', 'GET')));
+
+        self::assertCount(2, $due);
+        self::assertSame($earlier['id'], $due[0]['id']);
+        self::assertSame($later['id'], $due[1]['id']);
+        self::assertArrayHasKey('kingWenNumber', $due[0]['primaryHexagram']);
+        self::assertArrayHasKey('kingWenNumber', $due[0]['resultingHexagram']);
+    }
+
+    public function testRecordingAnOutcomeClearsTheReminder(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Outcome clears reminder?',
+            'method' => 'three_coins',
+        ]));
+
+        $this->putJson('/api/consultations/' . $created['id'] . '/reminder', ['remindAt' => '2000-01-01']);
+        $this->patchJson('/api/consultations/' . $created['id'], ['reflection' => 'Noted.']);
+
+        $shown = $this->decode($this->kernel->handle(
+            Request::create('/api/consultations/' . $created['id'], 'GET'),
+        ));
+        self::assertNull($shown['reminder']);
+
+        $due = $this->decode($this->kernel->handle(Request::create('/api/consultations/reminders', 'GET')));
+        self::assertSame([], $due);
+    }
+
+    public function testPutReminderOnMissingConsultationIs404(): void
+    {
+        $response = $this->putJson('/api/consultations/does-not-exist/reminder', ['remindAt' => '2026-09-15']);
+
+        self::assertSame(404, $response->getStatusCode());
+    }
+
+    public function testPutReminderRejectsAMalformedDate(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'Bad date?',
+            'method' => 'three_coins',
+        ]));
+
+        $response = $this->putJson('/api/consultations/' . $created['id'] . '/reminder', [
+            'remindAt' => 'not-a-date',
+        ]);
+
+        self::assertSame(422, $response->getStatusCode());
+    }
+
+    public function testListEndpointHasNoReminderKey(): void
+    {
+        $created = $this->decode($this->postJson('/api/consultations', [
+            'question' => 'List has no reminder key',
+            'method' => 'three_coins',
+        ]));
+        $this->putJson('/api/consultations/' . $created['id'] . '/reminder', ['remindAt' => '2000-01-01']);
+
+        $list = $this->decode($this->kernel->handle(Request::create('/api/consultations', 'GET')));
+
+        self::assertArrayNotHasKey('reminder', $list['items'][0]);
+    }
+
     /**
      * @param array<string, mixed> $body
      */
@@ -1383,6 +1525,16 @@ final class ConsultationControllerTest extends TestCase
     private function patchJson(string $uri, array $body): Response
     {
         $request = Request::create($uri, 'PATCH', content: json_encode($body, JSON_THROW_ON_ERROR));
+
+        return $this->kernel->handle($request);
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     */
+    private function putJson(string $uri, array $body): Response
+    {
+        $request = Request::create($uri, 'PUT', content: json_encode($body, JSON_THROW_ON_ERROR));
 
         return $this->kernel->handle($request);
     }

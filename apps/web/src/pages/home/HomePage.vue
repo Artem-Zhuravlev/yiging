@@ -9,8 +9,12 @@ import { fetchHexagram } from '../../entities/hexagram/api'
 import { hexagramOfTheDayNumber } from '../../entities/hexagram/hexagramOfTheDay'
 import type { Hexagram } from '../../entities/hexagram/model'
 import HexagramLines from '../../entities/hexagram/ui/HexagramLines.vue'
-import { fetchConsultations } from '../../entities/consultation/api'
-import type { ConsultationListItem } from '../../entities/consultation/model'
+import {
+  fetchConsultations,
+  fetchDueReminders,
+  setReflectionReminder,
+} from '../../entities/consultation/api'
+import type { ConsultationListItem, DueReminder } from '../../entities/consultation/model'
 import { fetchStatistics } from '../../entities/statistics/api'
 import { useStatusAnnouncer } from '../../shared/lib/useStatusAnnouncer'
 
@@ -26,6 +30,21 @@ const state = ref<State>({ status: 'loading' })
 // of each other; a failed fetch just leaves its section hidden (SPEC-045).
 const recent = ref<ConsultationListItem[]>([])
 const totalCast = ref<number | null>(null)
+const dueReminders = ref<DueReminder[]>([])
+
+function overdueDays(reminder: DueReminder): number {
+  return Math.max(0, Math.floor((Date.now() - Date.parse(reminder.remindAt)) / 86_400_000))
+}
+
+async function snooze(reminder: DueReminder): Promise<void> {
+  const nextWeek = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10)
+  try {
+    await setReflectionReminder(reminder.id, nextWeek)
+    dueReminders.value = dueReminders.value.filter((r) => r.id !== reminder.id)
+  } catch {
+    /* Leave the row in place; the user can try again or open the consultation. */
+  }
+}
 
 useStatusAnnouncer(computed(() => state.value.status))
 
@@ -57,6 +76,14 @@ onMounted(() => {
     })
     .catch(() => {
       /* At-a-glance line stays hidden. */
+    })
+
+  fetchDueReminders()
+    .then((reminders) => {
+      dueReminders.value = reminders
+    })
+    .catch(() => {
+      /* Due-for-reflection section stays hidden. */
     })
 })
 </script>
@@ -120,6 +147,38 @@ onMounted(() => {
         </li>
       </ul>
       <router-link to="/consultations" class="mt-2 inline-block text-sm">{{ t('home.viewAll') }}</router-link>
+    </section>
+
+    <section v-if="dueReminders.length > 0" class="mt-4 w-full text-left" style="max-width: 24rem">
+      <h2 class="mb-2 text-sm font-medium text-color-secondary">{{ t('reminders.dueTitle') }}</h2>
+      <ul class="flex flex-column gap-2 list-none p-0 m-0">
+        <li v-for="reminder in dueReminders" :key="reminder.id" class="flex flex-column gap-1">
+          <router-link
+            :to="`/consultations/${reminder.id}`"
+            class="flex flex-column gap-1 border-round border-1 surface-border p-2 no-underline text-color home-recent-card"
+          >
+            <span class="text-sm font-medium">{{ reminder.question }}</span>
+            <span class="text-xs text-color-secondary">
+              {{ reminder.primaryHexagram.kingWenNumber }}. {{ reminder.primaryHexagram.chineseName }}
+              &rarr;
+              {{ reminder.resultingHexagram.kingWenNumber }}. {{ reminder.resultingHexagram.chineseName }}
+              &middot;
+              {{
+                overdueDays(reminder) === 0
+                  ? t('reminders.dueToday')
+                  : t('reminders.overdueBy', { days: overdueDays(reminder) })
+              }}
+            </span>
+          </router-link>
+          <Button
+            text
+            size="small"
+            class="align-self-start"
+            :label="t('reminders.snooze')"
+            @click="snooze(reminder)"
+          />
+        </li>
+      </ul>
     </section>
 
     <p v-if="totalCast !== null" class="m-0 text-sm">

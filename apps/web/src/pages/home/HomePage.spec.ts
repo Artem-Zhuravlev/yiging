@@ -2,10 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import HomePage from './HomePage.vue'
 import { fetchHexagram } from '../../entities/hexagram/api'
-import { fetchConsultations } from '../../entities/consultation/api'
+import {
+  fetchConsultations,
+  fetchDueReminders,
+  setReflectionReminder,
+} from '../../entities/consultation/api'
 import { fetchStatistics } from '../../entities/statistics/api'
 import type { Hexagram } from '../../entities/hexagram/model'
-import type { ConsultationListItem } from '../../entities/consultation/model'
+import type { ConsultationListItem, DueReminder } from '../../entities/consultation/model'
 import { liveMessage } from '../../shared/lib/announce'
 
 vi.mock('../../entities/hexagram/api', () => ({
@@ -13,6 +17,8 @@ vi.mock('../../entities/hexagram/api', () => ({
 }))
 vi.mock('../../entities/consultation/api', () => ({
   fetchConsultations: vi.fn(),
+  fetchDueReminders: vi.fn(),
+  setReflectionReminder: vi.fn(),
 }))
 vi.mock('../../entities/statistics/api', () => ({
   fetchStatistics: vi.fn(),
@@ -57,6 +63,8 @@ describe('HomePage', () => {
   beforeEach(() => {
     liveMessage.value = ''
     vi.mocked(fetchConsultations).mockReset().mockResolvedValue({ items: [], nextCursor: null })
+    vi.mocked(fetchDueReminders).mockReset().mockResolvedValue([])
+    vi.mocked(setReflectionReminder).mockReset().mockResolvedValue({ remindAt: '2099-01-01T00:00:00+00:00' })
     vi.mocked(fetchStatistics).mockReset().mockResolvedValue({
       totalConsultations: 0,
       hexagramFrequency: [],
@@ -157,6 +165,44 @@ describe('HomePage', () => {
     expect(wrapper.text()).not.toContain('Recent')
     expect(wrapper.text()).not.toContain('consultations cast')
     expect(wrapper.text()).toContain('Cast a new consultation')
+    expect(wrapper.text()).toContain('Hexagram of the Day')
+  })
+
+  it('shows the "Due for reflection" section and snoozes a reminder', async () => {
+    vi.mocked(fetchHexagram).mockResolvedValue(sampleHexagram)
+    const due: DueReminder = {
+      id: 'r1',
+      question: 'Did the move help?',
+      primaryHexagram: { kingWenNumber: 1, chineseName: '乾', pinyin: 'Qián' },
+      resultingHexagram: { kingWenNumber: 2, chineseName: '坤', pinyin: 'Kūn' },
+      remindAt: '2026-08-01T00:00:00+00:00',
+      createdAt: '2026-07-01T00:00:00+00:00',
+    }
+    vi.mocked(fetchDueReminders).mockResolvedValue([due])
+
+    const wrapper = mount(HomePage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Due for reflection')
+    const link = wrapper.findAll('a').find((a) => a.text().includes('Did the move help?'))
+    expect(link?.attributes('to')).toBe('/consultations/r1')
+
+    const snoozeButton = wrapper.findAll('button').find((b) => b.text().includes('Snooze'))!
+    await snoozeButton.trigger('click')
+    await flushPromises()
+
+    expect(setReflectionReminder).toHaveBeenCalledWith('r1', expect.any(String))
+    expect(wrapper.text()).not.toContain('Did the move help?')
+  })
+
+  it('hides the "Due for reflection" section when the reminders fetch fails', async () => {
+    vi.mocked(fetchHexagram).mockResolvedValue(sampleHexagram)
+    vi.mocked(fetchDueReminders).mockRejectedValue(new Error('reminders boom'))
+
+    const wrapper = mount(HomePage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Due for reflection')
     expect(wrapper.text()).toContain('Hexagram of the Day')
   })
 

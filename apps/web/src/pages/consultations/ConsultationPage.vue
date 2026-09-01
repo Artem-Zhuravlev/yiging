@@ -2,12 +2,18 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { fetchConsultation, updateConsultation } from '../../entities/consultation/api'
+import {
+  clearReflectionReminder,
+  fetchConsultation,
+  setReflectionReminder,
+  updateConsultation,
+} from '../../entities/consultation/api'
 import type {
   Consultation,
   ConsultationRepeats,
   ReadingGuidance,
   ReadingGuidanceRef,
+  ReflectionReminder,
 } from '../../entities/consultation/model'
 import { fetchHexagram } from '../../entities/hexagram/api'
 import type { HexagramLine } from '../../entities/hexagram/model'
@@ -181,6 +187,62 @@ function contextFormFrom(consultation: Consultation | null) {
 
 const outcomeForm = ref(outcomeFormFrom(null))
 const outcomeFormState = ref<FormState>({ status: 'idle' })
+
+// Reflection reminder (SPEC-054) — only meaningful while no outcome is recorded; recording one
+// clears it server-side. `reminderDate` backs the <input type="date">; `reminderEditing` shows
+// the input again after a reminder already exists.
+const reminder = ref<ReflectionReminder | null>(null)
+const reminderDate = ref('')
+const reminderEditing = ref(false)
+const reminderFormState = ref<FormState>({ status: 'idle' })
+
+function formatReminderDate(iso: string): string {
+  return new Date(iso).toLocaleDateString()
+}
+
+async function saveReminder(): Promise<void> {
+  if (state.value.status !== 'loaded' || reminderDate.value === '') {
+    return
+  }
+
+  const loaded = state.value
+  reminderFormState.value = { status: 'submitting' }
+
+  try {
+    reminder.value = await setReflectionReminder(loaded.consultation.id, reminderDate.value)
+    reminderEditing.value = false
+    reminderFormState.value = { status: 'idle' }
+    notifySaved('reminders.saved')
+  } catch (error) {
+    reminderFormState.value = {
+      status: 'error',
+      message: error instanceof Error ? error.message : t('reminders.saveError'),
+    }
+  }
+}
+
+async function removeReminder(): Promise<void> {
+  if (state.value.status !== 'loaded') {
+    return
+  }
+
+  const loaded = state.value
+  reminderFormState.value = { status: 'submitting' }
+
+  try {
+    await clearReflectionReminder(loaded.consultation.id)
+    reminder.value = null
+    reminderDate.value = ''
+    reminderEditing.value = false
+    reminderFormState.value = { status: 'idle' }
+    notifySaved('reminders.saved')
+  } catch (error) {
+    reminderFormState.value = {
+      status: 'error',
+      message: error instanceof Error ? error.message : t('reminders.saveError'),
+    }
+  }
+}
 
 function outcomeFormFrom(consultation: Consultation | null) {
   return {
@@ -458,6 +520,7 @@ onMounted(async () => {
     }
     repeats.value = consultation.repeats
     readingGuidance.value = consultation.readingGuidance
+    reminder.value = consultation.reminder ?? null
     contextForm.value = contextFormFrom(consultation)
     outcomeForm.value = outcomeFormFrom(consultation)
   } catch (error) {
@@ -796,6 +859,57 @@ onMounted(async () => {
             })
           }}
         </p>
+
+        <div
+          v-if="!state.consultation.outcome"
+          class="print-hidden mb-3 border-round border-1 surface-border p-3 flex flex-column gap-2"
+        >
+          <p
+            v-if="reminder && !reminderEditing"
+            class="m-0 text-sm flex flex-wrap align-items-center gap-2"
+          >
+            <span>{{ t('reminders.remindOn', { date: formatReminderDate(reminder.remindAt) }) }}</span>
+            <Button text size="small" :label="t('reminders.change')" @click="reminderEditing = true" />
+            <Button
+              text
+              size="small"
+              :disabled="reminderFormState.status === 'submitting'"
+              :label="t('reminders.clear')"
+              @click="removeReminder"
+            />
+          </p>
+          <div v-else class="flex flex-column gap-2">
+            <label for="reflection-reminder" class="text-xs text-color-secondary">
+              {{ t('reminders.remindMe') }}
+            </label>
+            <div class="flex flex-wrap align-items-center gap-2">
+              <input
+                id="reflection-reminder"
+                v-model="reminderDate"
+                type="date"
+                class="p-2 border-round border-1 surface-border"
+              />
+              <Button
+                size="small"
+                :disabled="reminderDate === '' || reminderFormState.status === 'submitting'"
+                :label="t('reminders.set')"
+                @click="saveReminder"
+              />
+              <Button
+                v-if="reminder"
+                text
+                size="small"
+                :label="t('common.cancel')"
+                @click="reminderEditing = false"
+              />
+            </div>
+          </div>
+          <p class="m-0 text-xs text-color-secondary">{{ t('reminders.help') }}</p>
+          <Message v-if="reminderFormState.status === 'error'" severity="error" role="alert">
+            {{ reminderFormState.message }}
+          </Message>
+        </div>
+
         <form class="flex flex-column gap-3" @submit.prevent="saveOutcome">
           <div>
             <label for="edit-what-happened" class="mb-1 block text-xs text-color-secondary">

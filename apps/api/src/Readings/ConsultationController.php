@@ -24,12 +24,15 @@ use Yijing\Core\LinePolarity;
 final class ConsultationController
 {
     private readonly ConsultationRepository $repository;
+    private readonly ConsultationReminderRepository $reminderRepository;
     private readonly ConsultationIdGenerator $idGenerator;
     private readonly Clock $clock;
 
     public function __construct(Config $config)
     {
-        $this->repository = new SqliteConsultationRepository(Database::connect($config));
+        $pdo = Database::connect($config);
+        $this->repository = new SqliteConsultationRepository($pdo);
+        $this->reminderRepository = new SqliteConsultationReminderRepository($pdo);
         $this->idGenerator = new UuidV4ConsultationIdGenerator();
         $this->clock = new SystemClock();
     }
@@ -142,6 +145,71 @@ final class ConsultationController
             ),
             'nextCursor' => $page->nextCursor,
         ]);
+    }
+
+    /**
+     * The due reflection reminders (SPEC-054): consultations whose reminder date has arrived and
+     * which still have no recorded outcome. Read on a normal page load (the Home dashboard) —
+     * there is no background job or notification behind this.
+     */
+    public function reminders(Request $request): Response
+    {
+        return new JsonResponse(array_map(
+            static fn (DueReminder $due): array => $due->toJson(),
+            $this->reminderRepository->findDue($this->clock->now()),
+        ));
+    }
+
+    /**
+     * @param array<string, string> $vars
+     */
+    public function setReminder(Request $request, array $vars): Response
+    {
+        if (!$this->repository->existsById($vars['id'])) {
+            return $this->errorResponse('Not Found', Response::HTTP_NOT_FOUND);
+        }
+
+        try {
+            $body = $this->decodeJsonBody($request);
+        } catch (\JsonException) {
+            return $this->errorResponse('Malformed JSON body.', Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $raw = $body['remindAt'] ?? null;
+
+        if (!is_string($raw) || trim($raw) === '') {
+            return $this->errorResponse(
+                '"remindAt" must be a date (YYYY-MM-DD) or an ISO-8601 instant.',
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        try {
+            $remindAt = new \DateTimeImmutable($raw);
+        } catch (\Exception) {
+            return $this->errorResponse(
+                '"remindAt" must be a date (YYYY-MM-DD) or an ISO-8601 instant.',
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+            );
+        }
+
+        $this->reminderRepository->set($vars['id'], $remindAt, $this->clock->now());
+
+        return new JsonResponse(['remindAt' => $remindAt->format(DATE_ATOM)]);
+    }
+
+    /**
+     * @param array<string, string> $vars
+     */
+    public function clearReminder(Request $request, array $vars): Response
+    {
+        if (!$this->repository->existsById($vars['id'])) {
+            return $this->errorResponse('Not Found', Response::HTTP_NOT_FOUND);
+        }
+
+        $this->reminderRepository->clear($vars['id']);
+
+        return new Response('', Response::HTTP_NO_CONTENT);
     }
 
     public function tags(Request $request): Response
@@ -376,6 +444,12 @@ final class ConsultationController
         }
 
         $this->repository->save($consultation);
+
+        // Recording an outcome retires the reflection reminder — its job (nudging the querent
+        // back to record exactly this) is done (SPEC-054, REQ-RR-005).
+        if ($touchesAnyOutcomeField) {
+            $this->reminderRepository->clear($vars['id']);
+        }
 
         return new JsonResponse($this->toJson($consultation));
     }
@@ -771,7 +845,18 @@ final class ConsultationController
                 CastReading::forCast($consultation->primaryHexagram, $changingLinePositions),
                 $consultation,
             ),
+            'reminder' => $this->reminderToJson($consultation->id),
         ];
+    }
+
+    /**
+     * @return array{remindAt: string}|null
+     */
+    private function reminderToJson(string $consultationId): ?array
+    {
+        $remindAt = $this->reminderRepository->findRemindAt($consultationId);
+
+        return $remindAt === null ? null : ['remindAt' => $remindAt->format(DATE_ATOM)];
     }
 
     /**

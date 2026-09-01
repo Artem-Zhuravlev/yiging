@@ -18,12 +18,15 @@ return static function (RouteCollector $r): void {
     $r->addRoute('POST', '/api/consultations', [ConsultationController::class, 'create']);
     $r->addRoute('POST', '/api/consultations/import', [ConsultationController::class, 'import']);
     $r->addRoute('GET', '/api/consultations', [ConsultationController::class, 'index']);
+    $r->addRoute('GET', '/api/consultations/reminders', [ConsultationController::class, 'reminders']);
     $r->addRoute('GET', '/api/consultations/tags', [ConsultationController::class, 'tags']);
     $r->addRoute('PATCH', '/api/consultations/tags/{name}', [ConsultationController::class, 'renameTag']);
     $r->addRoute('DELETE', '/api/consultations/tags/{name}', [ConsultationController::class, 'deleteTag']);
     $r->addRoute('GET', '/api/consultations/export', [ConsultationController::class, 'export']);
     $r->addRoute('GET', '/api/consultations/{id}', [ConsultationController::class, 'show']);
     $r->addRoute('PATCH', '/api/consultations/{id}', [ConsultationController::class, 'update']);
+    $r->addRoute('PUT', '/api/consultations/{id}/reminder', [ConsultationController::class, 'setReminder']);
+    $r->addRoute('DELETE', '/api/consultations/{id}/reminder', [ConsultationController::class, 'clearReminder']);
 
     $r->addRoute('GET', '/api/hexagrams', [HexagramController::class, 'index']);
     $r->addRoute('GET', '/api/hexagrams/from-lines', [HexagramController::class, 'fromLines']);

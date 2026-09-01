@@ -141,11 +141,32 @@ export interface ReadingGuidance {
   specialTextContent?: string
 }
 
-/** The shape `GET /api/consultations/{id}` returns — a `Consultation` plus `repeats` and
- * `readingGuidance`, computed only for the single-detail endpoint (SPEC-023, SPEC-052). */
+/** The per-consultation "record the outcome" reminder (SPEC-054) — a stored date the app reads
+ * on a normal page load; no notifications, no background job. */
+export interface ReflectionReminder {
+  remindAt: string
+}
+
+/** One entry of `GET /api/consultations/reminders` (SPEC-054): a consultation whose reflection
+ * reminder has come due and which still has no recorded outcome. */
+export interface DueReminder {
+  id: string
+  question: string
+  primaryHexagram: HexagramSummary
+  resultingHexagram: HexagramSummary
+  remindAt: string
+  createdAt: string
+}
+
+/** The shape `GET /api/consultations/{id}` returns — a `Consultation` plus `repeats`,
+ * `readingGuidance`, and `reminder`, computed only for the single-detail endpoint (SPEC-023,
+ * SPEC-052, SPEC-054). */
 export interface ConsultationDetail extends Consultation {
   repeats: ConsultationRepeats
   readingGuidance: ReadingGuidance
+  /** Optional so the many existing `Consultation`/`ConsultationDetail` fixtures need no change;
+   * the real endpoint always sends it (`{ remindAt } | null`). */
+  reminder?: ReflectionReminder | null
 }
 
 export type NewConsultationRequest = (
