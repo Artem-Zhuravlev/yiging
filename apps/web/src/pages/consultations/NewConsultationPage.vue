@@ -80,7 +80,7 @@ async function submit(): Promise<void> {
   const request: NewConsultationRequest = {
     ...(method.value === 'manual'
       ? { question: question.value, method: 'manual' as const, lines: lines.value }
-      : { question: question.value, method: 'three_coins' as const }),
+      : { question: question.value, method: method.value }),
     context: orUndefined(context.value),
     whatHappenedBefore: orUndefined(whatHappenedBefore.value),
     whatUserWantsToUnderstand: orUndefined(whatUserWantsToUnderstand.value),
@@ -146,10 +146,17 @@ onMounted(async () => {
           <RadioButton v-model="method" name="method" value="three_coins" />
           {{ t('newConsultation.threeCoins') }}
         </label>
+        <label class="mr-4 inline-flex align-items-center gap-2">
+          <RadioButton v-model="method" name="method" value="yarrow" />
+          {{ t('newConsultation.yarrow') }}
+        </label>
         <label class="inline-flex align-items-center gap-2">
           <RadioButton v-model="method" name="method" value="manual" />
           {{ t('newConsultation.manual') }}
         </label>
+        <p v-if="method === 'yarrow'" class="mt-2 mb-0 text-xs text-color-secondary">
+          {{ t('newConsultation.yarrowHint') }}
+        </p>
       </fieldset>
 
       <fieldset v-if="method === 'manual'" class="flex flex-column gap-2 border-none p-0 m-0">

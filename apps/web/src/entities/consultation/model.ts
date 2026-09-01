@@ -3,8 +3,9 @@ import type { InterpretationLens } from '../interpretation/model'
 
 /** Methods a user may choose from the New Consultation form. Deliberately excludes
  * 'random' — SPEC-004 documents it as non-traditional dev/test tooling, never something a
- * real reading should be attributed to. */
-export type SelectableCastingMethod = 'three_coins' | 'manual'
+ * real reading should be attributed to. 'yarrow' is the traditional yarrow-stalk method
+ * (SPEC-055), with its own (non-uniform) line-value distribution. */
+export type SelectableCastingMethod = 'three_coins' | 'yarrow' | 'manual'
 
 /** The full set of methods a *stored* consultation may report (the API itself doesn't
  * restrict `random`, even though this UI never submits it). */
@@ -171,6 +172,7 @@ export interface ConsultationDetail extends Consultation {
 
 export type NewConsultationRequest = (
   | { question: string; method: 'three_coins' }
+  | { question: string; method: 'yarrow' }
   | { question: string; method: 'manual'; lines: ManualLine[] }
 ) &
   Partial<ConsultationContext> & { followUpToConsultationId?: string }

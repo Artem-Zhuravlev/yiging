@@ -8,7 +8,9 @@ use App\Casting\DivinationMethod;
 use App\Casting\ManualMethod;
 use App\Casting\RandomIntCoinTosser;
 use App\Casting\RandomMethod;
+use App\Casting\SystemRandomSource;
 use App\Casting\ThreeCoinsMethod;
+use App\Casting\YarrowStalkMethod;
 use App\Core\Config;
 use App\Core\Database;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -542,6 +544,7 @@ final class ConsultationController
     {
         return match ($method) {
             CastingMethodName::ThreeCoins => new ThreeCoinsMethod(new RandomIntCoinTosser()),
+            CastingMethodName::Yarrow => new YarrowStalkMethod(new SystemRandomSource()),
             CastingMethodName::Random => new RandomMethod(new RandomIntCoinTosser()),
             CastingMethodName::Manual => new ManualMethod($this->parseManualLines($body['lines'] ?? null)),
         };

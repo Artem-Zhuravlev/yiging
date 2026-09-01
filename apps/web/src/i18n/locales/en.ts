@@ -205,6 +205,9 @@ export const en = {
     question: 'Question',
     method: 'Method',
     threeCoins: 'Three Coins',
+    yarrow: 'Yarrow stalk',
+    yarrowHint:
+      'The traditional 50-stalk method. Moving lines are rarer than with coins, and a moving yang is three times as likely as a moving yin.',
     manual: 'Manual',
     changing: 'Changing',
     lineGroupLabel: 'Line {n}',

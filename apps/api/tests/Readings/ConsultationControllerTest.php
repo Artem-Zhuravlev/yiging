@@ -76,6 +76,23 @@ final class ConsultationControllerTest extends TestCase
         self::assertSame(201, $response->getStatusCode());
     }
 
+    public function testCreateWithYarrowMethodPersistsAndEchoesTheMethod(): void
+    {
+        $response = $this->postJson('/api/consultations', [
+            'question' => 'Should I move?',
+            'method' => 'yarrow',
+        ]);
+
+        self::assertSame(201, $response->getStatusCode());
+        $body = $this->decode($response);
+        self::assertSame('yarrow', $body['method']);
+
+        $shown = $this->decode($this->kernel->handle(
+            Request::create('/api/consultations/' . $body['id'], 'GET'),
+        ));
+        self::assertSame('yarrow', $shown['method']);
+    }
+
     public function testCreateWithManualMethodBuildsTheExactHexagram(): void
     {
         $allYang = array_fill(0, 6, ['polarity' => 'yang', 'changing' => false]);

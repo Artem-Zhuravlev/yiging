@@ -73,6 +73,19 @@ describe('NewConsultationPage', () => {
     expect(push).toHaveBeenCalledWith('/consultations/new-id')
   })
 
+  it('submits a yarrow request when the yarrow-stalk method is selected', async () => {
+    vi.mocked(createConsultation).mockResolvedValue(sample)
+
+    const wrapper = mount(NewConsultationPage)
+    await wrapper.find('#question').setValue('Test?')
+    await wrapper.find('input[type="radio"][value="yarrow"]').setValue()
+    await wrapper.find('form').trigger('submit.prevent')
+    await flushPromises()
+
+    expect(createConsultation).toHaveBeenCalledWith({ question: 'Test?', method: 'yarrow' })
+    expect(push).toHaveBeenCalledWith('/consultations/new-id')
+  })
+
   it('submits a manual request with exactly 6 lines when manual is selected', async () => {
     vi.mocked(createConsultation).mockResolvedValue(sample)
 

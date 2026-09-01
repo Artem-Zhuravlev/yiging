@@ -130,6 +130,7 @@ plain-VPS instructions, all Docker-free.
 | SPEC-052 | [Operative Text Guidance](specs/operative-text-guidance/spec.md) | `implemented` |
 | SPEC-053 | [Line Dynamics](specs/line-dynamics/spec.md) | `implemented` |
 | SPEC-054 | [Reflection Reminders](specs/reflection-reminders/spec.md) | `implemented` |
+| SPEC-055 | [Yarrow-Stalk Casting Method](specs/yarrow-stalk-method/spec.md) | `implemented` |
 
 `packages/yijing-core` now implements `Line`, `Trigram` (8), `Hexagram` (64, King Wen sequence,
 plus `fromKingWenNumber()`), `changeLine()`/`getResultingHexagram()`, `YijingRelations`
