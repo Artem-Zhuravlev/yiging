@@ -213,6 +213,44 @@ describe('HexagramDetailPage', () => {
     expect(wrapper.findAll('h3').some((h) => h.text() === 'Line 2')).toBe(false)
   })
 
+  it('renders the line-dynamics section: the 2–5 correspondence row and per-line placement', async () => {
+    // Ji Ji-style: every line correctly placed, every pair corresponds.
+    const partner: Record<number, number> = { 1: 4, 2: 5, 3: 6, 4: 1, 5: 2, 6: 3 }
+    const lineDynamics = Array.from({ length: 6 }, (_, i) => {
+      const position = i + 1
+      return {
+        position,
+        correctPosition: true,
+        central: position === 2 || position === 5,
+        centralAndCorrect: position === 2 || position === 5,
+        correspondsWith: partner[position]!,
+        corresponds: true,
+        ridesFirmBelow: false,
+        supportsFirmAbove: false,
+      }
+    })
+
+    vi.mocked(fetchHexagram).mockResolvedValue({
+      ...sampleHexagram,
+      lineStatements: ['a', 'b', 'c', 'd', 'e', 'f'],
+      lineDynamics,
+    })
+
+    wrapper = mount(HexagramDetailPage, { global: { stubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Line dynamics')
+    // correspondence summary lists the three pairs
+    expect(wrapper.text()).toContain('Lines 2 & 5')
+    expect(wrapper.text()).toContain('correspond (正應)')
+    // per-line table: 6 rows, position 5 marked central & correct
+    const rows = wrapper.findAll('.line-dynamics-table tbody tr')
+    expect(rows).toHaveLength(6)
+    const rowFive = rows.find((r) => r.attributes('data-position') === '5')!
+    expect(rowFive.text()).toContain('central & correct (中正)')
+    expect(rowFive.text()).toContain('correct (當位)')
+  })
+
   it('does not make the diagram interactive when the hexagram has no classical line text', async () => {
     vi.mocked(fetchHexagram).mockResolvedValue(sampleHexagram)
 

@@ -14,6 +14,7 @@ use Yijing\Core\Hexagram;
 use Yijing\Core\HexagramComparator;
 use Yijing\Core\Line;
 use Yijing\Core\LineComparison;
+use Yijing\Core\LineDynamics;
 use Yijing\Core\LinePolarity;
 use Yijing\Core\Trigram;
 use Yijing\Core\YijingRelations;
@@ -53,7 +54,7 @@ final class HexagramController
             return new JsonResponse(['error' => 'Not Found'], Response::HTTP_NOT_FOUND);
         }
 
-        return new JsonResponse($this->toJson($hexagram, $this->favorites->isFavorite($hexagram->kingWenNumber)));
+        return new JsonResponse($this->toJson($hexagram, $this->favorites->isFavorite($hexagram->kingWenNumber), includeDynamics: true));
     }
 
     /**
@@ -96,7 +97,7 @@ final class HexagramController
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        return new JsonResponse($this->toJson(Hexagram::fromLines($lines), false));
+        return new JsonResponse($this->toJson(Hexagram::fromLines($lines), false, includeDynamics: true));
     }
 
     public function compare(Request $request): Response
@@ -182,9 +183,9 @@ final class HexagramController
     /**
      * @return array<string, mixed>
      */
-    private function toJson(Hexagram $hexagram, bool $favorite): array
+    private function toJson(Hexagram $hexagram, bool $favorite, bool $includeDynamics = false): array
     {
-        return [
+        $json = [
             'kingWenNumber' => $hexagram->kingWenNumber,
             'chineseName' => $hexagram->chineseName,
             'pinyin' => $hexagram->pinyin,
@@ -204,6 +205,14 @@ final class HexagramController
             'relationships' => $this->relationshipsToJson($hexagram),
             'favorite' => $favorite,
         ];
+
+        // Detail-only (single hexagram / editor preview), like SPEC-052's readingGuidance — the
+        // 64-item list response stays lean (SPEC-053).
+        if ($includeDynamics) {
+            $json['lineDynamics'] = LineDynamics::of($hexagram)->toArray();
+        }
+
+        return $json;
     }
 
     /**

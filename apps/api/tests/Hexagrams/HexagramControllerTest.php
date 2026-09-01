@@ -113,6 +113,47 @@ final class HexagramControllerTest extends TestCase
         self::assertSame(1, $body['relationships']['nuclear']['kingWenNumber']);
     }
 
+    public function testShowIncludesLineDynamics(): void
+    {
+        // Hexagram 63 (Ji Ji): every line is correctly placed and every pair corresponds.
+        $body = $this->decode($this->kernel->handle(Request::create('/api/hexagrams/63', 'GET')));
+
+        self::assertCount(6, $body['lineDynamics']);
+        foreach ($body['lineDynamics'] as $line) {
+            self::assertTrue($line['correctPosition']);
+            self::assertTrue($line['corresponds']);
+        }
+        self::assertSame(1, $body['lineDynamics'][0]['position']);
+        self::assertSame(6, $body['lineDynamics'][5]['position']);
+    }
+
+    public function testShowLineDynamicsMarkCentralityCorrectly(): void
+    {
+        // Hexagram 1 (Qian): line 5 is central and correct; line 2 is central but not correct.
+        $body = $this->decode($this->kernel->handle(Request::create('/api/hexagrams/1', 'GET')));
+
+        self::assertTrue($body['lineDynamics'][4]['centralAndCorrect']);  // position 5
+        self::assertTrue($body['lineDynamics'][1]['central']);            // position 2
+        self::assertFalse($body['lineDynamics'][1]['centralAndCorrect']);
+    }
+
+    public function testIndexDoesNotIncludeLineDynamics(): void
+    {
+        $body = $this->decode($this->kernel->handle(Request::create('/api/hexagrams', 'GET')));
+
+        self::assertArrayNotHasKey('lineDynamics', $body[0]);
+    }
+
+    public function testFromLinesIncludesLineDynamics(): void
+    {
+        $body = $this->decode($this->kernel->handle(
+            Request::create('/api/hexagrams/from-lines?lines=yang,yin,yang,yin,yang,yin', 'GET'),
+        ));
+
+        self::assertCount(6, $body['lineDynamics']);
+        self::assertTrue($body['lineDynamics'][0]['correctPosition']); // yang at position 1
+    }
+
     public function testIndexIncludesRelationshipsPerEntry(): void
     {
         $response = $this->kernel->handle(Request::create('/api/hexagrams', 'GET'));

@@ -78,6 +78,34 @@ async function toggleFavorite(): Promise<void> {
   }
 }
 
+// The three correspondence pairs (1-4, 2-5, 3-6), derived from the first three line-dynamics
+// entries (SPEC-053). The 2-5 pair (subject & ruler) is the one that matters most.
+const correspondencePairs = computed(() => {
+  if (state.value.status !== 'loaded' || !state.value.hexagram.lineDynamics) return []
+  return state.value.hexagram.lineDynamics
+    .filter((d) => d.position <= 3)
+    .map((d) => ({ a: d.position, b: d.correspondsWith, corresponds: d.corresponds }))
+})
+
+// Per-line dynamics rows, top-to-bottom (6 → 1) to match the diagram, each with its polarity.
+const lineDynamicsRows = computed(() => {
+  if (state.value.status !== 'loaded' || !state.value.hexagram.lineDynamics) return []
+  const lines = state.value.hexagram.lines
+  return [...state.value.hexagram.lineDynamics].reverse().map((d) => ({
+    ...d,
+    polarityLabel: lines[d.position - 1]?.polarity === 'yang' ? t('common.yang') : t('common.yin'),
+  }))
+})
+
+// A yin line between two yang lines both rides (乘) the one below and supports (承) the one
+// above — show both when both apply.
+function adjacencyLabel(row: { ridesFirmBelow: boolean; supportsFirmAbove: boolean }): string {
+  const parts: string[] = []
+  if (row.ridesFirmBelow) parts.push(t('lineDynamics.rides'))
+  if (row.supportsFirmAbove) parts.push(t('lineDynamics.supports'))
+  return parts.length > 0 ? parts.join(' · ') : '—'
+}
+
 const relatedHexagrams = computed<RelatedHexagram[]>(() => {
   if (state.value.status !== 'loaded') {
     return []
@@ -233,6 +261,57 @@ watch(
         </ol>
       </div>
 
+      <div v-if="state.hexagram.lineDynamics">
+        <h2 class="mb-2 text-sm font-medium text-color-secondary">{{ t('lineDynamics.title') }}</h2>
+
+        <ul class="mb-3 flex flex-column gap-1 list-none p-0 m-0 text-sm">
+          <li
+            v-for="pair in correspondencePairs"
+            :key="pair.a"
+            :class="{ 'font-medium': pair.a === 2 }"
+          >
+            {{ t('lineDynamics.pair', { a: pair.a, b: pair.b }) }} —
+            {{ pair.corresponds ? t('lineDynamics.corresponds') : t('lineDynamics.noCorrespondence') }}
+          </li>
+        </ul>
+
+        <table class="w-full text-sm line-dynamics-table">
+          <thead>
+            <tr>
+              <th class="text-left py-1">{{ t('lineDynamics.colLine') }}</th>
+              <th class="text-left py-1">{{ t('lineDynamics.colPosition') }}</th>
+              <th class="text-left py-1">{{ t('lineDynamics.colCentral') }}</th>
+              <th class="text-left py-1">{{ t('lineDynamics.colCorresponds') }}</th>
+              <th class="text-left py-1">{{ t('lineDynamics.colAdjacency') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in lineDynamicsRows" :key="row.position" :data-position="row.position">
+              <td class="py-1">{{ row.position }}. {{ row.polarityLabel }}</td>
+              <td class="py-1">
+                {{ row.correctPosition ? t('lineDynamics.correct') : t('lineDynamics.improper') }}
+              </td>
+              <td class="py-1">
+                {{
+                  row.centralAndCorrect
+                    ? t('lineDynamics.centralCorrect')
+                    : row.central
+                      ? t('lineDynamics.central')
+                      : '—'
+                }}
+              </td>
+              <td class="py-1">
+                {{ row.correspondsWith }} ·
+                {{ row.corresponds ? t('lineDynamics.corresponds') : t('lineDynamics.noCorrespondence') }}
+              </td>
+              <td class="py-1">{{ adjacencyLabel(row) }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p class="mt-2 mb-0 text-xs text-color-secondary">{{ t('lineDynamics.help') }}</p>
+      </div>
+
       <p class="text-xs text-color-secondary">
         {{ t('hexagramDetail.sourcePrefix') }} <em>The I Ching</em> {{ t('hexagramDetail.sourceSuffix') }}
       </p>
@@ -262,5 +341,15 @@ watch(
   .line-text {
     transition: none;
   }
+}
+
+.line-dynamics-table {
+  border-collapse: collapse;
+}
+
+.line-dynamics-table th,
+.line-dynamics-table td {
+  border-bottom: 1px solid var(--p-content-border-color);
+  padding-right: 0.75rem;
 }
 </style>

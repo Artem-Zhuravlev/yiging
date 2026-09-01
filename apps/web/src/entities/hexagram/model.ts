@@ -28,6 +28,20 @@ export interface HexagramRelationships {
   complement: HexagramSummary
 }
 
+/** The classical intra-hexagram relationships for one line (SPEC-053) — position, centrality,
+ * correspondence with its partner, and riding/receiving the firm. Present only on the
+ * single-hexagram and editor-preview responses, not the 64-item list. */
+export interface LineDynamic {
+  position: number
+  correctPosition: boolean
+  central: boolean
+  centralAndCorrect: boolean
+  correspondsWith: number
+  corresponds: boolean
+  ridesFirmBelow: boolean
+  supportsFirmAbove: boolean
+}
+
 export interface Hexagram {
   kingWenNumber: number
   chineseName: string
@@ -41,6 +55,8 @@ export interface Hexagram {
   lineStatements: string[] | null
   relationships: HexagramRelationships
   favorite: boolean
+  /** 6 entries, position order — only on `GET /api/hexagrams/{id}` and `.../from-lines`. */
+  lineDynamics?: LineDynamic[]
 }
 
 export interface LineComparison {
